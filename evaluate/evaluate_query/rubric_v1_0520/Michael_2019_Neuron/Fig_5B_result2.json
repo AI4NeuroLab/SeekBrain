@@ -1,0 +1,67 @@
+{
+  "tag": "Fig_5B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric focuses on the core scientific result of Figure 5B: after hierarchical clustering of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) based on NBLAST similarity scores (Figure 5A), all neurons were mirrored to the right hemisphere, overlaid on the standard brain outline (gray surface), and color-coded according to their cluster identity from Figure 5A, with Purkinje cells (cluster 7) omitted for clarity and black rectangles marking regions shown at higher magnification. These elements together reveal the spatial distribution and potential topographic organization of morphologically distinct eurydendroid cell clusters. Visualization technicalities (exact scale bars, rendering style) should receive minimal weight unless they affect the core meaning.",
+      "rubric": {
+        "GT core conclusion": "Following hierarchical clustering of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) based on NBLAST similarity scores (Figure 5A), all neurons were mirrored to the right hemisphere and overlaid on the outline of the standard brain (gray surface), with different colors representing the different clusters from Figure 5A; Purkinje cells (cluster 7) were omitted for clarity, and black rectangles indicate regions zoomed in for detailed viewing.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "States that 121 cerebellar efferent neurons (91 ECs and 30 PCs) were selected following hierarchical clustering based on NBLAST similarity scores from Figure 5A",
+            "deduction_rule": "Deduct 20 points if the reference to clustering in Figure 5A or the neuron population (121 total with EC/PC breakdown) is missing or replaced by a generic description. Deduct 8-12 points if the population size or cell-type distinction is substantially incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Indicates that all neurons were mirrored to the right hemisphere and overlaid on the gray outline of the standard brain",
+            "deduction_rule": "Deduct 25 points if hemispheric mirroring to the right side or overlay on the standard brain outline is missing or substantially altered. Deduct 10 points if the standard brain reference is mentioned but mirroring or overlay is incomplete."
+          },
+          {
+            "point": 25,
+            "criterion": "Reports that different colors represent the different clusters identified in Figure 5A",
+            "deduction_rule": "Deduct 25 points if color coding corresponding to clusters from Figure 5A is missing. Deduct 10-15 points if colors are mentioned but the direct link to the dendrogram clusters is substantially incorrect."
+          },
+          {
+            "point": 15,
+            "criterion": "States that Purkinje cells (cluster 7) were omitted for clarity",
+            "deduction_rule": "Deduct 15 points if omission of cluster 7 Purkinje cells is missing or reversed. Deduct 5-8 points if the cluster identity or purpose (clarity) is substantially incorrect."
+          },
+          {
+            "point": 15,
+            "criterion": "Mentions black rectangles indicating regions zoomed in for detailed viewing",
+            "deduction_rule": "Deduct 15 points if black rectangles or the indication of zoomed-in regions is missing. Deduct 5 points for minor simplifications that still convey highlighted detailed views."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'mirrored to the right hemisphere' as 'displayed/flipped to the right side' or 'standardized to one hemisphere' is acceptable if the consistent overlay on the standard brain is preserved",
+          "Reporting neuron counts approximately (~121 cerebellar efferents, ~30 PCs) or omitting the exact 91/30 breakdown is acceptable if total population and EC/PC distinction are preserved",
+          "Omitting 'at 6 dpf' or 'larval zebrafish brain' is acceptable if the cerebellar efferent context remains clear",
+          "Referring to colors without explicitly saying 'from Figure 5A' is acceptable if the correspondence to the morphological clusters is clearly stated",
+          "Minor rephrasing or simplification of black rectangles/zoomed regions is acceptable if the spatial visualization purpose is preserved"
+        ],
+        "Scoring instructions": "Full credit requires capturing the link to Figure 5A clustering, the neuron population, right-hemisphere mirroring, standard brain overlay, cluster-specific color coding, omission of Purkinje cells (cluster 7), and indication of zoomed regions. Partial credit for preserving the overall spatial organization and cluster coloring while simplifying minor details. Low scores when the answer reduces the figure to a generic visual description or omits the core topographic/clustering-based visualization result."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the essential scientific meaning: after NBLAST-based hierarchical clustering (Figure 5A), cerebellar efferent neurons were visualized by mirroring to the right hemisphere, overlaying on the standard brain outline with cluster-specific colors (Purkinje cells omitted for clarity), and marking zoomed-in regions with black rectangles. This reveals the spatial distribution and topographic organization of morphologically distinct eurydendroid cell clusters.",
+      "rubric": {
+        "GT core conclusion": "Following hierarchical clustering of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) based on NBLAST similarity scores (Figure 5A), all neurons were mirrored to the right hemisphere and overlaid on the outline of the standard brain (gray surface), with different colors representing the different clusters from Figure 5A; Purkinje cells (cluster 7) were omitted for clarity, and black rectangles indicate regions zoomed in for detailed viewing.",
+        "Required points": [
+          "121 cerebellar efferent neurons were selected and color-coded according to hierarchical clustering results from Figure 5A",
+          "Neurons (except PCs) were mirrored to the right hemisphere and overlaid on the standard brain outline (gray)",
+          "Different colors represent the different clusters from Figure 5A",
+          "Purkinje cells (cluster 7) were omitted for clarity",
+          "Black rectangles indicate regions zoomed in for detailed viewing"
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing mirroring or overlay phrasing is acceptable if the visualization setup on the standard brain is preserved",
+          "Approximate neuron counts or omitting exact breakdown is acceptable if population and clustering context remain clear",
+          "Omitting minor details (6 dpf, exact scale) is acceptable if cerebellar spatial context is preserved",
+          "Simplifying mention of black rectangles is acceptable if spatial visualization purpose is retained"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning that neurons from the Figure 5A NBLAST clustering are spatially visualized on the standard brain with cluster colors (Purkinje cells omitted) and zoomed regions marked, without changing the scientific interpretation of topographic organization.",
+        "Criteria for 0": "Assign 0 if the answer omits the link to Figure 5A clustering, omits mirroring/standard brain overlay, omits cluster color coding, omits Purkinje cell omission, materially alters the visualization setup, or reduces it to a generic visual description."
+      }
+    }
+  }
+}

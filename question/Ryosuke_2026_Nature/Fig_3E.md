@@ -1,0 +1,1 @@
+﻿To quantify how much the scene–bump alignment was disrupted across the pre-learning, learning and post-learning epochs, the fraction of time that the scene–bump offset spent in the out-phase range was plotted for each epoch, with the dots indicating individual fish and the grey lines connecting the same fish.

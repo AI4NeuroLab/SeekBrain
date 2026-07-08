@@ -1,0 +1,1 @@
+﻿The bump phase was plotted against the scene orientation θ for each epoch, from the same fish as in panel a, to compare the bump–scene mapping across the pre-learning, learning and post-training epochs, with black dashed reference lines indicating bump phase = θ in the pre- and post-training epochs and bump phase = 2θ (mod 2π) in the learning epoch.

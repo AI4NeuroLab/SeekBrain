@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_5F",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates most of the score to the core scientific result of Fig. 5F: four consensus spatial density maps reveal distinct but brain-wide distributions of sensorimotor neuronal populations in larval zebrafish. Motor-positive neurons are broadly distributed in the hindbrain, motor-negative neurons form more restricted clusters including hindbrain/cerebellar/habenular regions, dark-responsive visual neurons are concentrated mainly in anterior visual-related regions such as optic tectum/cerebellum/habenula/forebrain, and light-responsive neurons are especially concentrated in the left habenula. The key point is that visual and motor populations occupy largely distinct spatial territories while collectively spanning much of the brain. Visualization details such as exact color scale or projection style should receive little weight unless they help preserve this spatial-distribution interpretation. Following the requested weighting, each of the four neuronal populations is worth 20 points for the accuracy of both its spatial density-map pattern and its anatomical description (80 points total), and the overall distribution conclusion is worth 20 points.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5F shows separate consensus spatial density maps of four sensorimotor neuronal populations across 18 larvae: motor-positive cells are broadly distributed through the hindbrain, motor-negative cells form smaller clusters across hindbrain/cerebellum/habenula, dark-responsive cells are mainly distributed in anterior visual-related regions including optic tectum, cerebellum, habenula and forebrain, and light-responsive cells are concentrated especially in the left habenula; together these populations span much of the larval brain but are largely spatially distinct.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "Motor-positive population. Renders this population as a brain-wide consensus spatial density map (aggregated across larvae) and correctly describes its distribution as broadly distributed through the posterior brain / hindbrain. Both the map pattern (broad hindbrain density) and the textual description must be accurate.",
+            "deduction_rule": "Deduct 10 points if the motor-positive distribution is not described as broadly distributed through the hindbrain / posterior brain, or is placed in clearly wrong regions. Deduct 8-10 points if this population is not represented as a spatial density map (for example treated as a single ROI, a time series, or a non-spatial summary). Deduct 5 points for minor regional imprecision that still preserves the broad-hindbrain pattern."
+          },
+          {
+            "point": 20,
+            "criterion": "Motor-negative population. Renders this population as a consensus spatial density map and correctly describes it as forming smaller, more spatially restricted or segregated clusters (sparser than motor-positive), for example across hindbrain, cerebellum, and habenula. Both the map pattern and the description must be accurate.",
+            "deduction_rule": "Deduct 10 points if the motor-negative distribution is not described as more restricted / clustered than motor-positive, or is placed in clearly wrong regions. Deduct 8-10 points if this population is not represented as a spatial density map. Deduct 5 points for minor regional imprecision that preserves the restricted-cluster pattern."
+          },
+          {
+            "point": 20,
+            "criterion": "Dark-responsive (visual) population. Renders this population as a consensus spatial density map and correctly describes it as mainly located in anterior / visual-related regions such as optic tectum, pretectum, cerebellum, habenula, and/or forebrain. Both the map pattern and the description must be accurate.",
+            "deduction_rule": "Deduct 10 points if the dark-responsive distribution is not described as concentrated in anterior visual-related regions, or is placed mainly in the hindbrain. Deduct 8-10 points if this population is not represented as a spatial density map. Deduct 5 points for minor regional imprecision that preserves the anterior/visual-region pattern."
+          },
+          {
+            "point": 20,
+            "criterion": "Light-responsive (visual) population. Renders this population as a consensus spatial density map and correctly describes it as sparse and concentrated especially in the (left) habenula, reflecting habenular lateralization. Both the map pattern and the description must be accurate.",
+            "deduction_rule": "Deduct 10 points if the light-responsive distribution is not described as concentrated in the habenula. Deduct 8-10 points if this population is not represented as a spatial density map. Deduct 3-5 points if the habenula is mentioned but the left-sided lateralization is omitted; left lateralization is preferred but minor."
+          },
+          {
+            "point": 20,
+            "criterion": "Overall distribution conclusion. Preserves the interpretation that the four sensorimotor populations collectively span much of the brain but occupy LARGELY DISTINCT spatial territories: motor populations are mainly posterior / hindbrain while visual (dark- and light-responsive) populations are mainly in anterior visual-related regions and the habenula, indicating functional spatial segregation.",
+            "deduction_rule": "Deduct 20 points if the answer gives only per-population descriptions with no overall interpretation. Deduct 10 points if it states that the populations are spatially distinct but does not convey that they collectively span much of the brain, or conversely conveys brain-wide coverage but not the distinct territories. Deduct 10-15 points if it claims the populations broadly overlap or are not spatially segregated."
+          }
+        ],
+        "Acceptable deviations": [
+          "Describing the maps as 'consensus density maps', 'cross-individual density maps', or 'aggregated spatial distributions' is acceptable.",
+          "Paraphrasing 'motor-positive' / 'motor-negative' as 'motor-correlated' / 'motor-anticorrelated', and 'dark-responsive' / 'light-responsive' as 'dark-correlated' / 'light-correlated', is acceptable.",
+          "Omitting the exact sample size n = 18 larvae is acceptable as long as the maps are conveyed as aggregated across individuals.",
+          "Omitting the exact spatial statistical threshold (P < 0.025) is acceptable as long as the maps are conveyed as consensus / thresholded distributions.",
+          "Listing a subset of the anterior visual-related regions (for example optic tectum and forebrain) is acceptable for the dark-responsive population as long as the anterior/visual-region pattern is preserved.",
+          "Mentioning that motor-negative clusters partly overlap noradrenergic regions is acceptable but not required.",
+          "Exact color scale, projection style, or panel layout are secondary unless they alter the spatial-distribution interpretation."
+        ],
+        "Scoring instructions": "Score the answer against five items summing to 100. The first four items (20 each, 80 total) each cover one neuronal population and require BOTH an accurate spatial density-map pattern and an accurate anatomical description: motor-positive (broad hindbrain), motor-negative (restricted clusters in hindbrain/cerebellum/habenula), dark-responsive (anterior visual-related regions such as optic tectum/cerebellum/habenula/forebrain), and light-responsive (sparse, especially left habenula). The fifth item (20) covers the overall conclusion that the four populations collectively span much of the brain but occupy largely distinct spatial territories, indicating functional spatial segregation. High scores require correct per-population maps and descriptions plus the overall segregation conclusion. Low scores should be assigned when populations are placed in the wrong regions, the maps are not rendered as spatial density distributions, or the answer fails to convey that visual and motor populations are spatially distinct."
+      }
+    }
+  }
+}

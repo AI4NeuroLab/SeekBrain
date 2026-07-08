@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_4B",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 4B shows PSTHs for 14 simultaneously recorded PMd neurons from the same recording session. The core is to use a local simultaneously recorded population to show that response heterogeneity is not due to sampling across sessions or animals, but is an intrinsic property of the PMd network. The figure is a complex multi-panel PSTH display of 14 neurons and is worth 35 points. The simultaneous-recording property is a key methodological point and is worth 20 points. The scientific interpretation is split into two items: PSTH heterogeneity as an intrinsic property of the local population is worth 25 points, and the correspondence between PSTH heterogeneity and diverse nonlinear tuning functions supporting inference of the same latent variable is worth 20 points. Point allocation: graph reproduction 35, simultaneous-recording source 20, population-heterogeneity conclusion 25, tuning-function interpretation 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 4B shows PSTHs of 14 simultaneously recorded PMd neurons from the same session. Each neuron is plotted with four condition curves grouped by choice direction and stimulus difficulty, and all neurons show some choice selectivity, but their temporal profiles are highly diverse, including ramping, non-monotonic, and transient activation patterns. The core conclusion is that highly heterogeneous temporal responses exist within a simultaneously recorded local PMd network; this heterogeneity corresponds to different nonlinear tuning functions to the same latent decision variable, rather than being a superficial difference caused by cross-session, cross-animal, or sampling variability.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the multi-panel PSTH plot for 14 neurons, with each subplot corresponding to one neuron and labeled 1-14, each subplot containing four condition curves (left-easy, left-hard, right-easy, right-hard), colors distinguishing choice direction and stimulus difficulty, s.e.m. error bands, potentially different y-axis ranges across neurons, and diverse PSTH shapes consistent with the original figure.",
+            "deduction_rule": "Deduct the full 35 points if the panel is misidentified as a single-neuron example, raster plot, box plot, tuning-function plot, or low-dimensional embedding. Deduct 15 points if the 14-neuron multi-panel structure is not shown. Deduct 10 points if each subplot does not contain four condition curves. Deduct 8 points if color meaning is confused or choice direction is not distinguished. Deduct 6 points if error bands are missing or firing-rate ranges on the y-axis are clearly unreasonable."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly states that the 14 neurons come from the same recording session and were recorded simultaneously, so the figure directly controls for cross-session behavioral-state changes and cross-animal individual differences, supporting the interpretation that heterogeneity arises within the local network rather than from sampling differences.",
+            "deduction_rule": "Deduct 10 points if simultaneous recording or same-session source is not described. Deduct 15 points if the 14 neurons are described as pooled from different animals or different sessions. Deduct 8 points if the importance of simultaneous recording for interpreting heterogeneity is not explained."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the scientific meaning of PSTH heterogeneity, stating that the 14 simultaneously recorded neurons in the same task and session show diverse temporal response profiles, including ramping, non-monotonic, and transient patterns, and that all neurons show choice selectivity but differ in direction, amplitude, and temporal form; this indicates that heterogeneity is an intrinsic property of the local PMd network.",
+            "deduction_rule": "Deduct 18 points if the 14 neurons are claimed to have essentially identical PSTH shapes. Deduct 10 points if multiple curves are described without explaining local-network heterogeneity. Deduct 12 points if the heterogeneity is attributed to cross-animal or cross-session differences. Deduct 8 points if the response overstates the conclusion by claiming that heterogeneity means there is no shared latent variable."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the correspondence between PSTH heterogeneity and tuning-function diversity, stating that each neuron has a different nonlinear tuning function f_i(x), so the same latent decision variable x(t) can generate different PSTH shapes across neurons; the population model uses the complementary firing of all 14 neurons to infer the same latent variable and improve single-trial trajectory estimation.",
+            "deduction_rule": "Deduct 8 points if PSTH heterogeneity is not connected to the tuning-function diversity shown in Fig. 4D. Deduct 12 points if different PSTH shapes are interpreted as different latent variables or different task processes. Deduct 10 points if the response only says that neurons differ without explaining the same latent variable and different tuning functions. Deduct 6 points if tuning functions are confused with the PSTH curves themselves."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe simultaneously recorded neurons as neurons recorded in the same session.",
+          "It is acceptable to describe the PMd local network as a local neural population or same recording population.",
+          "It is acceptable to describe PSTH heterogeneity as diversity of trial-averaged firing-rate profiles.",
+          "It is acceptable to describe choice selectivity as separation between different chosen-side condition curves.",
+          "It is acceptable to describe tuning-function diversity as different nonlinear response functions to the same latent variable across neurons.",
+          "It is not necessary to list the exact profile of every numbered neuron, as long as the overall high heterogeneity of the 14 neurons is correctly stated.",
+          "The y-axis range may be approximately described as 0-80 Hz or as differing across neurons."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the multi-panel PSTHs for 14 simultaneously recorded neurons, explaining why same-session simultaneous recording rules out sampling differences, accurately extracting the conclusion of local-network PSTH heterogeneity, and explaining the relationship between this heterogeneity and different nonlinear tuning functions to the same latent variable. Partial scores (40-84) should be assigned when the graph structure is broadly correct but the simultaneous-recording property, local-network interpretation, or tuning-function mechanism is incomplete. Low scores (0-39) should be assigned when the panel is confused with a single-neuron or tuning-function plot, heterogeneity is attributed to cross-animal differences, or the model meaning of PSTH diversity is not explained."
+      }
+    }
+  }
+}

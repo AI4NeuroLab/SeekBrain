@@ -1,0 +1,52 @@
+{
+  "parent_name": "brain-wide_representations_of_prior_information_in_mouse_decision-making",
+  "image_ids": [
+    "Fig_3C"
+  ],
+  "question": "﻿For cortical regions with measurements from both electrophysiology and widefield imaging, compute the Spearman correlation between their corrected post-stimulus neurometric shift values across the two modalities (n = 32 regions). Plot Ephys shift versus WFI shift per region with a fitted regression line and confidence interval, and annotate the correlation coefficient and p-value.",
+  "analyse_plan": {
+    "Objective": "Test whether estimates of prior encoding obtained from electrophysiology and widefield imaging are consistent across cortical regions during the post-stimulus period.",
+    "Validation Checks": "Ensure that the neurometric shift values are computed using the same decoding procedure for both modalities. Verify that only cortical regions with measurements from both Ephys and WFI are included. Confirm that correlation analysis uses matched regional pairs across modalities. Check that the number of cortical regions used in the analysis matches the reported sample size.",
+    "Steps": "1.Load Decoding Results: Load corrected post-stimulus neurometric shift values derived from electrophysiology and widefield imaging analyses. 2.Match Cortical Regions: Identify cortical regions that have measurements from both recording modalities. 3.Construct Paired Dataset: Create paired vectors of Ephys and WFI shift values across the matched cortical regions. 4.Correlation Analysis: Compute the Spearman correlation coefficient between the two vectors. 5.Significance Test: Evaluate the statistical significance of the correlation. 6.Save Key Results: Store correlation coefficients, p-values, and paired regional data for further visualization and analysis. 7.Visualization: Plot the corrected post-stimulus shift values from Ephys versus WFI for each cortical region with a fitted correlation line and confidence interval."
+  },
+  "analysis_keywords": [
+    "Spearman correlation",
+    "neurometric shift analysis",
+    "cross-modality comparison",
+    "brain-wide decoding",
+    "widefield imaging",
+    "electrophysiology"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "correlation_coefficient_between_ephys_and_wfi_shifts",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.51
+    },
+    {
+      "variable_name": "p_value_for_ephys_wfi_correlation",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.0027
+    },
+    {
+      "variable_name": "number_of_cortical_regions",
+      "unit": "regions",
+      "variable_type": "numeric",
+      "number": 32
+    }
+  ],
+  "key_analysis_results": [
+    "The corrected post-stimulus neurometric shifts measured with electrophysiology and widefield imaging were significantly correlated across cortical regions.The Spearman correlation coefficient between the two modalities was R = 0.51 (P = 0.0027, n = 32 regions)."
+  ],
+  "key_analysis_conclusions": [
+    "Post-stimulus prior signals measured with electrophysiology and widefield imaging are consistent across cortical regions. The positive correlation between modalities indicates that prior-related signals are similarly distributed across cortical regions in both datasets."
+  ],
+  "summary_report": {
+    "abstract": "This analysis compares post-stimulus prior encoding measured using electrophysiology and widefield imaging. The corrected neurometric shifts obtained from the two modalities are correlated across cortical regions.",
+    "methods": "Post-stimulus neurometric shifts reflecting prior encoding were computed separately for electrophysiology and widefield imaging datasets and corrected relative to a pseudosession-based null distribution. For cortical regions measured with both modalities, the relationship between the two estimates was quantified using Spearman correlation analysis.",
+    "results": "The post-stimulus neurometric shifts measured by electrophysiology and widefield imaging were significantly correlated across cortical regions (Spearman R = 0.51, P = 0.0027, n = 32 regions).",
+    "discussion": "The positive correlation between electrophysiology and widefield imaging measurements indicates that post-stimulus prior signals are consistently observed across cortical regions in both recording modalities."
+  }
+}

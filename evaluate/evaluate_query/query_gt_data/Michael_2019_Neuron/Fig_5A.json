@@ -1,0 +1,42 @@
+{
+  "parent_name": "A_Cellular-Resolution_Atlas_of_the_Larval_Zebrafish_Brain",
+  "image_ids": [
+    "Fig_5A"
+  ],
+  "question": "For 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) from the larval zebrafish brain at 6 dpf, pairwise morphological similarity scores computed using the NBLAST algorithm are subjected to unsupervised hierarchical clustering with Ward's method, and the resulting dendrogram is shown with colors indicating the eight major clusters, to reveal the morphological organization and classification of cerebellar output neurons.",
+  "analyse_plan": {
+    "Objective": "To classify cerebellar efferent neurons based on morphological similarity using the NBLAST algorithm, and to visualize the hierarchical relationships between different cell types through unsupervised clustering.",
+    "Validation Checks": "1. PC-EC Separation Verification: Confirm that all Purkinje cells (PCs) cluster together in a single cluster (cluster 7), separate from the eurydendroid cells (ECs). 2. Cluster Count Validation: Verify that the dendrogram shows eight major clusters at the indicated cutting height, with one cluster containing all PCs and seven clusters containing ECs. 3. Color Coding Consistency: Ensure that the colors assigned to clusters in the dendrogram match those used in subsequent visualizations (Figures 5B and 5C). 4. Hierarchical Structure Assessment: Evaluate whether the branching pattern of the dendrogram reflects meaningful morphological relationships between neurons.",
+    "Steps": "1. Neuron Population Selection: Identify all cerebellar output cells (n=121) whose cell bodies reside along the medio-to-lateral and rostral-to-caudal extent of the cerebellar corpus, comprising 91 eurydendroid cells (ECs) and 30 Purkinje cells (PCs). 2. Morphological Feature Extraction: Extract quantitative morphological features from each neuron tracing, including soma position, dendritic arborization patterns, and axonal projection trajectories. 3. Pairwise Similarity Computation: Apply the NBLAST algorithm to compute morphological similarity scores for all possible pairs of the 121 cerebellar efferent neurons. 4. Similarity Matrix Construction: Compile the pairwise NBLAST scores into a similarity matrix representing morphological relationships between all neurons. 5. Hierarchical Clustering: Perform unsupervised hierarchical clustering using Ward's method based on the NBLAST similarity matrix to group neurons by morphological similarity. 6. Dendrogram Generation: Visualize the clustering results as a dendrogram, with branch lengths representing morphological dissimilarity and colors indicating the eight major clusters identified at the selected cutting height. 7. Cluster Composition Analysis: Examine the composition of each cluster to determine the distribution of PCs and ECs across clusters."
+  },
+  "analysis_keywords": [
+    "NBLAST algorithm",
+    "Ward's method"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Total neurons",
+      "unit": "cells",
+      "variable_type": "numeric",
+      "number": "121"
+    },
+    {
+      "variable_name": "Number of major clusters",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": "8"
+    }
+  ],
+  "key_analysis_results": [
+    "Of the eight major clusters identified by hierarchical clustering of 121 cerebellar efferent neurons based on NBLAST morphological similarity scores, one (cluster 7) consisted exclusively of all Purkinje cells (PCs), with the remaining eurydendroid cells (ECs) distributed over the other seven clusters."
+  ],
+  "key_analysis_conclusions": [
+    "The clustering analysis demonstrates that Purkinje cells form a morphologically homogeneous population that is distinctly separable from eurydendroid cells, while ECs exhibit greater morphological heterogeneity distributed across multiple clusters, suggesting functional specialization within the cerebellar output pathway."
+  ],
+  "summary_report": {
+    "abstract": "This analysis aims to classify cerebellar efferent neurons in the larval zebrafish brain based on morphological similarity, and to visualize the hierarchical relationships between different cell types through unsupervised clustering of NBLAST similarity scores.",
+    "methods": "We identified 121 cerebellar output cells whose cell bodies reside along the medio-to-lateral and rostral-to-caudal extent of the cerebellar corpus. The majority of those are eurydendroid cells (ECs, 91/121) and the rest are Purkinje cells (PCs, 30/121). The NBLAST algorithm was used to hierarchically cluster the individual cells based on their morphological similarity. Pairwise NBLAST scores were computed for all cerebellar efferents, and unsupervised hierarchical clustering with Ward's method was performed based on the NBLAST scores. The resulting dendrogram is shown with colors indicating the different clusters.",
+    "results": "Of the eight major clusters, one (cluster 7) consisted exclusively of all PCs, with the remaining ECs distributed over the other seven clusters. The dendrogram reveals the hierarchical organization of cerebellar efferent neurons based on morphological similarity.",
+    "discussion": "The clustering analysis successfully separates Purkinje cells from eurydendroid cells, with all PCs forming a single homogeneous cluster (cluster 7). The ECs are distributed across seven distinct clusters, suggesting morphological heterogeneity within this cell population that may correspond to different functional subtypes or projection targets."
+  }
+}

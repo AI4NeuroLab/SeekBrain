@@ -1,0 +1,47 @@
+{
+  "tag": "Fig_3D",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 3D tests whether a simple model manipulation can account for the individual differences seen in Fig. 3C. The panel shows that changing the amplitude of ER sensory input in the dim-cue model produces the same kind of relationship observed experimentally: simulations with better HD encoding have narrower bumps, whereas simulations with poorer encoding have wider bumps. The scoring therefore gives most weight to the modeled relationship between HD encoding accuracy and bump width, the role of ER amplitude, and the connection back to the experimental data.",
+      "rubric": {
+        "GT core conclusion": "In the model, varying ER amplitude under the dim visual cue condition produces a negative relationship between HD encoding accuracy and bump width: higher HD encoding accuracy is associated with narrower bumps, while lower accuracy is associated with wider bumps. This recapitulates the across-fly relationship observed experimentally in Fig. 3C and supports the idea that individual differences in sensory input strength can explain individual differences in bump width and HD encoding accuracy.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "States that the model produces a negative relationship between HD encoding accuracy and bump width, with higher accuracy associated with narrower bumps and lower accuracy associated with wider bumps",
+            "deduction_rule": "Deduct 35 points if this relationship is missing or reversed. Deduct 15-20 points if the answer mentions changes in bump width or accuracy but does not clearly describe their relationship. Deduct 10-15 points if the answer states only that the model changes bump width without linking it to HD encoding accuracy."
+          },
+          {
+            "point": 20,
+            "criterion": "Identifies ER amplitude, or equivalently sensory input strength / visually evoked ER activity, as the parameter varied in the model",
+            "deduction_rule": "Deduct 20 points if the answer does not mention ER amplitude or sensory-drive variation. Deduct 8-10 points if the answer vaguely refers to 'model parameters' without identifying the sensory-input amplitude. Accept 'ER activity level', 'visual sensory drive', or 'input strength' as equivalent phrasing."
+          },
+          {
+            "point": 20,
+            "criterion": "States that the model result recapitulates or explains the experimental pattern observed across individual flies in Fig. 3C",
+            "deduction_rule": "Deduct 20 points if the connection to the experimental data is omitted. Deduct 8-12 points if the answer mentions both model and data but does not clearly state that the model reproduces the experimental relationship."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the interpretation that individual differences in sensory input strength can account for individual differences in bump width and HD encoding accuracy",
+            "deduction_rule": "Deduct 15 points if the interpretation is missing. Deduct 8-10 points if the answer gives only a generic modeling interpretation without connecting it to individual variation. Deduct 15 points if the answer claims that ER amplitude or sensory input strength cannot explain the observed individual differences."
+          },
+          {
+            "point": 10,
+            "criterion": "Places the simulation in the dim visual cue or low-intensity cue condition",
+            "deduction_rule": "Deduct 10 points if the answer attributes the simulation to the wrong cue condition, such as bright cue or no cue. Deduct 3-5 points if the answer only vaguely refers to 'the cue condition' without specifying dim or low-intensity cue."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe the result as 'the model reproduces the negative correlation between bump width and encoding accuracy'.",
+          "It is acceptable to say 'narrower model bumps give better HD tracking' rather than using the term 'negative relationship'.",
+          "ER amplitude may be described as 'sensory input strength', 'ER activity level', 'visual drive', or 'visually evoked input'.",
+          "The dim cue may be described as a low-intensity or low-contrast visual cue.",
+          "Exact simulation details such as the number of ER-amplitude values, the number of trials, or color coding are not required.",
+          "The answer does not need to mention the regression line or scatter-plot format if the model conclusion is clear."
+        ],
+        "Scoring instructions": "Score the answer mainly on whether it captures the modeling logic of the panel. A full-credit answer should say that changing ER amplitude in the dim-cue model produces a negative relationship between HD encoding accuracy and bump width, and that this reproduces the across-fly pattern from Fig. 3C. Answers that get the direction of the relationship and the ER-amplitude manipulation right should receive substantial credit even if they omit minor simulation details. Give low scores if the answer reverses the relationship, fails to mention ER amplitude or sensory input variation, or describes the panel only as a generic model scatter plot without explaining what it shows."
+      }
+    }
+  }
+}

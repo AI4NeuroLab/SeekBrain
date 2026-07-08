@@ -1,0 +1,48 @@
+{
+  "parent_name": "whole-brain_co-mapping_of_gene_expression_and_neuronal_activity_at_cellular_resolution_in_behaving_zebrafish",
+  "image_ids": [
+    "Fig_4D"
+  ],
+  "query": "Plot the spatial distribution of eomesa-positive, pvalb7-positive, and eomesa-pvalb7 co-expressing neurons in dorsal and lateral 2D anatomical projections, with all other neurons as gray background. Color selected neurons by log-transformed RNA spot counts.",
+  "analyse_plan": {
+    "Objective": "Localize the anatomical distribution of eomesa-positive, pvalb7-positive, and their co-expressing neurons, confirm the telencephalic localization of eomesa-pvalb7 co-expressing cells (homologous to mammalian hippocampus), and identify pvalb7-positive Purkinje cells in the cerebellum.",
+    "Validation Checks": "Verify that eomesa and pvalb7 positive cells are defined using consistent RNA spot thresholds (default 25 spots). Confirm co-expressing cells are positive for both genes (≥25 spots each). Ensure 3D brain visualizations align with the mapZebrain atlas, particularly the dorsal pallium and cerebellum regions. Validate that cell distributions are consistent across the three fish.",
+    "Steps": "1. Load Data: Import EASI-FISH RNA spot counts for eomesa and pvalb7, cell segmentation spatial coordinates, and brain region annotations from three fish.\n2. Positive Cell Definition: Classify cells as eomesa-positive (≥25 spots), pvalb7-positive (≥25 spots), or co-expressing (both ≥25 spots).\n3. Anatomical Mapping: Assign each positive cell to its corresponding brain region using the registered mapZebrain atlas, isolating the dorsal pallium and cerebellum boundaries.\n4. 3D Visualization: Generate three separate 3D whole-brain renderings (providing both top and lateral views) for each cell group, applying a consistent colormap mapping mRNA spot counts to cell color intensity.\n5. Annotation: Overlay dashed contours highlighting key regions (dorsal pallium in red, cerebellum in blue) and include a 100 μm scale bar to provide spatial context.\n6. Save Results: Export the 3D spatial coordinate arrays and gene expression metadata for the identified eomesa-positive, pvalb7-positive, and co-expressing neuronal populations, alongside the generated visualizations, into structured files for archival and downstream activity mapping."
+  },
+  "analysis_keywords": [
+    "spatial distribution"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "mRNA spot count colormap range",
+      "unit": "count",
+      "variable_type": "vector ",
+      "number": "1 to 148"
+    },
+    {
+      "variable_name": "Number of fish",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "3"
+    },
+    {
+      "variable_name": "3D brain map scale bar",
+      "unit": "μm",
+      "variable_type": "numeric",
+      "number": "100"
+    }
+  ],
+  "key_analysis_results": [
+    "eomesa-positive cells are primarily distributed in the telencephalon; pvalb7-positive cells localize to the lateral edges of the dorsal pallium and cerebellum (Purkinje cells); eomesa-pvalb7 co-expressing cells are concentrated in the dorsolateral pallium (homologous to mammalian hippocampus). These distributions are consistent across three fish."
+  ],
+  "key_analysis_conclusions": [
+    "eomesa and pvalb7 exhibit region-specific expression patterns, with their co-expression defining a hippocampus-like population in the zebrafish telencephalon, while pvalb7 alone marks cerebellar Purkinje cells—demonstrating the link between molecular identity and anatomical specialization."
+  ],
+  "summary_report": {
+    "abstract": "Fig_4D maps eomesa/pvalb7 expression: 3D whole-brain visualizations show eomesa-positive cells in the telencephalon, pvalb7-positive cells in the dorsal pallium and cerebellum (Purkinje cells), and eomesa-pvalb7 co-expressing cells in the dorsolateral pallium (hippocampus homolog), consistent across three fish.",
+    "methods": "Data for Fig_4D came from three main experimental zebrafish larvae, with eomesa and pvalb7 RNA spot counts measured via EASI-FISH. Cells were classified as positive using a 25-spot threshold; co-expressing cells met the threshold for both genes. Cell segmentation and brain region annotations used the mapZebrain atlas. Three 3D whole-brain renderings were generated (eomesa-positive, pvalb7-positive, co-expressing) with top/side views for anatomical context. Color coding was consistent to distinguish cell groups, and key regions (dorsal pallium, cerebellum) were highlighted. Distributions were averaged across three fish to ensure consistency.",
+    "results": "Left panel (eomesa-positive): Cells are predominantly localized to the telencephalon, with sparse distribution in other regions. Middle panel (pvalb7-positive): Cells cluster at the lateral edges of the dorsal pallium and fill the cerebellum (corresponding to known Purkinje cells). Right panel (co-expressing): Cells are tightly concentrated in the dorsolateral pallium, a region previously proposed as homologous to the mammalian hippocampus. All distributions are consistent across the three fish, confirming reproducibility.",
+    "discussion": "Fig_4D links molecular identity to anatomical function by defining region-specific expression patterns of eomesa and pvalb7. The eomesa-pvalb7 co-expression in the dorsolateral pallium validates this region as a hippocampus homolog, aligning with previous scRNA-seq data. Pvalb7’s dual localization—hippocampus-like telencephalon and cerebellar Purkinje cells—reflects its conserved role in specialized neuronal populations across vertebrates. Eomesa, a transcription factor involved in telencephalic development, marks a subset of telencephalic neurons, with co-expression with pvalb7 refining the hippocampus-like population. This spatial mapping is critical for interpreting subsequent functional data (Fig_4E), as it anchors the observed activity of co-expressing cells to a known anatomical homolog."
+  },
+  "question": "﻿To map the spatial distribution of eomesa-positive, pvalb7-positive, and eomesa-pvalb7 co-expressing neurons across the whole brain. Based on EASI-FISH RNA spot data (eomesa and pvalb7 genes) and brain region annotations (mapZebrain atlas) from three fish, generate three 3D whole-brain visualizations: (i) eomesa-positive cells, (ii) pvalb7-positive cells, (iii) eomesa-pvalb7 co-expressing cells, with anatomical context (dorsal pallium, cerebellum) highlighted."
+}

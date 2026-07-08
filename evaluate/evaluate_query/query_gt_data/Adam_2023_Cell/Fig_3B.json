@@ -1,0 +1,33 @@
+{
+  "parent_name": "brain-wide_representations_of_behavior_spanning_multiple_timescales_and_states_in_c._elegans",
+  "image_ids": [
+    "Fig_3B"
+  ],
+  "query": "To reveal how feeding encoding is organized in the continuous UMAP space, the UMAP embedding of all neurons from 14 animals is colored by whether each neuron is feeding-activated or feeding-inhibited (based on the sign of the CePNEM-derived feeding tuning), showing that feeding encoding is graded along one axis of the UMAP space.",
+  "analyse_plan": {
+    "Objective": "Show that velocity encoding features are systematically organized along a continuous gradient in the UMAP encoding space.",
+    "Validation Checks": "Same UMAP coordinates as Fig_3A; color gradient should be smooth, not patchy.",
+    "Steps": "1. Load Data: Load the CePNEM posterior particles for every behavior-encoding neuron in the 14 SWF415 animals, the per-neuron CePNEM-derived feeding-tuning slope (feedingness) values, and the per-neuron significance flags for feeding encoding from the deconvolved-activity-matrix tests (x1 = 0.125/signal, x2 = 0.25 · sD/sM, Bonferroni + Benjamini-Hochberg, FDR = 0.05). 2. Build UMAP Reference Space: Construct a 19200-dimensional behavioral context vector by concatenating the velocity, head curvature, and feeding traces from 12 SWF415 animals; sample 4004 median CePNEM fits across all 14 animals, evaluate each on this concatenated context to produce a 4004 × 19200 matrix of model-predicted activities, and run UMAP on this matrix to obtain a 2D embedding. 3. Project All Posterior Particles: For every neuron, project each of its posterior particles into the precomputed UMAP space using the same context vectors. 4. Classify Feeding Tuning: For each neuron that significantly encodes feeding, classify it as feeding-activated (positive feedingness slope) or feeding-inhibited (negative feedingness slope) using the Cartesian average m_cart of its hierarchical-model fit. 5. Save Key Results: Save the per-neuron UMAP point clouds, the per-neuron feeding-tuning classifications (feeding-activated vs feeding-inhibited), and the colormap parameters used for the panel. 6. Visualization: Plot every posterior particle from every feeding-encoding neuron as a dot in the UMAP embedding, colored by feeding-tuning class (feeding-activated in green, feeding-inhibited in magenta), with non-feeding-encoding neurons rendered in a low-saturation background tone."
+  },
+  "analysis_keywords": [
+    "UMAP coloring",
+    "encoding gradient",
+    "forwardness",
+    "velocity encoding",
+    "continuous representation"
+  ],
+  "statistical_info": [],
+  "key_analysis_results": [
+    "Velocity encoding was graded along one UMAP axis, with forward-active neurons on one side and reverse-active on the other. The gradient was smooth and continuous, with no discrete boundary between forward and reverse encoding."
+  ],
+  "key_analysis_conclusions": [
+    "Velocity encoding is organized as a smooth gradient in the neural population, consistent with the continuous encoding landscape identified in Fig_3A."
+  ],
+  "summary_report": {
+    "abstract": "UMAP colored by forwardness reveals velocity encoding organized as a smooth gradient.",
+    "methods": "Same UMAP as Fig_3A, colored by CePNEM-derived forwardness (velocity slope).",
+    "results": "Velocity graded along one axis: forward-active on one side, reverse-active on the other. Smooth gradient.",
+    "discussion": "Demonstrates that velocity encoding varies continuously across the population rather than forming discrete forward/reverse clusters."
+  },
+  "question": "﻿To reveal how feeding encoding is organized in the continuous UMAP space, the UMAP embedding of all neurons from 14 animals is colored by whether each neuron is feeding-activated or feeding-inhibited (based on the sign of the CePNEM-derived feeding tuning), showing that feeding encoding is graded along one axis of the UMAP space."
+}

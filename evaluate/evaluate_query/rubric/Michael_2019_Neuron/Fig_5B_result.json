@@ -1,0 +1,61 @@
+{
+  "tag": "Fig_5B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates the most weight to the core neuroanatomical and functional conclusions derived from the visualization. While the answer must describe how the cerebellar efferent neurons were processed for visualization (mirrored to the right hemisphere, overlaid on the standard brain, color-coded by cluster, with Purkinje cells omitted), the paramount scientific discovery is that the dendrites of individual eurydendroid cell (EC) clusters tile the granule cell layer, which suggests a segregation of inputs. Visual details such as the gray surface and black zoom rectangles are given secondary weight.",
+      "rubric": {
+        "GT core conclusion": "To visualize spatial distribution, cerebellar efferent neurons were mirrored to the right hemisphere and overlaid on a standard brain outline with cluster-specific colors (omitting Purkinje cells/cluster 7 for clarity, with black rectangles indicating zoomed regions). This color coding revealed that the dendrites of the individual eurydendroid cell clusters tile the granule cell layer, suggesting a segregation of inputs.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the cerebellar efferent neurons were mirrored to the right hemisphere and overlaid on the outline of the standard brain",
+            "deduction_rule": "Deduct 25 points if the hemispheric mirroring and standard-brain overlay are entirely missing. Deduct 10 points if the standard brain overlay is mentioned but hemispheric mirroring/standardization to one side is missed."
+          },
+          {
+            "point": 20,
+            "criterion": "Describes the visualization logic: colors represent different morphological clusters, Purkinje cells (cluster 7) were omitted for clarity, and black rectangles indicate zoomed regions",
+            "deduction_rule": "Deduct 20 points if both the color-coding logic and PC omission are missing. Deduct 10 points if color coding is mentioned but the omission of Purkinje cells is missed. Deduct 5 points if the mention of black rectangles/zoomed regions is omitted."
+          },
+          {
+            "point": 30,
+            "criterion": "Reports the key anatomical observation that the dendrites of the individual eurydendroid cell (EC) clusters tile the granule cell layer",
+            "deduction_rule": "Deduct 30 points if the spatial distinctness of EC dendrites and the specific mention of the 'granule cell layer' are entirely missing. Deduct 15 points if spatial organization is mentioned but the specific tiling concept or the anatomical location (granule cell layer) is vague or incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Concludes that this spatial organization (tiling) suggests a segregation of inputs",
+            "deduction_rule": "Deduct 25 points if the functional implication (segregation of inputs or distinct functional specialization) is entirely missing. Deduct 10 points if a functional implication is attempted but significantly misrepresents the text."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'mirrored to the right hemisphere' as 'standardized to one hemisphere' or 'projected to the right side' is acceptable.",
+          "Referring to 'Purkinje cells' simply as 'cluster 7' (or vice versa) is acceptable, provided the omission for clarity is stated.",
+          "Paraphrasing 'tile the granule cell layer' as 'spatially segregate within the granule layer', 'occupy distinct spatial territories in the granule layer', or 'non-overlapping dendritic arbors' is acceptable.",
+          "Omitting exact cell counts (121 total, 91 ECs, 30 PCs) or the developmental stage (6 dpf) is acceptable.",
+          "Omitting the specific mention of the 'gray surface' is acceptable."
+        ],
+        "Scoring instructions": "Assign points primarily based on whether the answer captures the anatomical mapping strategy (mirroring, color-coding, filtering PCs) AND the resulting scientific discovery (EC dendrites tile the granule layer, suggesting input segregation). Full credit (100) requires all core elements. Apply partial deductions strictly according to the rules. Low scores apply if the answer provides merely a generic description of the image's visual elements without conveying the underlying morphological and functional findings."
+      }
+    },
+    "binary": {
+      "reason": "This binary rubric evaluates whether the model successfully links the methodological visualization of the image to its core scientific meaning. A 'basically correct' answer must state that the color-coded, standardized overlay of cerebellar efferents (with PCs excluded) demonstrates the spatial tiling of eurydendroid cell dendrites in the granule cell layer and implies input segregation.",
+      "rubric": {
+        "GT core conclusion": "To visualize spatial distribution, cerebellar efferent neurons were mirrored to the right hemisphere and overlaid on a standard brain outline with cluster-specific colors (omitting Purkinje cells/cluster 7 for clarity, with black rectangles indicating zoomed regions). This color coding revealed that the dendrites of the individual eurydendroid cell clusters tile the granule cell layer, suggesting a segregation of inputs.",
+        "Required points": [
+          "Neurons were mapped based on hierarchical clustering results from Figure 5A.",
+          "Neurons were mirrored to the right hemisphere and overlaid on the standard brain outline.",
+          "Different colors represent the different clusters.",
+          "Purkinje cells (cluster 7) were omitted for clarity."
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'mirrored to the right hemisphere' as 'standardized to one hemisphere' or 'projected to the right side' is acceptable.",
+          "Referring to 'Purkinje cells' simply as 'cluster 7' (or vice versa) is acceptable.",
+          "Paraphrasing 'tile the granule cell layer' as 'spatially segregate within the granule layer' or 'occupy distinct spatial territories' is acceptable.",
+          "Omitting the exact cell counts, developmental stage, 'gray surface', or 'black rectangles' is entirely acceptable and should not penalize the response."
+        ],
+        "Criteria for 1": "Assign 1 if the answer conveys the core workflow (mirroring, color-coding, removing PCs) AND the major scientific finding that the dendrites of the eurydendroid cells tile the granule cell layer, suggesting functional segregation of inputs. Missing minor visual aids (like black rectangles) does NOT prevent a score of 1.",
+        "Criteria for 0": "Assign 0 if the answer is merely a superficial visual description (e.g., just mentioning colors and rectangles), fails to mention the anatomical tiling in the granule cell layer, misses the segregation of inputs conclusion, or materially misidentifies the cell types involved."
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "parent_name": "the_dynamics_and_geometry_of_choice_in_the_premotor_cortex",
+  "image_ids": [
+    "Fig_2B"
+  ],
+  "query": "During a perceptual decision-making task in macaque dorsal premotor cortex (PMd), how do single neurons exhibit heterogeneous trial-averaged firing rate profiles when sorted by the animal's choice (left vs. right) and stimulus difficulty (easy vs. hard)? Specifically, what are the distinct temporal dynamics (e.g., ramping up, ramping down, non-monotonic responses) observed across different neurons, and how does this heterogeneity challenge the assumption that decision-related neurons show uniform ramping activity?",
+  "analyse_plan": {
+    "Objective": "To characterize the diversity of single-neuron response profiles during decision formation by computing peristimulus time histograms (PSTHs) aligned to stimulus onset, separately for each combination of chosen side (left/right) and stimulus difficulty (easy/hard), revealing that most neurons do not exhibit canonical ramping responses.",
+    "Validation Checks": "Verify that firing rates are computed only during the decision formation period (120 ms after stimulus onset until reaction time). Ensure that trials are correctly grouped by the animal's actual choice (not stimulus direction) and stimulus coherence (easy: high coherence, hard: low coherence). Confirm that mean firing rates and standard error of the mean (s.e.m.) are calculated across trials for each condition.",
+    "Steps": "1. Load Data: Load spike train data from PMd recordings during the checkerboard color discrimination task. 2. Align Spikes: Align spike times to stimulus onset (time = 0) and extract the decision formation period (0 to ~0.5 s post-stimulus). 3. Group Trials: Separate trials by chosen side (left/right) and stimulus difficulty (easy/hard based on color coherence). 4. Compute PSTH: Calculate trial-averaged firing rates using 75-ms bins sliding at 10-ms steps for each condition. 5. Statistical Summary: Compute mean firing rate (Hz) and standard error of the mean (s.e.m.) across trials for each time bin. 6. Save Key Results: Save the condition-wise trial-averaged firing-rate traces, standard error of the mean (s.e.m.) values, time axis, and the neuron ordering used for the panel. 7. Visualization: Plot firing rate traces with error bands (s.e.m.) for each of the four conditions (Left-Easy, Left-Hard, Right-Easy, Right-Hard)."
+  },
+  "analysis_keywords": [
+    "standard error of the mean (s.e.m.)"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Trial-averaged firing rate",
+      "unit": "Hz",
+      "variable_type": "vector",
+      "number": ""
+    },
+    {
+      "variable_name": "Time from stimulus",
+      "unit": "s",
+      "variable_type": "vector",
+      "number": ""
+    }
+  ],
+  "key_analysis_results": [
+    "In macaque PMd during perceptual decision-making, four example neurons showed markedly distinct temporal profiles: one neuron showed canonical ramping up for right choices (Fig_2B, top left); another showed ramping down for right choices (Fig_2B, top right); a third showed non-monotonic transient responses (Fig_2B, bottom left); and a fourth showed complex multiphasic activity (Fig_2B, bottom right).",
+    "Most neurons did not exhibit simple monotonic ramping responses but instead displayed diverse temporal profiles including bell-shaped, U-shaped, or complex non-stationary patterns."
+  ],
+  "key_analysis_conclusions": [
+    "The observed heterogeneity in trial-averaged response profiles across PMd neurons suggests that decision-related activity cannot be explained by a simple uniform ramping mechanism, challenging the assumption that all neurons encode the decision variable linearly or monotonically.",
+    "The diversity of temporal response profiles (ramping up, ramping down, non-monotonic) indicates that heterogeneous single-neuron responses may arise from diverse tuning to a shared underlying decision variable rather than from neurons following different dynamical processes."
+  ],
+  "summary_report": {
+    "abstract": "Single-neuron recordings from macaque dorsal premotor cortex (PMd) during a color-discrimination decision task reveal heterogeneous trial-averaged firing rate profiles when sorted by choice (left vs. right) and stimulus difficulty (easy vs. hard). While some neurons exhibited canonical ramping responses, most displayed diverse temporal dynamics including non-monotonic and multiphasic patterns, challenging the assumption of uniform decision-related activity across the population.",
+    "methods": "Spiking activity was recorded from PMd using 16-channel linear multi-electrode arrays while monkeys performed a checkerboard color discrimination task. Trial-averaged firing rates (PSTHs) were computed in 75-ms bins (10-ms steps) aligned to stimulus onset, separately for each chosen side (left/right) and stimulus difficulty (easy/hard). Mean firing rates (Hz) ± s.e.m. are plotted for four example neurons across four conditions (Left-Easy, Left-Hard, Right-Easy, Right-Hard).",
+    "results": "Four representative PMd neurons exhibited distinct response profiles during decision formation: (1) Neuron 1 showed ramping increase for right choices (green traces) versus ramping decrease for left choices (red traces), with steeper slopes for easy trials; (2) Neuron 2 showed higher baseline for right choices with gradual separation; (3) Neuron 3 displayed transient non-monotonic responses peaking early in the trial; (4) Neuron 4 showed complex multiphasic activity. Error bars represent s.e.m. across trials. Only a minority of neurons showed canonical ramping patterns, while the majority exhibited heterogeneous temporal profiles.",
+    "discussion": "The observed response heterogeneity in PMd during decision-making suggests that the traditional view of decision-related activity as uniform ramping may be incomplete. Rather than reflecting complex or distinct computational processes, this diversity likely arises from neurons having diverse non-linear tuning functions to a shared one-dimensional decision variable. This interpretation aligns with the hypothesis that population dynamics encode simple cognitive variables while individual neurons exhibit heterogeneous responses due to their specific tuning properties."
+  },
+  "question": "﻿During a perceptual decision-making task in macaque dorsal premotor cortex (PMd), how do single neurons exhibit heterogeneous trial-averaged firing rate profiles when sorted by the animal's choice (left vs. right) and stimulus difficulty (easy vs. hard)? Specifically, what are the distinct temporal dynamics (e.g., ramping up, ramping down, non-monotonic responses) observed across different neurons, and how does this heterogeneity challenge the assumption that decision-related neurons show uniform ramping activity?"
+}

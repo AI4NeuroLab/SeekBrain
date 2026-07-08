@@ -1,0 +1,38 @@
+{
+    "tag": "Fig_3B",
+    "rubrics": {
+      "score_100": {
+        "reason": "Fig. 3B shows how neurons from three zebrafish are classified into molecular subtypes based on combinatorial gene expression, and how these subtypes relate to brain regions. Point allocation: figure structure 30, molecular subtype classification 40, subtype-brain-region correspondence 30.",
+        "rubric": {
+          "GT core conclusion": "Fig. 3B uses a layered matrix to show how neurons from three zebrafish are organized into molecular subtypes based on combinatorial expression of 41 genes. The gene expression heatmap ordered by subtype identity reveals distinct expression patterns per subtype. The brain-region annotation shows non-random correspondence between molecular subtypes and anatomical location, indicating that combinatorial gene expression reflects neuronal identity and provides a reproducible classification framework across animals.",
+          "Scoring items": [
+            {
+              "point": 30,
+              "criterion": "Shows a gene expression heatmap with neurons ordered by molecular subtype, alongside a subtype color vector and a brain region annotation vector. The heatmap displays expression of multiple genes (41 genes) with visible within-subtype similarity and between-subtype differences.",
+              "deduction_rule": "Deduct 30 points if misidentified as a UMAP, PCA embedding, functional activity heatmap, or single-gene expression plot. Deduct 15 points if the subtype color vector is missing. Deduct 10 points if the brain-region annotation is missing. Do not deduct for specific color choices, binning parameters, or layout arrangement."
+            },
+            {
+              "point": 40,
+              "criterion": "Correctly explains that neurons are classified into molecular subtypes based on combinatorial gene expression patterns across multiple genes, that these subtypes are reproducible across animals (data from 3 fish), and that the classification provides a standardized molecular framework at cellular resolution rather than a single-gene or single-region categorization.",
+              "deduction_rule": "Deduct 25 points if subtype classification is described as functional clustering or activity-based grouping rather than gene-expression-based. Deduct 15 points if the combinatorial (multi-gene) nature of the classification is not mentioned. Deduct 10 points if cross-animal reproducibility is not noted. Deduct 10 points if molecular subtypes are directly equated with functional subtypes."
+            },
+            {
+              "point": 30,
+              "criterion": "Notes the non-random correspondence between molecular subtypes and brain regions: subtypes tend to be enriched in specific anatomical locations, indicating that combinatorial gene expression reflects neuronal anatomical identity and supports linking molecular identity to spatial organization.",
+              "deduction_rule": "Deduct 20 points if the subtype-brain-region relationship is not discussed. Deduct 10 points if only described as 'different colors' without explaining the non-random spatial correspondence. Deduct 8 points if described as absolute one-to-one mapping, ignoring that subtypes can span multiple regions."
+            }
+          ],
+          "Acceptable deviations": [
+            "It is acceptable to describe combinatorial expression as multi-gene co-expression patterns, gene barcodes, or expression combinations.",
+            "It is acceptable to describe the subtype count as about 330 or more than 300.",
+            "It is acceptable to describe the subtype-brain-region relationship as spatial enrichment, regional preference, or non-random anatomical distribution.",
+            "Omitting specific filtering criteria (cells per fish, spatial neighbors) is acceptable.",
+            "It is acceptable to use any visualization format (heatmap, matrix, dot plot) as long as expression patterns, subtypes, and brain regions are shown.",
+            "Omitting that cfos is excluded from subtype definition is acceptable."
+          ],
+          "Scoring instructions": "High scores (85-100) require correctly showing the layered structure, explaining combinatorial gene-expression-based classification reproducible across animals, and noting non-random subtype-brain-region correspondence. Partial scores (40-84) should be assigned when the heatmap structure is correct but classification method or anatomical correspondence is incomplete. Low scores (0-39) should be assigned when the panel is confused with a functional activity heatmap or embedding, when subtypes are misinterpreted as activity clusters, or when only visual description is given without scientific interpretation."
+        }
+      }
+    }
+  }
+  

@@ -1,0 +1,1 @@
+﻿For an example PMd neuron, plot a spike raster aligned to stimulus onset with trials sorted by chosen side (left/right) and stimulus difficulty (easy/hard), marking  reaction times. Below the raster, plot the trial-averaged  firing rate for each of the four conditions.   

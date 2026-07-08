@@ -1,0 +1,37 @@
+
+  {
+    "tag": "Fig_4F",
+    "rubrics": {
+        "score_100": {
+            "reason": "Fig. 4F compares effect sizes for the visual-stimulus variable across brain regions using multiple analysis methods. The core is to show cross-method consistency in the spatial distribution of visual encoding. Point allocation: figure structure 30, cross-method consistency 40, identification of strong-effect regions 30.",
+            "rubric": {
+                "GT core conclusion": "Fig. 4F shows a multi-method comparison of visual-stimulus effect sizes across brain regions. Multiple analysis approaches (population decoding, single-cell responsiveness, trajectory distance, encoding) show consistent strong effects in classical visual and sensory pathway regions. The cross-method agreement indicates that the spatial distribution of visual encoding is robust and not an artifact of any single analysis method.",
+                "Scoring items": [
+                    {"point": 30,
+                    "criterion": "Correctly shows a multi-method comparison table with brain regions as columns and analysis methods as rows. Color intensity represents normalized effect size, with non-significant regions distinguished from significant ones. Multiple analysis methods are represented.",
+                    "deduction_rule": "Deduct 30 points if misidentified as a PSTH, scatter plot, or anatomical map. Deduct 15 points if the multi-method comparison structure is missing (only one method shown). Deduct 10 points if significance distinction is absent. Do not deduct for specific color choices or layout style."
+                },
+                {
+                    "point": 40,
+                    "criterion": "Correctly explains that multiple independent analysis methods show consistent spatial patterns of visual-stimulus encoding across brain regions, indicating that the regional distribution of visual encoding is robust and reproducible across different analytical approaches.", 
+                    "deduction_rule": "Deduct 25 points if the methods are claimed to produce completely inconsistent results. Deduct 15 points if only one method is described without comparing across methods. Deduct 10 points if consistency is noted without explaining that it strengthens confidence in the findings."
+                },
+    
+                {
+                "point": 30,
+                "criterion": "Correctly identifies that classical visual regions and sensory pathway regions (e.g., VISp, LGd, and related areas) show the strongest effects across methods, while many non-visual regions show weak or non-significant effects.",
+                "deduction_rule": "Deduct 20 points if strong-effect regions are misidentified (e.g., claiming motor regions show strongest visual effects). Deduct 10 points if the spatial pattern is not described beyond generic statements."
+                }
+            ],
+            "Acceptable deviations": [
+            "It is acceptable to describe the methods as decoding, single-cell, trajectory, and encoding, or to use equivalent terms.",
+            "It is acceptable to describe effect size as normalized score or scaled metric.",
+            "Visual regions may be exemplified by VISp, VISl, LGd, and related areas; listing every region is not required.",
+            "Omitting specific statistical thresholds (FDR q=0.01) is acceptable.",
+            "It is acceptable to describe non-significant regions as gray, faded, or unmarked."
+            ],
+            "Scoring instructions": "High scores (85-100) require correctly showing the multi-method comparison structure, explaining cross-method consistency, and identifying strong-effect visual regions. Partial scores (40-84) should be assigned when the structure is correct but cross-method comparison or regional identification is incomplete. Low scores (0-39) should be assigned when the figure is confused with another plot type, cross-method consistency is missed, or strong-effect regions are misidentified."
+    }
+    }
+    }
+    }

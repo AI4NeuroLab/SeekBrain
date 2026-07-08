@@ -1,0 +1,47 @@
+{
+  "tag": "Fig_2C",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric prioritizes the core scientific meaning of Fig. 2C. The panel is not simply a plot of model parameters; its main role is to summarize, across the behavior-encoding neuronal population, the distribution of temporal integration timescales inferred by CePNEM. Therefore, the rubric emphasizes the plotted quantity (ECDF), the inclusion criterion for neurons, the inter-animal variability shading, and the main biological conclusion: most neurons encode current behavior while a substantial subset integrates past behavior over tens of seconds.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2C plots the empirical cumulative distribution function (ECDF) of the median CePNEM model half-decay time for all neurons that significantly encode at least one behavior, with shading indicating standard deviation across animals. The distribution shows that most encoding neurons primarily reflect current behavior, but a sizeable subset has long half-decay times and integrates recent behavioral history over tens of seconds.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the figure shows the distribution of encoding timescales (or temporal integration timescales) across behavior-encoding neurons",
+            "deduction_rule": "Deduct 25 points if the answer does not mention encoding timescales or temporal integration. Deduct 10-15 points if the answer only says the figure shows model parameters or neural activity without specifying timescale distribution."
+          },
+          {
+            "point": 20,
+            "criterion": "Identifies the plotted quantity as the empirical cumulative distribution function (ECDF) of median model half-decay time, or an equivalent cumulative distribution of half-decay times",
+            "deduction_rule": "Deduct 20 points if the ECDF/cumulative-distribution nature of the plot is omitted or misidentified. Deduct 8-12 points if the answer mentions half-decay times but not that their cumulative distribution is plotted. Deduct 15-20 points if the plotted variable is incorrectly described as activity amplitude, correlation strength, or neuron count alone."
+          },
+          {
+            "point": 20,
+            "criterion": "States that the half-decay times are derived from CePNEM (or an exponentially weighted moving-average timescale parameter) and that the data is restricted to neurons that significantly encode at least one behavior",
+            "deduction_rule": "Deduct 20 points if both the source of the half-decay times and the restriction to encoding neurons are omitted. Deduct 8-10 points if only one of these is missing. Deduct 10-15 points if the answer suggests all recorded neurons were included without regard to significant behavior encoding."
+          },
+          {
+            "point": 15,
+            "criterion": "Explains that the shading represents variability across animals (specifically, standard deviation between animals)",
+            "deduction_rule": "Deduct 15 points if shading or inter-animal variability is completely omitted. Deduct 5-8 points if variability is mentioned but not clearly tied to 'between animals'. Deduct 10-15 points if shading is incorrectly described as confidence intervals over neurons or single-neuron uncertainty."
+          },
+          {
+            "point": 20,
+            "criterion": "Reports the main result and biological interpretation: most neurons have short half-decay times reflecting current behavior, while a sizeable subset extends to tens of seconds and therefore integrates recent behavioral history",
+            "deduction_rule": "Deduct 20 points if the main result about short versus long timescale neurons is missing. Deduct 8-12 points if the answer only states that timescales vary but does not distinguish current behavior encoding from past-behavior integration. Deduct 10-15 points if the conclusion is reversed or claims all neurons have only short timescales."
+          }
+        ],
+        "Acceptable deviations": [
+          "Referring to half-decay time as decay time, temporal integration time, memory timescale, or EWMA timescale is acceptable if the meaning is preserved.",
+          "The answer may describe the ECDF as a 'cumulative fraction plot' or 'cumulative distribution'.",
+          "Exact numerical values such as 0.9-31.7 seconds are helpful but not required, as long as the answer clearly states that a subset reaches 'tens of seconds'.",
+          "The answer may omit the exact number of animals if it correctly states that shading reflects across-animal variability.",
+          "The answer does not need to describe plotting aesthetics such as line color or axis formatting.",
+          "Mentioning that the distribution is continuous rather than bimodal is acceptable and can strengthen the answer, but is not required for full credit."
+        ],
+        "Scoring instructions": "Assign points based on whether the answer captures what Fig. 2C plots and what scientific conclusion it supports. Full credit requires identifying the ECDF of median half-decay times, the restriction to neurons significantly encoding at least one behavior, the inter-animal SD shading, and the conclusion that behavior-encoding neurons span a broad range of temporal integration timescales (with most encoding current behavior and a substantial subset integrating past behavior). Low scores should be assigned to answers that reduce the panel to a generic neural activity distribution or omit the temporal integration conclusion."
+      }
+    }
+  }
+}

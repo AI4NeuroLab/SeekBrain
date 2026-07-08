@@ -1,0 +1,49 @@
+{
+  "parent_name": "plastic_landmark_anchoring_in_zebrafish_compass_neurons",
+  "image_ids": [
+    "Fig_3E"
+  ],
+  "question": "To quantify how much the scene–bump alignment was disrupted across the pre-learning, learning and post-learning epochs, the fraction of time that the scene–bump offset spent in the out-phase range was plotted for each epoch, with the dots indicating individual fish and the grey lines connecting the same fish.",
+  "analyse_plan": {
+    "Objective": "Measure how the fraction of time spent in the out-phase range changes across epochs in the symmetry experiment and test whether the learning epoch increases misalignment between scene orientation and bump phase.",
+    "Validation Checks": "Verify that HD cells are identified from the second half of the pre-learning epoch using the reported sinusoidal fitting procedure. Confirm that bump phase is computed consistently across epochs from the selected HD-cell population, and that the out-phase range is defined as |scene–bump offset| > 3π/4 using the held-out part of the data. Check that the fraction out-phase is calculated separately for the pre-learning, learning and post-learning epochs for each fish and that the across-epoch comparisons use signed-rank tests.",
+    "Steps": "1. Load Data: Load the fluorescence traces, scene-orientation traces, and epoch annotations for the pre-learning, learning, and post-learning epochs of the symmetry experiment. 2. Identify HD Cells: Normalize and smooth ROI traces as reported, fit the scaled shifted sinusoid using the second half of the pre-learning epoch, and retain HD ROIs that satisfy the reported inclusion criteria after excluding naively visual ROIs and ROIs outside the aHB mask. 3. Compute Bump Phase: Bin the selected HD cells by preferred orientation and calculate the bump phase over time from the activity-weighted population vector across all three epochs. 4. Compute Scene–Bump Offset: Calculate the centred scene–bump offset for every time point and restrict the quantification to the held-out fraction used for cross-validated alignment analysis. 5. Quantify Fraction Out-Phase: For each fish and for each epoch, calculate the fraction of time for which the absolute scene–bump offset is greater than 3π/4, corresponding to the out-phase range. 6. Run Statistical Comparisons: Compare the per-fish fraction out-phase values across epochs with the reported signed-rank tests and keep the P values associated with the epoch comparisons shown in the panel. 7. Save Key Results: Save the per-fish pre-learning, learning, and post-learning fraction out-phase values, the epoch-matched fish identities, and the signed-rank test results used for the panel. 8. Visualization: Plot the fraction out-phase for the three epochs with individual fish shown as dots, connect repeated measurements from the same fish with grey lines, and display the corresponding summary statistics."
+  },
+  "analysis_keywords": [
+    "bump-phase calculation",
+    "fraction out-phase quantification",
+    "signed-rank test"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "pre_to_learning_signed_rank_p_value",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 6e-8
+    },
+    {
+      "variable_name": "learning_to_post_signed_rank_p_value",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 3.2e-5
+    },
+    {
+      "variable_name": "fish_count",
+      "unit": "fish",
+      "variable_type": "numeric",
+      "number": 25
+    }
+  ],
+  "key_analysis_results": [
+    "The fraction of time that the scene–bump offset spent in the out-phase range was plotted for each epoch, with the dots indicating individual fish and the grey lines connecting the same fish; across fish, this fraction increased from the pre-learning epoch to the learning epoch and decreased from the learning epoch to the post-learning epoch."
+  ],
+  "key_analysis_conclusions": [
+    "These epoch-dependent changes show that the symmetric scene disrupted the landmark anchoring to the HD neurons during the learning epoch."
+  ],
+  "summary_report": {
+    "abstract": "The panel shows the fraction of time that the scene–bump offset spent in the out-phase range for each epoch, with dots indicating individual fish and grey lines connecting the same fish. Across fish, the fraction out-phase increased significantly from the pre-learning epoch to the learning epoch and then decreased significantly from the learning epoch to the post-learning epoch, indicating that scene–bump alignment was most disrupted during the learning epoch.",
+    "methods": "The symmetry experiment was analysed using HD cells identified from the second half of the pre-learning epoch with the reported sinusoidal fitting procedure. After computing the bump phase from the selected HD-cell population, the centred scene–bump offset was obtained for each time point, and the held-out fraction of the data was used to quantify the fraction out-phase for each epoch. The out-phase range was defined as time points where the absolute scene–bump offset exceeded 3π/4. For each fish, the fraction of time spent in this range was calculated separately for the pre-learning, learning and post-learning epochs, and the epoch-wise values were compared with signed-rank tests.",
+    "results": "The panel shows the fraction of time that the scene–bump offset spent in the out-phase range for each epoch. Across fish, this fraction increased from the pre-learning epoch to the learning epoch and decreased from the learning epoch to the post-learning epoch; the dots indicate individual fish, the grey lines connect the same fish, and the P values are from the signed-rank tests.",
+    "discussion": "This panel quantifies epoch-wise changes in the fraction of time that the scene–bump offset spent in the out-phase range. The increase in the learning epoch and the decrease in the post-learning epoch show that the scene–bump offset changed across the symmetry experiment."
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_2C",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 2C uses a paired grouped scatter plot to compare HD encoding accuracy across three visual cue-intensity conditions, no cue, dim cue, and bright cue, in 15 flies. The core evaluation points are correct reproduction of the paired individual data, mean line, and statistical brackets; correct explanation of how HD encoding accuracy is computed and statistically tested; accurate preservation of the scientific conclusion that encoding accuracy increases monotonically with cue intensity and that all three pairwise comparisons are significant; and interpretation that stronger visual cues provide more directional information to the HD system without overclaiming a single-synapse causal mechanism. Point allocation: graph reproduction 35, metric definition and statistical source 20, core statistical conclusion 25, biological meaning and interpretive boundary 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2C shows that, across 15 flies, HD encoding accuracy increases monotonically as visual cue intensity changes from no cue to dim cue to bright cue. All three pairwise comparisons are statistically significant, including no cue versus dim cue, P = 3.87 x 10^-5, no cue versus bright cue, P = 2 x 10^-8, and an extremely significant dim cue versus bright cue comparison. This result indicates that stronger and brighter visual cues provide more information about head direction to the Drosophila HD system, making HD encoding accuracy an operational proxy for cue informativeness. The panel supports a graded relationship between cue intensity and HD encoding accuracy, but it does not by itself prove that a single-synapse mechanism is the only driver.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the paired grouped scatter-plot structure of Fig. 2C: the three conditions are ordered as no cue, dim cue, and bright cue; individual fly data are connected by paired gray lines or paired points; the across-fly mean is shown as a thick black line; significance brackets and P values for the three pairwise comparisons are preserved; and the y-axis represents HD encoding accuracy on a 0 to 1 scale.",
+            "deduction_rule": "Deduct the full 35 points if the plot is misidentified as a box plot, bar plot, ECDF, histogram, or bump-amplitude plot and the paired individual-data structure is lost. Deduct 12 points if paired individual data are not shown. Deduct 8 points if the three conditions are ordered incorrectly. Deduct 15 points if the y-axis is labeled as bump amplitude, bump width, circular variance, or another incorrect metric. Deduct 8 points if significance brackets or P-value annotations are missing."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the source and calculation of HD encoding accuracy: the metric is defined as 1 minus circular variance, equivalent to the vector strength of the offset distribution between EPG bump position and head direction, and is computed only during active movement periods. The statistical analysis uses a linear mixed-effects model with fly as a random effect, followed by Tukey post hoc comparisons and Bonferroni correction.",
+            "deduction_rule": "Deduct 15 points if HD encoding accuracy is confused with neural-activity amplitude, mean deltaF/F, bump width, locomotor speed, or cue brightness itself. Deduct 5 points if the exclusion of stationary periods or use of active movement periods is not stated. Deduct 8 points if the statistical method is described only as a simple t-test or ordinary ANOVA and completely omits the mixed-effects model or multiple-comparison correction."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly states the core conclusion that HD encoding accuracy increases monotonically across the three conditions, no cue < dim cue < bright cue, that all three pairwise comparisons are significant, and that the key P values and sample size n = 15 flies are correctly reported or approximated.",
+            "deduction_rule": "Deduct 20 points if the conclusion direction is wrong, for example if accuracy is claimed to decrease as cue intensity increases. Deduct 10 points if only some significant pairwise comparisons are reported and the fact that all three pairwise comparisons are significant is omitted. Deduct 8 points if key P-value orders of magnitude are wrong, for example reporting 3.87 x 10^-5 as a value near 0.05. Deduct 5 points if the sample size is wrong."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the biological meaning: brighter visual cues have a higher signal-to-noise ratio and convey more head-direction information to the HD system, so HD encoding accuracy can serve as a cue-informativeness proxy for later analyses of multimodal cue-integration weights. The interpretation carefully distinguishes the statistical relationship in this panel from a single-synapse causal mechanism and avoids claiming that ER neuron activity strength is the only direct driver.",
+            "deduction_rule": "Deduct 15 points if the response only describes visual features such as three rising lines without explaining cue informativeness and HD-system encoding meaning. Deduct 8 points if the panel is claimed to prove a direct single-synapse causal relationship. Deduct 15 points if HD encoding accuracy is incorrectly interpreted as bump amplitude or bump width and an incorrect biological conclusion is drawn from that interpretation."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe HD encoding accuracy as HD coding precision, bump-head-direction consistency, or offset stability.",
+          "It is acceptable to describe vector strength as resultant length in circular statistics.",
+          "P values may be approximated as about 4 x 10^-5, 2 x 10^-8, or P < 10^-4, as long as the order of magnitude is correct.",
+          "A specific P value may be omitted if the response clearly states that all three pairwise comparisons are significant.",
+          "It is acceptable to describe dim cue as low-intensity cue and bright cue as high-intensity cue.",
+          "The exact visual placement of significance brackets is not required as long as the comparison relationships and statistical conclusions are correct."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the paired grouped scatter plot, mean line, and significance annotations, explaining the definition of HD encoding accuracy, the active-movement filtering, and the mixed-effects statistical analysis, and accurately extracting the monotonic increase across no cue, dim cue, and bright cue with all pairwise comparisons significant and with the appropriate cue-informativeness interpretation. Partial scores (40-84) should be assigned when the graph structure and main trend are broadly correct but the metric definition, statistical method, P-value details, or biological interpretation is incomplete. Low scores (0-39) should be assigned when the plot type or y-axis metric is severely misidentified, the conclusion direction is wrong, or HD encoding accuracy is confused with bump amplitude or bump width in a way that leads to an incorrect conclusion."
+      }
+    }
+  }
+}

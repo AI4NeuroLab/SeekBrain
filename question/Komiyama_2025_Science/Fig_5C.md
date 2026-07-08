@@ -1,0 +1,1 @@
+﻿Are the fractions of odor-excited, odor-suppressed, and non-responsive granule cell-odor pairs similar between task and passive conditions?

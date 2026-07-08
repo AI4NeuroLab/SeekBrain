@@ -1,0 +1,1 @@
+﻿To visualize developmental expression trajectories of representative marker genes across mouse visual cortex cell types, grouped by major excitatory, inhibitory, and glial lineages, and to assess whether their temporal dynamics align with predefined expression trajectory categories such as Up, Transient Up, Down, and Constant.

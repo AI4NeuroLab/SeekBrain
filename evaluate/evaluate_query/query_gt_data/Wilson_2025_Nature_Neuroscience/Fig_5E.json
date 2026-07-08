@@ -1,0 +1,47 @@
+{
+  "parent_name": "multimodal_cue_integration_and_learning_in_a_neural_representation_of_head_direction",
+  "image_ids": [
+    "Fig_5E"
+  ],
+  "query": "To test whether cue-offset remapping is related to the conflict experienced during combined-cue presentation, analyze both cues across 18 flies. For each fly and each cue, compute cue conflict as the signed circular difference between the both-cues offset and the initial single-cue offset, and compute offset change as the signed circular difference between the final single-cue offset and the initial single-cue offset. Express both values in degrees and wrap them to a circular range such as -180° to 180°, producing two data points per fly. Visualize offset change versus cue conflict as a single scatter plot, with cue conflict on the x-axis and offset change on the y-axis. Show Cue 1 and Cue 2 in the same panel using black and gray points, respectively. Fit the relationship with a circular-noise linear model, such as a Bayesian linear model with von Mises residuals, and overlay the fitted trend line. Save the per-fly per-cue offset values, conflict and change values, cue labels, model fit results, and final figure.",
+  "analyse_plan": {
+    "Objective": "Test whether offset remapping is predicted by conflict magnitude.",
+    "Validation Checks": "Verify Bayesian model specification and MCMC diagnostics; confirm two data points per fly.",
+    "Steps": "1. Load Data: Load the per-fly EPG ΔF/F traces, FicTrac-derived HD time series, visual cue position, wind nozzle position, and block labels for the 18 flies across the protocol's 5 blocks (initial cue 1, initial cue 2, both-cues for 800 s, final cue 1 for 5 min, final cue 2 for 5 min). 2. Preprocess Imaging And Fit Bump: Apply NoRMCorre motion correction, divide PB into 25–40 ROIs, compute per-ROI ΔF/F (10th-percentile baseline), and fit a von Mises per timepoint; discard timepoints with adjusted R² < 0.5 or immobility. 3. Compute Per-Cue Per-Block Offsets: For each fly and for each cue, compute the mean offset (= bump_position − (−cue_position)) during the initial single-cue block, the both-cues block, and the final single-cue block. 4. Compute Conflict And Offset Change Per Cue: For each fly and each cue, define θ_n = both_cue_offset − initial_offset (the cue-conflict measure) and φ_n = final_offset − initial_offset (the offset-change measure); produce two data points per fly, one for cue 1 (less familiar) and one for cue 2 (more familiar). 5. Fit Bayesian Linear Model: Fit the model μ_n = a·θ_n + b, φ_n ~ vonMises(μ_n, κ) using the priors a ~ N(0, 1), b ~ uniform(-π, π), κ ~ inverseGamma(1.91, 6.47) chosen to suppress extreme κ values (with <2% of κ falling below 1 or above 50, validated by prior predictive simulations). 6. Sample Posterior With Stan HMC: Estimate posterior samples for a, b, κ using Hamiltonian Monte Carlo in Stan 2.19.0 via PyStan2 with 4 chains × 1000 samples each after 1000 warm-up samples and no thinning; run HMC diagnostics, examine the pair plots for multimodality, and run posterior retrodictive checks against the data. 7. Save Key Results: Save the per-fly per-cue offsets across the three blocks, the conflict and offset-change values, the posterior samples for a/b/κ, and the Bayesian fit line used for the panel. 8. Visualization: Plot offset change φ_n (final − initial) on the y-axis versus cue conflict θ_n (both − initial) on the x-axis, with two points per fly color-coded by cue (cue 1 in black, cue 2 in gray), and overlay the fit line μ_n = a·θ_n + b from the Bayesian linear model."
+  },
+  "analysis_keywords": [
+    "Bayesian analysis",
+    "von Mises noise model",
+    "Hamiltonian Monte Carlo",
+    "Stan",
+    "offset remapping",
+    "cue conflict"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "n_flies",
+      "unit": "flies",
+      "variable_type": "numeric",
+      "number": 18
+    },
+    {
+      "variable_name": "data_points",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 36
+    }
+  ],
+  "key_analysis_results": [
+    "Offset change predicted by conflict: less familiar cue showed large conflict and large remapping; more familiar cue showed small conflict and small change. Bayesian model provided good fit."
+  ],
+  "key_analysis_conclusions": [
+    "Familiar cue instructs remapping of less familiar cue to build self-consistent representation through Hebbian plasticity."
+  ],
+  "summary_report": {
+    "abstract": "Offset remapping analyzed as function of cue conflict.",
+    "methods": "18 flies, 36 data points, Bayesian linear model with von Mises noise, Stan HMC (4 chains x 1000 samples).",
+    "results": "Linear relationship; cue 1 (less familiar) shows large remapping, cue 2 shows little.",
+    "discussion": "Direct evidence for familiarity-guided spatial learning."
+  },
+  "question": "To test whether cue-offset remapping is related to the conflict experienced during combined-cue presentation, analyze both cues across 18 flies. For each fly and each cue, compute cue conflict as the signed circular difference between the both-cues offset and the initial single-cue offset, and compute offset change as the signed circular difference between the final single-cue offset and the initial single-cue offset. Express both values in degrees and wrap them to a circular range such as -180 to 180 degrees, producing two data points per fly. Visualize offset change versus cue conflict as a single scatter plot, with cue conflict on the x-axis and offset change on the y-axis. Show Cue 1 and Cue 2 in the same panel using black and gray points, respectively. Fit the relationship with a circular-noise linear model, such as a Bayesian linear model with von Mises residuals, and overlay the fitted trend line. Save the per-fly per-cue offset values, conflict and change values, cue labels, model fit results, and final figure."
+}

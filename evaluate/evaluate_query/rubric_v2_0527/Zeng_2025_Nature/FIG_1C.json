@@ -1,0 +1,48 @@
+{
+  "tag": "FIG_1C",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 1C shows the global organization of 568,654 high-quality scRNA-seq cells in a UMAP transcriptomic embedding, with cells colored by 15 major cell classes. The panel is easily misread as an anatomical-space plot or developmental trajectory, so accurate graph reproduction and correct interpretation of the UMAP coordinate source receive substantial weight. The scientific conclusion centers on the class-level taxonomy, separation of major cell classes, developmental continuity among related populations, and the limits of causal lineage interpretation. Point allocation: UMAP graph reproduction 35, UMAP coordinate source and data basis 20, identification of the 15 major classes 15, class-level taxonomy conclusion 15, developmental continuity and causal boundary 15.",
+      "rubric": {
+        "GT core conclusion": "Fig. 1C projects 568,654 high-quality scRNA-seq cells from developing and adult mouse visual cortex into a two-dimensional UMAP transcriptomic embedding and colors them by 15 major cell classes. Neuronal, progenitor, and non-neuronal populations form relatively coherent and distinguishable regions in transcriptomic space, supporting the class-level hierarchical transcriptomic taxonomy proposed in the paper. The adjacent or continuous distribution of developmental populations such as progenitors, radial glia, intermediate progenitors, and immature neurons is consistent with progressive differentiation during cortical development, but this UMAP is not an anatomical map and does not by itself prove a strict causal lineage path.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the Fig. 1C UMAP panel: all high-quality scRNA-seq cells are projected into a two-dimensional UMAP space, cells are colored by major cell class, and the relative separation, local adjacency, and overall layout of the major populations are preserved.",
+            "deduction_rule": "Deduct the full 35 points if the panel is misidentified as an anatomical-position plot, spatial-transcriptomics plot, developmental timeline, cell-migration path, or connectivity graph. Deduct 15 points if a two-dimensional UMAP embedding is not used. Deduct 10 points if cells are not colored by major cell class. Deduct 12 points if the relative separation and adjacency of major populations are severely inconsistent with the original figure."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains that the UMAP coordinates are derived from dimensionality reduction of single-cell transcriptomic expression similarity, not from anatomical position, developmental time, physical distance, cell-migration paths, or cell-cell connectivity.",
+            "deduction_rule": "Deduct 15 points if the UMAP coordinates are interpreted as anatomical coordinates or cortical spatial positions. Deduct 10 points if the UMAP is interpreted as a developmental time axis or a strict lineage path. Deduct 6 points if the response only describes dimensionality reduction without stating that it is based on transcriptomic expression similarity."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly identifies that cells are colored by 15 major cell classes and summarizes that these classes include neuronal populations, developmental progenitor populations, and non-neuronal populations.",
+            "deduction_rule": "Deduct 6 points if the 15 major cell classes are not mentioned. Deduct 6 points if only neuronal populations are identified while progenitor or non-neuronal populations are omitted. Deduct 10 points if class coloring is misinterpreted as age, sample batch, or brain-region coloring."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly states that major cell classes form relatively coherent and distinguishable regions in transcriptomic space, and explains that this pattern supports stable class-level molecular identities and a hierarchical taxonomy of developing visual-cortex cell types.",
+            "deduction_rule": "Deduct 8 points if the response only describes the color distribution without explaining the meaning of the class-level taxonomy. Deduct 6 points if all classes are claimed to be completely discrete with no adjacent or continuous regions. Deduct 6 points if UMAP separation is overinterpreted as functional or anatomical module separation."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly explains that developmental populations such as progenitors, radial glia, intermediate progenitors, and immature neurons show adjacent or continuous distributions in UMAP space, consistent with progressive cortical differentiation and cell-type diversification, while avoiding the interpretation that UMAP directly proves a strict causal lineage relationship.",
+            "deduction_rule": "Deduct 8 points if the adjacent or continuous distribution of developmental populations is not discussed. Deduct 10 points if the UMAP is directly interpreted as a definitive causal lineage path. Deduct 5 points if the interpretive boundary is not stated."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe UMAP as a low-dimensional transcriptomic embedding.",
+          "It is acceptable to describe major cell classes as major cell populations or class-level categories.",
+          "The cell number may be approximated as about 569,000 high-quality cells.",
+          "It is acceptable to translate progenitor, radial glia, intermediate progenitor, and immature neuron into equivalent terminology.",
+          "It is acceptable to describe the class-level taxonomy as a hierarchical cell-type classification or major-population molecular taxonomy.",
+          "Listing all 15 classes is not required as long as neuronal, progenitor, and non-neuronal groups are covered.",
+          "It is acceptable to describe continuity as adjacent distribution, gradient-like distribution, or developmentally related transition."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the class-level UMAP structure, explaining that UMAP coordinates come from scRNA-seq transcriptomic similarity, identifying the 15 major cell classes, and extracting the scientific conclusions about class-level taxonomy and developmental continuity while preserving the boundary on lineage-causality interpretation. Partial scores (40-84) should be assigned when the UMAP graph and major populations are broadly correct but the coordinate source, taxonomy meaning, or developmental-continuity interpretation is incomplete. Low scores (0-39) should be assigned when the UMAP is misinterpreted as an anatomical plot, temporal trajectory, or cell-connectivity graph, or when the response only describes visual colors without extracting the transcriptomic-classification conclusion."
+      }
+    }
+  }
+}

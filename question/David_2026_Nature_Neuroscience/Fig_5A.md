@@ -1,0 +1,1 @@
+﻿To visualize and compare the subspace similarity structure within inhibitory neuron pairs, within excitatory neuron pairs, and between the two cell types, all within a single symmetric similarity matrix for an example auditory cortex recording site.

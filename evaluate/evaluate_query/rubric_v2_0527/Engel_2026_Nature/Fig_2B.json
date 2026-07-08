@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_2B",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 2B shows trial-averaged firing rate profiles of four example neurons in macaque PMd during a decision-making task, grouped by the animal's actual choice and stimulus difficulty. The key point is not whether any single neuron shows a ramping response, but that multiple examples reveal strong heterogeneity in PMd PSTHs and that this heterogeneity can be explained by diverse nonlinear tuning functions to a shared latent decision variable. The multi-panel, multi-condition PSTH format is moderately complex and is worth 35 points. Correctly identifying the grouping variables of choice direction and stimulus difficulty is a prerequisite for interpreting the figure and is worth 20 points. The scientific interpretation is split into two items: PMd response heterogeneity and its challenge to the classical ramping model are worth 25 points, and the explanation that heterogeneity arises from diverse tuning functions rather than different latent dynamics is worth 20 points. Point allocation: graph reproduction 35, grouping variables 20, heterogeneity main conclusion 25, mechanistic interpretation 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2B shows that macaque PMd neurons exhibit highly heterogeneous trial-averaged firing rate profiles during a perceptual decision-making task. The four example neurons display ramping-up, ramping-down, non-monotonic transient, and complex multiphasic responses; although a few neurons resemble the classical ramping decision signal, most show non-monotonic or complex temporal profiles. The core conclusion is that PMd neurons do not encode the decision variable through a uniform linear ramping pattern. This apparent heterogeneity is better explained by different nonlinear tuning functions to the same low-dimensional latent decision variable, rather than by multiple unrelated latent dynamical processes.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the multi-condition overlaid PSTH plot, with one subplot for each neuron arranged in a 2 x 2 layout, four curves representing left-easy, left-hard, right-easy, and right-hard conditions, colors distinguishing choice direction (red for left, green for right), shade or line style distinguishing stimulus difficulty, post-stimulus time on the x-axis, firing rate on the y-axis, s.e.m. error bands, and curve shapes and condition separations consistent with the original figure.",
+            "deduction_rule": "Deduct the full 35 points if the panel is misidentified as a scatter plot, box plot, raster plot, low-dimensional embedding, or single-neuron tuning-function plot. Deduct 12 points if the 2 x 2 multi-neuron subplot structure is missing. Deduct 10 points if the four conditions are not distinguished by color or line style. Deduct 6 points if the error bands are missing or interpreted as single-trial fluctuations. Deduct 8 points if the x-axis or y-axis meaning is incorrect."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the grouping source of the four PSTH curves: trials are grouped by the animal's actual chosen side and stimulus difficulty, rather than by the true stimulus direction or model-predicted choice; the analysis window begins about 120 ms after stimulus onset and extends to the reaction time.",
+            "deduction_rule": "Deduct 10 points if chosen side is mistaken for stimulus direction. Deduct 8 points if the two grouping variables, choice direction and stimulus difficulty, are not distinguished. Deduct 6 points if easy/hard conditions are interpreted as different animals or different sessions. Deduct 4 points if the analysis window beginning about 120 ms after stimulus onset is not mentioned."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the heterogeneity of PMd neuronal responses, stating that the four example neurons show distinct temporal dynamics including ramping up, ramping down, non-monotonic transient responses, and complex multiphasic profiles, and that most neurons do not fit a single classical monotonic ramping model; response heterogeneity is the main phenomenon in the PMd population rather than a small set of exceptional examples.",
+            "deduction_rule": "Deduct 18 points if all example neurons are claimed to have the same ramping response. Deduct 10 points if curve colors or shapes are described without explaining the challenge to the classical ramping model. Deduct 12 points if the heterogeneity is interpreted as noise or a plotting artifact. Deduct 8 points if the response overstates the conclusion by claiming that PMd has no decision-variable encoding."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the mechanistic source of the heterogeneity, stating that different PSTH shapes can arise from diverse nonlinear tuning functions across neurons to the same low-dimensional latent decision variable, rather than requiring different latent dynamics for different neurons; this is analogous to sensory-cortical neurons having different tuning curves to the same stimulus variable.",
+            "deduction_rule": "Deduct 12 points if the heterogeneity is directly attributed to multiple unrelated dynamical processes. Deduct 10 points if the response only states that responses differ without connecting them to latent variables and nonlinear tuning functions. Deduct 6 points if tuning functions are confused with PSTHs themselves or with behavioral strategies. Deduct 15 points if the model implication of the heterogeneity is not explained at all."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe PMd as dorsal premotor cortex.",
+          "It is acceptable to describe PSTH as trial-averaged firing rate.",
+          "It is acceptable to describe chosen side as the animal's actual choice, reported direction, or left/right choice.",
+          "It is acceptable to describe stimulus difficulty as color coherence, easy/hard trials, or task difficulty.",
+          "It is acceptable to describe nonlinear tuning functions as different neuronal tunings to the same latent variable.",
+          "It is not necessary to recite the exact number or identity of each example neuron, as long as the diversity of response profiles is correctly described.",
+          "The 120 ms window can be described approximately as about 0.12 s after stimulus onset."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the multi-condition PSTHs for four example neurons, clearly distinguishing choice direction from stimulus difficulty, accurately explaining the strong heterogeneity of PMd neuronal responses, and interpreting that heterogeneity as arising from diverse nonlinear tuning functions to a shared latent decision variable. Partial scores (40-84) should be assigned when the graph structure or heterogeneity description is broadly correct but grouping variables, analysis window, or model interpretation is incomplete. Low scores (0-39) should be assigned when the panel is confused with another graph type, chosen side is confused with stimulus side, all neurons are described as having uniform ramping responses, or the scientific meaning of heterogeneity is not explained."
+      }
+    }
+  }
+}

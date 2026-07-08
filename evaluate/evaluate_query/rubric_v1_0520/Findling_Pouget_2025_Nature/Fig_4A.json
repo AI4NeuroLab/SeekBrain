@@ -1,0 +1,55 @@
+{
+  "tag": "Fig_4A",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric prioritizes the core computational and behavioral conclusion of Fig. 4a: Bayesian model comparison showed that the action-kernel model best explained mouse choice behavior, outperforming both the Bayes-optimal prior model and the stimulus-kernel model. The highest weight is assigned to correctly identifying the winning model and preserving its computational/biological interpretation: the mice's subjective prior is better described as an exponentially weighted integration of recent actions or choices, rather than strict Bayes-optimal inference or simple stimulus-history integration. Methodological details such as model frequency, exceedance probability, and the sample of 107 mice provide important support for the computational modeling result, but should not outweigh the main scientific conclusion.",
+      "rubric": {
+        "GT core conclusion": "Bayesian model comparison showed that, among candidate subjective-prior models, the action-kernel prior best explained mouse choice behavior. This model estimates the prior by exponentially integrating recent actions or choices, and it had higher model frequency and exceedance probability than the Bayes-optimal prior and stimulus-kernel models. This indicates that the mice's subjective prior is better described by an action-history-based heuristic update than by strict Bayes-optimal inference or simple stimulus-history integration. The analysis was based on data from 107 mice.",
+        "Scoring items": [
+          {
+            "point": 21,
+            "criterion": "Clearly states that the action-kernel model was the best-fitting computational model for explaining mouse behavior",
+            "deduction_rule": "Deduct 30 points if the answer does not identify the action-kernel model as the winning model. Deduct 15-20 points if the answer only vaguely says that 'one model' fit best without specifying that it was the action-history/action-kernel model. Deduct 25-30 points if the answer incorrectly states that the Bayes-optimal prior, stimulus-kernel, or another model was the winning model."
+          },
+          {
+            "point": 14,
+            "criterion": "Mentions the main alternative candidate models that were outperformed by the action-kernel model, including the Bayes-optimal prior model and the stimulus-kernel model",
+            "deduction_rule": "Deduct 20 points if no alternative models are mentioned. Deduct 8-12 points if only one of the alternative models is mentioned, such as only the Bayes-optimal model or only the stimulus-kernel model. Deduct 8-15 points if the meaning of the alternative models is substantially misstated, for example describing the stimulus-kernel model as a reward-history model."
+          },
+          {
+            "point": 18,
+            "criterion": "Preserves the computational and biological interpretation that the action-kernel prior is based on recent action/choice history, typically by exponentially integrating past actions, indicating that the mice's subjective prior is better described by an action-history-driven heuristic update rather than strict Bayes-optimal inference or simple stimulus-history integration",
+            "deduction_rule": "Deduct 25 points if this interpretation is missing or incorrect. Deduct 10-15 points if the answer only says that mice used 'past experience' without specifying past actions or choices. Deduct 3-6 points if exponential weighting is omitted but the answer correctly states that recent action/choice history drives the prior. Deduct 15-25 points if the action kernel is incorrectly described as reward history, stimulus contrast history, movement amplitude, or body-posture model. Deduct 20-25 points if the answer incorrectly claims that mice behaved as perfectly Bayes-optimal observers."
+          },
+          {
+            "point": 10,
+            "criterion": "Identifies the formal computational/statistical framework used for evaluation, namely Bayesian model comparison, and mentions that model frequency and/or exceedance probability supported the action-kernel model",
+            "deduction_rule": "Deduct 15 points if the statistical or computational framework is entirely missing, with no mention of model comparison, model frequency, or exceedance probability. Deduct 5-8 points if the answer only says that the model 'fit best' or had the 'highest score' without using more precise terms such as model comparison, model frequency, or exceedance probability. Deduct 8-12 points if exceedance probability is incorrectly interpreted, for example as single-trial accuracy."
+          },
+          {
+            "point": 7,
+            "criterion": "Mentions the scale of the analysis or validation method, such as that the model comparison was based on 107 mice, or that session-wise cross-validation and Bayesian model selection were used",
+            "deduction_rule": "Deduct 10 points if the answer entirely omits the dataset scale and validation method. Deduct 3-6 points if it preserves the idea of a large multi-animal or multi-session dataset but gives an incorrect mouse number. Deduct 8-10 points if the answer incorrectly claims that the conclusion came from a single animal, single session, or single brain region."
+          },
+          {
+            "point": 30,
+            "criterion": "The generated figure reproduces the ground-truth figure layout and content: a single panel showing a Model frequency bar chart (y-axis 0-1.0) for three models (Bayes-optimal, stimulus kernel, action kernel), with action kernel bar near 1.0 and others near 0, plus an inset showing Exceedance probability bar chart with the same pattern. Error bars should be present on the model frequency bars.",
+            "deduction_rule": "Deduct points by sub-item: (1) Main plot is a Model frequency bar chart with correct y-axis label 'Model frequency' (0-1.0): -10 if missing or replaced by a different metric (e.g. ΔBIC, session counts, posterior probability). (2) Inset showing Exceedance probability with correct label: -8 if missing or replaced by a separate full panel. (3) Single-panel layout (one main plot + one inset): -5 if instead uses multiple separate panels (e.g. 4-panel grid). (4) Bar values correct — action kernel ≈1.0, others ≈0: -4 if relative pattern is wrong. (5) Error bars on model frequency bars: -3 if missing. Deductions are cumulative up to 30 points maximum."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'action kernel' as 'action-history-based model', 'recent-choice model', 'choice-history prior', or 'recent-action model' is acceptable if the computational meaning is preserved",
+          "Describing the action kernel as an exponentially decaying weighted average of previous actions or choices is accurate and acceptable",
+          "If the answer does not explicitly mention exponential weighting but clearly states that recent action/choice history determines the prior, it can still receive most of the relevant credit",
+          "Paraphrasing 'stimulus kernel' as 'stimulus-history model', 'sensory-history model', or 'recent-stimulus model' is acceptable",
+          "Paraphrasing 'exceedance probability' as 'probability of being the best model', 'probability that the model wins', or 'model evidence supporting it as best' is acceptable",
+          "Mentioning both model frequency and exceedance probability is ideal, but mentioning either one is acceptable if the answer preserves that formal model comparison supported the action-kernel model",
+          "Omitting the exact inclusion criterion of at least two sessions per mouse is acceptable",
+          "Omitting purely visual details of the figure, such as bar colors, axis tick marks, or error-bar style, is acceptable",
+          "The answer may describe the action kernel as a heuristic update or approximate subjective prior, but should not claim that mice completely ignore task structure or completely lack a prior"
+        ],
+        "Scoring instructions": "Assign points based on preservation of the core computational neuroscience finding. Full credit requires stating that the action-kernel model won; stating that it outperformed the Bayes-optimal prior and stimulus-kernel models; explaining that the action kernel is based on recent action/choice history, typically through exponential integration of past actions; and noting that this conclusion comes from formal Bayesian model comparison across animals, supported by model frequency and/or exceedance probability. Partial credit should be given when the answer identifies the winning model but omits the exact alternative models, exponential-weighting detail, or statistical terminology. Low scores should be assigned if the answer misidentifies the winning model, claims that the Bayes-optimal prior best explained behavior, or describes the panel only as a generic bar plot without the computational model-comparison context."
+      }
+    }
+  }
+}

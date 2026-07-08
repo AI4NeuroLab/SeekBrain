@@ -1,0 +1,53 @@
+{
+  "tag": "Fig_5E",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5E is a multi-evidence characterization of the single molecular subtype glyt2-gfra1a. The core is not any one panel alone, but the combination of spatial localization, population statistics, and trial-by-trial dynamics supporting a visual-motor integration conclusion. The multi-panel reproduction is complex but not the only emphasis and is worth 25 points. Subtype definition, grouping, and statistical methods strongly affect interpretation and are worth 15 points. The scientific interpretation is split into four parts: hindbrain localization and its relationship to motor-related anatomy is worth 20 points; the statistical advantage in response amplitude and swimming correlation is worth 15 points; trial-by-trial synchronized dynamics are worth 10 points; and the motor-integration-node and genetic-addressability interpretation is worth 15 points. Point allocation: graph structure 25, methods and statistics 15, localization conclusion 20, functional quantification conclusion 15, temporal-dynamics conclusion 10, integrated biological meaning 15.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5E integrates anatomical position, visual response strength, swimming correlation, and trial-by-trial dynamics for the glyt2-gfra1a co-expressing molecular subtype. This subtype is almost entirely located in the caudal hindbrain or medulla; its maximum Delta F/F response and positive correlation with fictive swimming are significantly higher than those of other visually responsive neurons and non-responsive neurons; and representative forward-motion trials show stable activation synchronized with swim onset. The core conclusion is that glyt2-gfra1a co-expression defines a genetically addressable hindbrain neuronal population associated with visual-motor integration, while causal necessity or sufficiency still requires perturbation experiments beyond this figure.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "Correctly analyzes and visualizes the multi-panel structure of Fig. 5E, in which a 3D whole-brain distribution map shows the locations of glyt2-gfra1a cells, two violin plots compare maximum Delta F/F response and swimming correlation, trial-by-trial activity traces show repeated responses to forward-motion stimulation, and the panels include stimulus epochs, swim-onset markers, significance labels, and necessary scale bars.",
+            "deduction_rule": "Deduct 7 points if the 3D distribution map is missing. Deduct 6 points if the maximum-response violin plot is missing. Deduct 6 points if the swimming-correlation violin plot is missing. Deduct 5 points if the trial-by-trial traces are missing. Deduct 5 points if the violin plots do not include three-group comparisons or significance labels. Deduct full points if the panel is confused with the whole-brain sorted heatmap in Fig. 5A or with a generic single time trace."
+          },
+          {
+            "point": 15,
+            "criterion": "States that the glyt2-gfra1a subtype is defined by co-expression of the two genes and passes cross-animal filtering; that the violin plots compare glyt2-gfra1a neurons, other visually responsive neurons, and other non-responsive neurons; that maximum response is the maximum Delta F/F across eight visual stimuli; that swimming correlation is the correlation between neural activity and fictive swimming; and that group differences are evaluated with the Wilcoxon rank-sum test.",
+            "deduction_rule": "Deduct 6 points if co-expression of glyt2 and gfra1a is not described as defining the subtype. Deduct 5 points if the three comparison groups are not described. Deduct 4 points if maximum response is not linked to the eight visual stimuli. Deduct 4 points if the meaning of swimming correlation is not described. Deduct 4 points if the statistical test is omitted or incorrectly described as an unmatched paired test."
+          },
+          {
+            "point": 20,
+            "criterion": "Preserves the anatomical localization conclusion that glyt2-gfra1a co-expressing cells are almost entirely localized to the caudal hindbrain or medulla, a region associated with motor or premotor control, rather than being uniformly distributed across the whole brain or primarily located in visual sensory regions.",
+            "deduction_rule": "Deduct full points if hindbrain or medulla localization is not identified. Deduct 12 points if the subtype is described as uniformly whole-brain, telencephalic, or primarily cerebellar. Deduct 8 points if the response only says that the cells are concentrated but does not connect the location to hindbrain motor or premotor regions. Deduct 5 points if the response ignores that this conclusion comes from 3D spatial localization rather than heatmap sorting."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the functional quantification conclusion that glyt2-gfra1a neurons have higher maximum visual responses and stronger positive correlations with fictive swimming than both other visually responsive neurons and non-responsive neurons, with statistically significant differences, indicating stronger visual-motor-related functional features relative to the comparison groups.",
+            "deduction_rule": "Deduct full points if the direction of response magnitude or swimming correlation is reversed. Deduct 8 points if only the higher maximum response is described and swimming correlation is omitted. Deduct 8 points if only the higher swimming correlation is described and maximum response is omitted. Deduct 5 points if statistical significance is not described. Deduct 5 points if the comparison groups of other responsive and non-responsive neurons are not described."
+          },
+          {
+            "point": 10,
+            "criterion": "Preserves the temporal-dynamics conclusion that the trial-by-trial traces show stable activation of this subtype during forward-motion stimulation, with repeated responses across trials and close synchrony with swim onset, thereby providing temporal support for the population-level violin-plot statistics.",
+            "deduction_rule": "Deduct full points if the trial-by-trial traces are not interpreted. Deduct 6 points if synchrony between neural response and swim onset is not described. Deduct 5 points if repeated responses across trials are not described. Deduct 4 points if the representative Fish 2 traces are incorrectly described as the average across all fish."
+          },
+          {
+            "point": 15,
+            "criterion": "Integrates the biological meaning and interpretive boundary by stating that glyt2-gfra1a co-expression defines a genetically addressable, hindbrain-localized, functionally purified population strongly associated with forward-motion-induced swimming, making it a candidate visual-motor integration node in the optomotor-response circuit; the response does not interpret this figure alone as proving that the population is causally necessary or sufficient for swimming behavior.",
+            "deduction_rule": "Deduct 8 points if the response only summarizes localization, response, and correlation without extracting the visual-motor integration-node meaning. Deduct 5 points if genetic addressability or targetability is not explained. Deduct full points if the subtype is misinterpreted as purely visual sensory neurons rather than a visual-motor-related population. Deduct 6 points if the response overstates the evidence as proving causality."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe the caudal hindbrain as the medulla, medulla oblongata, or hindbrain motor region.",
+          "It is acceptable to describe the Wilcoxon rank-sum test as a non-parametric between-group test or Mann-Whitney U test.",
+          "It is acceptable to describe maximum Delta F/F as visual-stimulus response amplitude or strongest stimulus response.",
+          "It is acceptable to describe swimming correlation as a positive correlation between activity and motor output.",
+          "It is acceptable to describe the optomotor response as a visual-motor reflex or forward-motion-induced swimming.",
+          "Omitting that glyt2 is a glycinergic marker or that gfra1a is a receptor is acceptable as long as the co-expressing subtype and functional specialization are correctly described.",
+          "It is acceptable to describe genetic addressability as genetic targetability, gene-tool accessibility, or an entry point for perturbation experiments."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the multi-panel structure, explaining subtype definition, grouping, and statistical source, and accurately extracting hindbrain localization, increased response and swimming correlation, trial-by-trial synchrony, and the integrated meaning of a candidate visual-motor integration node while preserving causal boundaries. Partial scores (40-84) should be assigned when multiple panels and major trends are described but grouping, statistics, temporal dynamics, or integrated biological meaning is incomplete. Low scores (0-39) should be assigned when the panel is confused with a whole-brain heatmap, glyt2-gfra1a is confused with all neurons, hindbrain localization is not recognized, or correlation evidence is rewritten as causal proof."
+      }
+    }
+  }
+}

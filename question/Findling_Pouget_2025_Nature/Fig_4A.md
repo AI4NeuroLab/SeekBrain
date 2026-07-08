@@ -1,0 +1,1 @@
+Fit three candidate prior models — Bayes-optimal prior, stimulus kernel, and action kernel — to behavioral choice data across sessions. Perform Bayesian model comparison by estimating session-level model evidence, then aggregating across sessions to obtain model frequencies and exceedance probabilities for each candidate model.

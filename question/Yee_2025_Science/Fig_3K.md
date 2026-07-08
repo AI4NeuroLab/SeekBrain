@@ -1,0 +1,1 @@
+﻿Steady-state dopamine concentration-response curves for G protein–coupled inward rectifying K+ (GIRK)-mediated outward current and Δ[cAMP] measured using G-Flamp2 or CAMPER were compared to determine whether different downstream signaling pathways depend on different concentrations of dopamine.

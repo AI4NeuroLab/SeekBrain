@@ -1,0 +1,49 @@
+{
+    "tag": "Fig_2A",
+    "rubrics": {
+      "score_100": {
+        "reason": "This panel shows decoding of the Bayes-optimal prior probability from vlOFC population activity during the inter-trial interval. The rubric emphasizes the relationship among the three prior-related traces, the pre-stimulus neural data source, and the scientific meaning of anticipatory prior representation. Points are assigned according to the figure's priorities: 30 points for reproducing the time-series structure, 25 points for decoding method and data source, 20 points for identifying pre-stimulus anticipatory representation, 20 points for the biological meaning of Bayesian-prior representation, and 5 points for dynamic tracking around block switches.",
+        "rubric": {
+          "GT core conclusion": "Neural population activity in ventrolateral orbitofrontal cortex (vlOFC) during the inter-trial interval, from -600 ms to -100 ms before stimulus onset, represents the Bayes-optimal prior probability. The decoded prior is strongly correlated with the Bayes-optimal prior (r = 0.66, R^2 = 0.35), indicating that vlOFC maintains a probabilistic expectation about future stimulus location before the decision and approximates statistically optimal inference.",
+          "Scoring items": [
+            {
+              "point": 30,
+              "criterion": "Correctly reproduces the overlaid time-series plot with three traces in the same coordinate system: decoded prior, Bayes-optimal prior, and true block prior. The x-axis is trial sequence and the y-axis is prior probability in the 0-1 range. The reproduction preserves the main tracking relationship among the traces, the step-like changes at block switches, and includes comparison with the original figure.",
+              "deduction_rule": "Deduct all 30 points if the panel is misidentified as a scatter plot, heatmap, or difference plot. Deduct 10 points for each missing key trace. Deduct 5 points if block-switch step changes are not shown. Deduct 10 points if decoded prior does not show any positive tracking relationship. Multiple deductions are capped at 30 points."
+            },
+            {
+              "point": 25,
+              "criterion": "Correctly states that neural activity was extracted from the inter-trial interval (-600 ms to -100 ms before stimulus onset, not during or after stimulus presentation), and that a cross-validated linear regression decoder was used to predict the Bayes-optimal prior probability from vlOFC population activity. The answer also reports the key performance measures (R^2 = 0.35, r = 0.66, P = 0.001) and explains that the pseudosession method was used to generate a null distribution.",
+              "deduction_rule": "Deduct 12 points if the neural time window is treated as stimulus-period or post-stimulus activity. Deduct 10 points if the decoding target is misidentified as stimulus category or choice. Deduct 5 points if the key performance metrics (R^2, r, P value) are omitted. Deduct 3 points if the pseudosession control is omitted. Deduct 12 points if the analysis is not performed on vlOFC. Multiple deductions are capped at 25 points."
+            },
+            {
+              "point": 20,
+              "criterion": "Correctly identifies that vlOFC population activity actively represents prior probability during the inter-trial interval before the decision. The answer states that this is an anticipatory representation rather than a stimulus-driven response, and that the relevant time window occurs before stimulus onset rather than after it.",
+              "deduction_rule": "Deduct all 20 points if the anticipatory representation is described as a post-stimulus response. Deduct 10 points if the answer does not clearly state that the time window is pre-stimulus. Deduct 12 points if the answer only describes visual trace tracking without explaining the anticipatory nature of the signal."
+            },
+            {
+              "point": 15,
+              "criterion": "Explains that the close tracking between decoded prior and Bayes-optimal prior indicates approximate statistically optimal prior inference in vlOFC. The answer describes vlOFC as playing an important role in Bayesian decision-making rather than merely passively reflecting the true block prior, while avoiding overinterpretation as causal evidence or as a single-neuron result.",
+              "deduction_rule": "Deduct 15 points if the conclusion is framed as vlOFC encoding stimulus or choice rather than prior probability. Deduct 10 points for overclaiming that vlOFC is the only prior-representing region or that the figure proves causality. Deduct 8 points if approximate statistically optimal inference is not mentioned."
+            },
+            {
+              "point": 10,
+              "criterion": "Correctly states that the decoded prior tracks dynamic changes in the Bayes-optimal prior around block switches, indicating that vlOFC participates in dynamic updating of prior information.",
+              "deduction_rule": "Deduct 5 points if dynamic tracking around block switches is not mentioned. Deduct 5 points if the answer does not explain that the gradual transition indicates ongoing belief updating rather than instantaneous switching."
+            }
+          ],
+          "Acceptable deviations": [
+            "Using 'ventrolateral orbitofrontal cortex', 'vlOFC', or equivalent phrasing is acceptable.",
+            "Using 'inter-trial period' or 'pre-stimulus window' instead of 'inter-trial interval' is acceptable.",
+            "Using 'linear decoder' or 'linear model' instead of 'linear regression decoder' is acceptable if the decoding logic is preserved.",
+            "Using 'shuffle control', 'pseudorandomized control', or 'pseudosession control' is acceptable.",
+            "Omitting the exact number of neurons (160) is acceptable if the answer clearly states that population activity was used.",
+            "Using cautious wording such as 'near Bayes-optimal' or 'partially approximates optimal inference' is acceptable.",
+            "Approximate numerical reporting, such as 'r about 0.7' or 'R^2 about 0.35', is acceptable if the order of magnitude and interpretation are correct."
+          ],
+          "Scoring instructions": "High-scoring answers (85-100) must identify the panel as an overlaid time-series plot, state that neural activity comes from the pre-stimulus inter-trial interval rather than the stimulus period, identify the decoding target as prior probability rather than stimulus or choice, recognize the anticipatory timing of the representation, and explain the biological meaning of vlOFC representation of the Bayes-optimal prior and its dynamic tracking around block switches. Partial-credit answers (40-84) capture the main figure structure or broad conclusion but omit key details such as the time window, decoding target, anticipatory nature, control method, or performance metrics. Low-scoring answers (0-39) confuse the plot type, misidentify the target as stimulus or choice, place the neural activity in the stimulus or post-stimulus period, describe the signal as post-stimulus rather than anticipatory, or only describe visual similarity among traces without biological interpretation."
+        }
+      }
+    }
+  }
+  

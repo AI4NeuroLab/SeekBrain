@@ -1,0 +1,44 @@
+{
+  "parent_name": "brain-wide_representations_of_prior_information_in_mouse_decision-making",
+  "image_ids": [
+    "Fig_3A"
+  ],
+  "question": "Using post-stimulus neural activity (0–100 ms after stimulus onset) from a superior colliculus motor-related region, apply a signed-contrast decoder to obtain trial-wise decoded right-stimulus outputs. Split trials into high-prior (Bayes-optimal prior > 0.7) and low-prior (prior < 0.3) groups, and compute neurometric curves  for each group.",
+  "analyse_plan": {
+    "Objective": "Assess whether decoded post-stimulus neural responses in a superior colliculus motor-related region reflect Bayes-optimal prior information by comparing low-prior and high-prior neurometric curves and quantifying the neurometric shift at zero contrast.",
+    "Validation Checks": "Confirm that neural activity is restricted to the 100 ms window after stimulus onset. Verify that low-prior and high-prior trial groups are defined using Bayes-optimal prior values below 0.3 and above 0.7. Confirm that decoded outputs are derived from the same signed-contrast decoding procedure across trials. Verify that the neurometric shift is defined as the vertical displacement between fitted curves at zero contrast and that the null distribution is generated from 200 pseudosessions using the same analysis pipeline.",
+    "Steps": "1. Load Post-Stimulus Neural Data: Load neural activity recorded from the superior colliculus motor-related region during the 100 ms interval after stimulus onset. 2. Decode Stimulus Variable: Apply the signed-contrast decoder to post-stimulus neural activity and obtain decoded right-stimulus outputs for individual trials. 3. Define Prior Groups: Separate trials into low-prior and high-prior groups using Bayes-optimal prior values below 0.3 and above 0.7. 4. Compute Decoded Choice Proportions: For each signed-contrast value, compute the proportion of decoded right choices separately for the low-prior group and the high-prior group. 5. Generate Neurometric Curves: Compute the relationship between signed contrast and the proportion of decoded right choices for low-prior and high-prior groups. 6. Quantify Neurometric Shift: Compute the vertical displacement between the high-prior and low-prior neurometric curves at zero contrast. 7. Generate Null Distribution: Construct 200 pseudosessions and repeat the decoding and curve-fitting procedure to obtain null neurometric shifts. 8. Assess Statistical Significance: Compare the empirical neurometric shift with the pseudosession null distribution to assess statistical significance. 9. Save Key Analysis Outputs: Save decoded trial-wise outputs, low-prior and high-prior neurometric curve fits, zero-contrast neurometric shift values, and pseudosession null-distribution results for visualization and downstream analysis. 10. Visualize Neurometric Results: Plot the proportion of decoded right choices against signed contrast with separate fitted neurometric curves for low-prior and high-prior trial groups and highlight the vertical displacement at zero contrast."
+  },
+  "analysis_keywords": [
+    "signed-contrast decoding",
+    "psychometric curve fitting",
+    "Bayes-optimal prior grouping",
+    "pseudosession method"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "low_prior_probability_threshold",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.3
+    },
+    {
+      "variable_name": "high_prior_probability_threshold",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.7
+    }
+  ],
+  "key_analysis_results": [
+    "Neurometric curves for low-prior and high-prior trial groups in the superior colliculus motor-related region show a vertical displacement at zero contrast during the post-stimulus period. The neurometric shift at zero contrast differs from the distribution obtained from 200 pseudosessions, indicating a statistically significant prior-dependent modulation in decoded post-stimulus responses."
+  ],
+  "key_analysis_conclusions": [
+    "The vertical displacement between low-prior and high-prior neurometric curves at zero contrast is consistent with prior-dependent modulation in post-stimulus decoded responses."
+  ],
+  "summary_report": {
+    "abstract": "Post-stimulus neural activity in a superior colliculus motor-related region is analysed to assess prior-dependent modulation in decoded responses. Neural activity during the 100 ms interval after stimulus onset is decoded for stimulus-related output, trials are separated into low-prior and high-prior groups, and neurometric curves are fitted for the two prior conditions.",
+    "methods": "Neural activity is extracted from a superior colliculus motor-related region during the 100 ms interval after stimulus onset. Signed-contrast decoding is applied to post-stimulus neural activity. Trials are then divided into low-prior and high-prior groups using Bayes-optimal prior values below 0.3 and above 0.7. For each signed-contrast condition, the proportion of decoded right choices is computed separately for the two prior groups. Neurometric curves are fitted for the low-prior and high-prior conditions, and the post-stimulus prior effect is quantified as the vertical displacement between fitted curves at zero contrast. A pseudosession method with 200 pseudosessions is used to construct a null distribution of neurometric shifts.",
+    "results": "The superior colliculus motor-related region example shows distinct low-prior and high-prior neurometric curves during the post-stimulus period. The fitted curves are vertically separated at zero contrast, indicating a prior-dependent difference in decoded post-stimulus responses. The empirical neurometric shift is evaluated against a pseudosession null distribution.",
+    "discussion": "Zero-contrast neurometric displacement provides a measure of prior-dependent modulation in post-stimulus decoded neural responses. The zero-contrast neurometric displacement provides a summary measure of post-stimulus prior modulation in decoded neural responses."
+  }
+}

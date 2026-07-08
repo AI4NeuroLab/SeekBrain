@@ -1,0 +1,61 @@
+{
+  "parent_name": "cholinergic_feedback_for_modality-_and_context-specific_modulation_of_sensory_representations",
+  "image_ids": [
+    "Fig_5C"
+  ],
+  "query": "For granule cell-odor pairs recorded in both task (n = 4 mice) and passive (n = 4 mice) conditions, classify each pair as odor-excited, odor-suppressed, or non-responsive based on their odor response. Calculate the fraction of each response type as a percentage of total cell-odor pairs, and visualize the results as side-by-side pie charts comparing the two conditions.",
+  "analyse_plan": {
+    "Objective": "Compare the proportions of different granule cell-odor pair response types between olfactory task and passive conditions.",
+    "Validation Checks": "Verify that classification criteria are consistent between task and passive groups; confirm that total fractions sum to 100%.",
+    "Steps": "1. For each granule cell-odor pair in both task (n = 4 mice) and passive (n = 4 mice) groups, classify as excited, suppressed, or non-responsive based on odor response criteria.\n2. Compute the fraction of each response type as a percentage of total cell-odor pairs.\n3. Display as pie charts for task and passive conditions.\n4. Save fractions and sample sizes."
+  },
+  "analysis_keywords": [
+    "cell-odor pair classification",
+    "response fraction"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "fraction_excited_task",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": "26.1"
+    },
+    {
+      "variable_name": "fraction_suppressed_task",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": "20.2"
+    },
+    {
+      "variable_name": "fraction_nonresponsive_task",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": "53.7"
+    },
+    {
+      "variable_name": "fraction_excited_passive",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": "24.3"
+    },
+    {
+      "variable_name": "fraction_suppressed_passive",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": "16.5"
+    }
+  ],
+  "key_analysis_results": [
+    "Similar fractions of granule cell-odor pairs showed odor responses in task (26.1% excited, 20.2% suppressed, 53.7% non-responsive) and passive (24.3% excited, 16.5% suppressed, 59.2% non-responsive) conditions."
+  ],
+  "key_analysis_conclusions": [
+    "The proportions of responsive granule cells are comparable across conditions, indicating that the contextual modulation of granule cell activity operates primarily through changes in response amplitude rather than recruitment of additional responsive cells."
+  ],
+  "summary_report": {
+    "abstract": "Fractions of odor-excited, suppressed, and non-responsive granule cell-odor pairs are similar between task and passive conditions.",
+    "methods": "Granule cell-odor pairs classified as excited, suppressed, or non-responsive in task (n = 4 mice) and passive (n = 4 mice) groups. Fractions computed as percentage of total cell-odor pairs.",
+    "results": "Task: 26.1% excited, 20.2% suppressed, 53.7% non-responsive. Passive: 24.3% excited, 16.5% suppressed, 59.2% non-responsive.",
+    "discussion": "The similar fractions suggest that task engagement does not change which cells respond to odors but rather modulates the strength of their responses, consistent with a gain modulation mechanism."
+  },
+  "question": "﻿For granule cell-odor pairs recorded in both task (n = 4 mice) and passive (n = 4 mice) conditions, classify each pair as odor-excited, odor-suppressed, or non-responsive based on their odor response. Calculate the fraction of each response type as a percentage of total cell-odor pairs, and visualize the results as side-by-side pie charts comparing the two conditions."
+}

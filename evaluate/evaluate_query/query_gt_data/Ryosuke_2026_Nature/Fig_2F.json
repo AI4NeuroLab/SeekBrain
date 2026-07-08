@@ -1,0 +1,55 @@
+{
+  "parent_name": "plastic_landmark_anchoring_in_zebrafish_compass_neurons",
+  "image_ids": [
+    "Fig_2F"
+  ],
+  "question": "To test whether the bump phase maintained a constant offset to the scene orientation in the jump and noise epochs, κ from the von Mises distributions fit on the scene–bump offset histogram was plotted for each fish for each condition, together with the shuffle median and the 95th percentile.",
+  "analyse_plan": {
+    "Objective": "Quantify and compare scene–bump alignment strength in the jump and noise epochs by fitting von Mises distributions to the scene–bump offset histograms and evaluating κ against a shuffle-based bootstrap reference.",
+    "Validation Checks": "Verify that HD neurons are selected from the entire first epoch with the reported sinusoidal fitting and inclusion criteria. Confirm that the bump phase is computed from the population activity using eight preferred-orientation bins and that the centred scene–bump offset is defined consistently in both epochs. Check that the von Mises fits are applied to the jump-epoch and noise-epoch scene–bump offset histograms for each fish, and that the bootstrap median and 95th percentile are computed from the time-domain shifting procedure used in the paper.",
+    "Steps": "1. Load Data: Load the fluorescence traces, scene-orientation traces, and epoch annotations for the jump and noise experiment for all analysed fish or recordings. 2. Identify HD Neurons: Normalize and smooth ROI traces as reported, fit the scaled shifted sinusoid to each ROI using the entire first epoch, and retain HD ROIs with R2 > 0.15 after excluding naively visual ROIs and ROIs outside the aHB mask. 3. Compute Bump Phase: Bin the selected HD ROIs into eight preferred-orientation bins and calculate the bump phase over time from the activity-weighted population vector. 4. Compute Scene–Bump Offset: Calculate the centred scene–bump offset for each time point and separate the offset values into the jump epoch and noise epoch for each fish or recording. 5. Fit Offset Distributions: Build the scene–bump offset histogram for each condition and fit a von Mises distribution to each histogram to obtain κ for the jump and noise epochs. 6. Compute Bootstrap Reference: Generate the shuffle-based bootstrap reference for κ by circularly shifting the bump phase in time, recomputing κ across shuffled samples, and extracting the bootstrap median and 95th percentile for each condition. 7. Save Key Results: Save the per-fish or per-recording κ values, bootstrap medians, bootstrap 95th percentiles, fitted von Mises parameters, and the ordering of fish or recordings used in the panel. 8. Visualization: Plot κ for the jump and noise conditions together with the corresponding bootstrap median and 95th percentile, ordered by jump κ and annotated consistently across repeated recordings from the same fish."
+  },
+  "analysis_keywords": [
+    "von Mises fit",
+    "scene–bump offset analysis",
+    "bootstrap test"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "jump_epoch_significant_fish_count",
+      "unit": "fish",
+      "variable_type": "numeric",
+      "number": 14
+    },
+    {
+      "variable_name": "noise_epoch_significant_fish_count",
+      "unit": "fish",
+      "variable_type": "numeric",
+      "number": 3
+    },
+    {
+      "variable_name": "total_fish_count",
+      "unit": "fish",
+      "variable_type": "numeric",
+      "number": 24
+    },
+    {
+      "variable_name": "Shuffle bar percentile",
+      "unit": "percent",
+      "variable_type": "numeric",
+      "number": 95
+    }
+  ],
+  "key_analysis_results": [
+    "κ from the von Mises distributions fit on the scene–bump offset histogram was plotted for each fish for each condition, together with the shuffle median and the 95th percentile, showing that 14 out of 24 fish exhibited significantly above-chance κ in the jump epoch, whereas only 3 out of 24 fish did so in the noise epoch."
+  ],
+  "key_analysis_conclusions": [
+    "The bump phase remained significantly aligned to the scene orientation in more fish in the jump epoch than in the noise epoch."
+  ],
+  "summary_report": {
+    "abstract": "By plotting κ from the von Mises distributions fit on the scene–bump offset histogram for each fish for each condition together with the shuffle median and the 95th percentile, this analysis showed that 14 out of 24 fish exhibited significantly above-chance κ in the jump epoch, whereas only 3 out of 24 fish did so in the noise epoch.",
+    "methods": "The jump and noise experiment was analysed using the HD neurons selected with the reported sinusoidal fitting procedure from the first epoch of the experiment. After computing the bump phase from the population activity of the selected HD neurons, the centred scene–bump offset was calculated for the jump and noise epochs for each fish. For each condition, a von Mises distribution was fit on the scene–bump offset histogram to estimate κ, and the significance of κ was assessed with the bootstrap procedure based on time-domain circular shifting of the bump phase. The visualization plotted the measured κ values together with the shuffle median and 95th percentile for each fish or recording.",
+    "results": "The panel shows κ from the von Mises distributions fit on the scene–bump offset histogram for each fish for each condition, together with the shuffle median and the 95th percentile. For the jump epoch, 14 out of 24 fish showed significantly above-chance κ, whereas only 3 out of 24 fish did so for the noise epoch.",
+    "discussion": "This panel shows that landmark-based updating was substantially more effective than the alignment supported by the rotating noise stimulus when judged by the stability of the scene–bump offset. The result therefore supports the view that the larval zebrafish HD neurons can exploit visual landmarks robustly, whereas maintaining a constant offset under the noise stimulus is comparatively rare."
+  }
+}

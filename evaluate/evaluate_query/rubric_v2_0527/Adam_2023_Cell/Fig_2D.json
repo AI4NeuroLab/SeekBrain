@@ -1,0 +1,44 @@
+{
+  "tag": "Fig_2D",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 2D tests whether current brain-wide neural activity contains information about the animal's past or future velocity. The panel is a temporal-offset decoding analysis: linear decoders use current neural population activity to predict velocity at different time offsets, with controls for scrambled data and current-velocity autocorrelation. The revised scoring lowers the graph-only weight and increases the control-interpretation weight because the conclusion that neural activity retains past behavioral history depends critically on the current-velocity and scrambled controls. Point allocation: temporal-offset curves and direction 35, decoding setup and performance definition 20, past-but-not-future conclusion 25, control interpretation 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2D shows that current C. elegans neural population activity contains information about past locomotion velocity: a linear decoder trained on current neural activity predicts velocity at negative time offsets, including roughly 20 seconds into the past, better than scrambled and current-velocity-only controls. In contrast, future velocity at positive time offsets is not decoded above baseline. This indicates that the brain-wide activity pattern retains recent locomotion history but does not reliably predict future velocity.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the temporal-offset velocity decoding analysis used in Fig. 2D. Correctly plots decoder performance as a function of time offset delta t, with negative delta t corresponding to past velocity and positive delta t corresponding to future velocity, and show the neural decoder together with the relevant current-velocity and scrambled-control curves.",
+            "deduction_rule": "Deduct the full 35 points if the plot is misidentified as a simple correlation plot, tuning curve, or neural trace. Deduct 20 points if the negative and positive delta t directions are reversed, because this directly reverses the scientific conclusion. Deduct 10 points if the temporal-offset axis is missing or mislabeled. Deduct 8 points if key control curves are omitted from the visualization."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly describes the decoding setup and performance calculation: current neural population activity is used to predict velocity at different time offsets, decoder performance is evaluated across temporal offsets, and performance is compared against appropriate control or reference curves.",
+            "deduction_rule": "Deduct full points if the answer does not identify the analysis as a decoder using current neural activity to predict shifted velocity. Deduct 10-12 points if it mentions decoding velocity but does not specify that the target velocity is evaluated at multiple past and future time offsets. Deduct 5-8 points if the sliding-window averaging of velocity is omitted. Deduct 8-10 points if the performance metric is treated as raw accuracy without mentioning the scrambled or shifted-control baseline. Deduct 8-10 points if the answer reduces the analysis to a simple same-time correlation between neural activity and velocity."
+          },
+          {
+            "point": 25,
+            "criterion": "Preserves the main scientific conclusion that current neural activity carries information about past velocity, up to at least approximately 20 seconds prior, but does not reliably encode or predict future velocity.",
+            "deduction_rule": "Deduct full points if the answer misses the past-velocity decoding conclusion. Deduct 10-12 points if it says that current neural activity predicts velocity but does not distinguish past from future time offsets. Deduct 10-15 points if it incorrectly claims that future velocity is strongly predicted. Deduct 5-8 points if the approximate past-decoding timescale is omitted but the overall recent-history interpretation is otherwise correct. Deduct full points if the result is interpreted as direct causal evidence that the decoded neurons generate locomotion."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly interprets the control curves, especially the current-velocity-only and scrambled controls, as showing that the past-velocity information in neural activity is not merely explained by behavioral autocorrelation of velocity and is not an artifact of shuffled data.",
+            "deduction_rule": "Deduct the full 20 points if the control curves are omitted or interpreted as decorative references. Deduct 12 points if the current-velocity control is not used to rule out velocity autocorrelation. Deduct 8 points if the scrambled control is not interpreted as a baseline for decoding significance. Deduct 8 points if best-possible or all-time reference details are imperfect but the current-velocity control is otherwise correctly interpreted."
+          }
+        ],
+        "Acceptable deviations": [
+          "Referring to the decoder as a 'linear decoder', 'regularized linear decoder', 'ridge regression', or 'elastic-net/ridge-like regression' is acceptable as long as the core temporal decoding analysis is preserved.",
+          "Paraphrasing 'performance' as 'decoder improvement over shuffled controls', 'decoding accuracy relative to scrambled baseline', or 'difference from control error' is acceptable if higher values are interpreted as better decoding.",
+          "The exact x-axis range may be described approximately; using ±30 s or ±60 s is acceptable if the past-negative and future-positive convention and the main curve pattern are correct.",
+          "The exact decoded past range may be approximate; descriptions such as 'around 20 seconds into the past', 'at least 20 seconds prior', or 'tens of seconds of recent velocity history' are acceptable.",
+          "The 10-second sliding window may be described as 'averaging velocity around each offset' or 'smoothed/temporally averaged target velocity'.",
+          "Minor differences in line color are acceptable if the neural decoder, current-velocity control, and best-possible/all-times velocity reference are clearly distinguished.",
+          "It is acceptable to omit details such as the exact number of shuffled controls, regularization tuning procedure, or cross-validation folds if the key control logic and scientific conclusion are correct.",
+          "Using 'locomotion speed' as shorthand for velocity is acceptable if the directionality/sign of temporal offsets and the conclusion about past behavioral history are not distorted."
+        ],
+        "Scoring instructions": "Assign scores based on whether the answer correctly captures Fig. 2D as a temporal decoding analysis rather than a simple correlation plot. Full credit requires identifying that current neural population activity is used to decode velocity at multiple time offsets, that negative Δt corresponds to past behavior and positive Δt to future behavior, that the neural decoder performs well for past velocity but not future velocity, and that the current-velocity and scrambled controls rule out simple behavioral autocorrelation or chance temporal structure. Partial credit should be given when the answer captures past-velocity information in neural activity but omits the control curves, the sliding-window target, or the exact temporal-offset structure. Low scores should be assigned when the answer reverses past and future, claims future prediction, confuses the panel with another figure type, treats the result as a single-neuron effect, or interprets the decoding result as direct causal evidence."
+      }
+    }
+  }
+}

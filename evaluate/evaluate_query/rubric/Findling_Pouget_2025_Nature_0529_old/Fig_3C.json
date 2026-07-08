@@ -1,0 +1,50 @@
+{
+  "tag": "Fig_3C",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric prioritizes the core scientific conclusion of Fig. 3c: corrected post-stimulus neurometric shifts, which quantify prior-dependent bias in stimulus decoding, were consistent between electrophysiology and widefield imaging across matched cortical regions. The highest weight is assigned to preserving the cross-modality comparison, the positive regional correlation, and the key quantitative result (Spearman R = 0.51, P = 0.0027, n = 32 cortical regions). Methodological details such as the fact that the shift is post-stimulus, corrected, and neurometric rather than a direct prior-decoding R2 are important because they prevent confusion with Fig. 2 analyses, but they should not dominate scoring if the main scientific meaning is otherwise preserved.",
+      "rubric": {
+        "GT core conclusion": "Corrected post-stimulus neurometric shifts, reflecting prior-dependent bias in stimulus decoding, were significantly positively correlated between electrophysiology and widefield imaging across matched cortical regions, indicating consistent post-stimulus prior-related biases in neural stimulus representations across modalities (Spearman R = 0.51, P = 0.0027, n = 32 regions).",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "States that Fig. 3c compares corrected post-stimulus neurometric shifts, reflecting prior-dependent bias in stimulus decoding, between electrophysiology and widefield imaging",
+            "deduction_rule": "Deduct 30 points if the cross-modality comparison is missing. Deduct 15-20 points if both modalities are mentioned but the answer does not clearly state that their corrected post-stimulus neurometric shifts are being compared. Deduct 15-20 points if the answer says only that prior signals are compared but does not distinguish neurometric shift from direct prior decoding. Deduct 20-30 points if the answer incorrectly describes the figure as comparing different task conditions, different animals, behavioural choices, or pre-stimulus/ITI decoding rather than Ephys versus WFI post-stimulus neurometric shifts."
+          },
+          {
+            "point": 25,
+            "criterion": "States that the corrected post-stimulus shifts from Ephys and WFI are positively correlated or show consistent regional variation across cortical regions",
+            "deduction_rule": "Deduct 25 points if the positive relationship or cross-modality consistency is missing. Deduct 12-18 points if the answer only vaguely says the two modalities are related without specifying a positive correlation or consistent regional pattern. Deduct 20-25 points if the answer reverses the conclusion or claims there is no relationship, a negative relationship, or inconsistent results between modalities."
+          },
+          {
+            "point": 20,
+            "criterion": "Reports the key quantitative result: Spearman correlation R = 0.51 with P = 0.0027 across n = 32 cortical regions, or gives a close approximation that preserves the significant positive correlation",
+            "deduction_rule": "Deduct 20 points if the numerical correlation result is missing entirely. Deduct 8-12 points if only a qualitative statement such as 'significantly correlated' is given. Deduct 8-12 points if one of the values is omitted but the others are correct. Deduct 12-20 points if one or more numbers are substantially incorrect. Deduct 20 points if the sign or statistical conclusion is wrong."
+          },
+          {
+            "point": 15,
+            "criterion": "Indicates that the analysis is performed across matched cortical regions represented in both modalities, rather than at the trial, neuron, animal, or session level",
+            "deduction_rule": "Deduct 15 points if the regional matching or across-cortical-region nature of the analysis is missing. Deduct 6-10 points if the answer mentions regions generally but does not make clear that Ephys and WFI values are paired for corresponding cortical regions. Deduct 10-15 points if the answer implies trial-level, neuron-level, animal-level, or session-level correlation rather than region-level comparison."
+          },
+          {
+            "point": 10,
+            "criterion": "Preserves the interpretation that the positive Ephys-WFI correlation supports a consistent spatial distribution of post-stimulus prior-related biases in neural stimulus representations across cortical regions",
+            "deduction_rule": "Deduct 10 points if the interpretation is omitted. Deduct 5-8 points if the answer only reports a correlation without explaining that it supports cross-modality consistency of prior-related post-stimulus biases. Deduct 8-10 points if the interpretation is replaced by an incorrect claim, such as that only one modality detects the effect, that the figure concerns behavioural choices, or that the result directly measures pre-stimulus prior decoding."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'electrophysiology' as 'Ephys' and 'widefield imaging' as 'WFI' is acceptable",
+          "Paraphrasing 'corrected post-stimulus neurometric shift' as 'corrected post-stimulus shift', 'post-stimulus prior-related shift', 'prior-dependent neurometric shift', or 'zero-contrast neurometric shift' is acceptable if the meaning of prior-dependent bias in stimulus decoding is preserved",
+          "It is acceptable to describe the shift as the separation or vertical displacement between high-prior and low-prior neurometric curves, especially at zero contrast",
+          "Reporting the key result approximately, such as 'R about 0.5, P about 0.003, across 32 regions', is acceptable",
+          "Using 'correlated', 'consistent', 'similar across modalities', or 'shared regional pattern' is acceptable if the positive cross-modality relationship is preserved",
+          "Omitting details of the fitted regression line, confidence interval shading, dot colours, or plotting style is acceptable",
+          "Omitting the details of pseudosession correction is acceptable if the answer clearly refers to corrected neurometric shifts or prior-related post-stimulus shifts",
+          "The answer does not need to discuss other Fig. 3 panels or whole-brain maps beyond the Fig. 3c cross-modality comparison",
+          "The answer may mention that this result supports robustness across recording modalities, but it should not claim that Ephys and WFI recorded the exact same neurons or animals"
+        ],
+        "Scoring instructions": "Assign points based on preservation of the main scientific result rather than figure-display details. Full credit requires capturing that Fig. 3c compares corrected post-stimulus neurometric shifts from Ephys and WFI across matched cortical regions, that these shifts reflect prior-dependent bias in stimulus decoding rather than direct pre-stimulus prior decoding, that the values are significantly positively correlated, and that the key quantitative result is Spearman R = 0.51, P = 0.0027, n = 32 regions. Partial credit should be given when the answer preserves cross-modality consistency but simplifies numerical or methodological details. Low scores should be assigned when the answer reduces the figure to a generic scatter plot, omits one of the modalities, omits the positive correlation, misstates the analysis level, confuses the neurometric shift with direct prior-decoding R2, or materially changes the scientific conclusion."
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+﻿To identify which computational model best explains mouse behavior in the task, by comparing candidate prior models including the Bayes-optimal prior, stimulus kernel, and action kernel using Bayesian model comparison across sessions.

@@ -1,0 +1,1 @@
+﻿To compare the readout of teacher and student networks after training for the two trial types by visualizing output time series.

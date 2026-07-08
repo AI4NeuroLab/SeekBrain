@@ -1,0 +1,143 @@
+# NeuroScientist Pi workflow config.
+# Secrets stay in .env; generated Pi auth/models files stay under .pi/agent.
+
+paths:
+    # If omitted, root_dir defaults to the current Pi workspace/cwd.
+    # root_dir: /path/to/project
+
+    # If omitted, project_dir defaults to internagent/modules.
+    # It is only needed if you intentionally want to override the Python source.
+    # project_dir: /path/to/python/source
+
+modules:
+    targeted_skill:
+        skill_dir: library/skills/trajectory
+        generated_skill_output_dir: library/skills/from_rag
+        skill_enable: true
+        generate_skill_enable: true
+        model: claude-opus-4-7
+        top_k: 1
+        relevance_threshold: 0.3
+        temperature: 1.0
+        rag_top_k: 2
+
+workflow:
+    # Overrides internagent/workflow/agent_config.py WORKFLOW_DEFAULTS.
+    # true = persist session logs, events, usage/, snapshots (debug); false = runtime deliverables only.
+    debug_disk_writes: true
+    level1:
+        deep_research: true
+        targeted_skill_match: true
+        targeted_skill_generate: true
+        image_refine: true
+        image_analysis: true
+        # Interactive runs pause after enabled gates and wait for explicit human approval.
+        # Non-interactive ./pi_run_level1.sh --non-interactive disables these gates at runtime.
+        human_review:
+            enabled: true
+            gates:
+                plan: true
+                code: false
+                validate: false
+                conclude: false
+
+agents:
+    # Main Pi orchestrator (override only here; agent_config.py defaults unchanged)
+    level1:
+        provider: anthropic
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 5400
+
+    level2:
+        provider: anthropic
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 3600
+
+    # Subagent baseline per level (level1_*, level2_* inherit missing LLM fields).
+    level1_default:
+        provider: anthropic
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 300
+
+    level2_default:
+        provider: anthropic
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 300
+
+    level1_deep_research:
+        rag:
+            enable: true
+            top_k: 4
+            base_url: http://100.104.36.129:21800
+            timeout: 600
+            source_char_limit: 5000
+
+    level1_plan: {}
+
+    level1_code:
+        vision: true
+        timeout_seconds: 1800
+
+    level1_validate:
+        vision: true
+
+    level1_refine_image:
+        vision: true
+        timeout_seconds: 1200
+
+    level1_analyze_image:
+        vision: true
+
+    level1_conclude: {}
+
+    level2_subquestion: {}
+    level2_subquestion_review: {}
+    level2_method_development: {}
+    level2_method_review: {}
+    level2_subagent_conclusion: {}
+    level2_subagent_conclusion_review: {}
+    level2_question_conclusion: {}
+    level2_paper_report: {}
+
+# Extra or override models for built-in Anthropic/OpenAI-compatible providers.
+# Provider base URLs and API keys come from .env.
+models:
+    - provider: openai
+      id: gemini-3.1-pro-preview
+      name: Gemini 3.1 Pro Preview
+      reasoning: true
+      vision: true
+      context_window: 1000000
+      max_tokens: 8192
+      cost_input: 2.0
+      cost_output: 12.0
+      cost_cache_read: 0
+      cost_cache_write: 0
+
+    - provider: openai
+      id: deepseek-v4-pro
+      name: DeepSeek V4 Pro
+      reasoning: true
+      vision: false
+      context_window: 1000000
+      max_tokens: 65536
+      cost_input: 0.438372
+      cost_output: 0.876744
+      cost_cache_read: 0.003653
+      cost_cache_write: 0
+
+    - provider: openai
+      id: glm-5.2
+      name: glm-5.2
+      reasoning: true
+      vision: false
+      context_window: 1000000
+      max_tokens: 32768
+      cost_input: 1.169
+      cost_output: 4.0915
+      cost_cache_read: 0.292248
+      cost_cache_write: 0

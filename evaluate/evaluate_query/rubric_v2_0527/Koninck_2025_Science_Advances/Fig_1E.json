@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_1E",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 1E summarizes population-average functional connectivity among 65 brain regions during spontaneous activity. The key points are reproducing the symmetric correlation matrix, explaining that matrix values are Pearson correlations of regional activity rather than anatomical connections, and preserving the conclusion that the larval zebrafish brain shows reproducible mesoscopic functional organization, including strong hindbrain correlations and distance-dependent structure. Exact colorbar details are secondary unless they alter interpretation of the correlation pattern.",
+      "rubric": {
+        "GT core conclusion": "Fig. 1E shows a 65-region population-average functional connectivity matrix from n = 22 larvae. The matrix has a clear block-like organization, with high correlations in hindbrain regions driven by synchronized activity during movement and correlations that generally decrease with inter-region distance, supporting reproducible mesoscopic functional organization.",
+        "Scoring items": [
+          {
+            "point": 40,
+            "criterion": "Correctly analyzes and visualizes the 65 x 65 symmetric functional connectivity matrix, with brain regions ordered anatomically, color representing regional activity correlation strength, and the high-correlation block structure in hindbrain regions and the overall low-to-high correlation pattern preserved.",
+            "deduction_rule": "Deduct the full 40 points if the matrix is misidentified as a structural connectivity matrix, synaptic connectivity matrix, or single-cell activity heatmap. Deduct 15 points if the matrix is not symmetric or the number of brain regions is clearly wrong. Deduct 15-20 points if the high-correlation hindbrain block structure is not preserved. Deduct 10 points if the meaning of color encoding is incorrect."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly states that matrix values represent Pearson correlations between brain-region average activity signals during 10 minutes of spontaneous activity, and that the matrix is a population-average functional connectivity result from n = 22 larvae.",
+            "deduction_rule": "Deduct 10 points if functional connectivity is not described as activity correlation. Deduct 15 points if Pearson correlation is interpreted as anatomical connection strength. Deduct 6 points if population averaging or n = 22 is not mentioned. Deduct 6 points if the spontaneous activity period is not mentioned."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly preserves the scientific conclusion that population-average functional connectivity shows stable block-like organization, that high hindbrain correlations are mainly driven by large synchronized calcium activity during movement, and that correlation strength decreases with increasing distance between brain regions.",
+            "deduction_rule": "Deduct 12 points if the movement-driven explanation for high hindbrain correlations is omitted. Deduct 8 points if distance dependence is not mentioned. Deduct 10 points if the response only describes color intensity without interpreting functional organization or modularity. Deduct 10 points if high hindbrain correlations are attributed to visual stimulation or structural connectivity itself."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly states that mesoscopic aggregation into 65 brain regions improves reproducibility while losing single-cell detail, and provides a stable basis for later structure-function coupling, modularity, and gradient analyses.",
+            "deduction_rule": "Deduct 15 points if the role of mesoscopic aggregation is completely omitted. Deduct 8 points if the response only says the matrix is used for later analyses without explaining the tradeoff between stability and loss of detail."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe functional connectivity as functional correlation or brain-region activity correlation.",
+          "It is acceptable to describe Pearson correlation as a correlation coefficient.",
+          "It is acceptable to describe spontaneous activity as spontaneous neural activity.",
+          "It is acceptable to describe n = 22 larvae as 22 larvae or 22 individuals.",
+          "It is acceptable to describe hindbrain as rhombencephalon.",
+          "The exact correlation range may be omitted as long as the low-to-high correlation pattern and high hindbrain correlations are preserved."
+        ],
+        "Scoring instructions": "Assign points based on whether the response performs the correct matrix analysis and explains the scientific meaning of functional connectivity. High scores require identifying the panel as a population-average functional connectivity matrix, explaining that matrix values come from Pearson correlations of regional activity, interpreting high hindbrain correlations, distance dependence, and block structure, and preserving the meaning of mesoscopic aggregation. Partial credit should be given when matrix reproduction is broadly correct but the functional connectivity definition, movement-driven interpretation, or mesoscopic meaning is incomplete. Low scores should be assigned when the matrix is misidentified as structural connectivity, synaptic connectivity, or a generic heatmap without functional-network interpretation."
+      }
+    }
+  }
+}

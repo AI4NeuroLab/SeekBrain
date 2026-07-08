@@ -1,0 +1,58 @@
+{
+  "tag": "Fig_6C",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric aligns with the provided ground truth, balancing the deep scientific mechanisms (NBLAST clustering of 2,143 neurons, cut at height 8 yielding 22 clusters, identification of oculomotor and RGCs) with the specific visual presentation strategies employed in the figure (side-by-side display on a gray standard brain outline, using asterisks for known types). The scientific data carries the majority of the weight, while the visual layout carries secondary weight.",
+      "rubric": {
+        "GT core conclusion": "To visualize morphological diversity, 2,143 neurons were classified using NBLAST hierarchical clustering; cutting the dendrogram at height 8 yielded 22 distinct clusters. These clusters are displayed side by side in a gray standard brain outline, with asterisks denoting known cell types like oculomotor neurons (cluster 13) and RGCs (cluster 14).",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that 2,143 neurons were classified using NBLAST-based hierarchical clustering",
+            "deduction_rule": "Deduct 25 points if NBLAST or hierarchical clustering is entirely missing. Deduct 10 points if the method is mentioned but the total neuron count (2,143) is omitted or highly inaccurate."
+          },
+          {
+            "point": 25,
+            "criterion": "Indicates the specific quantitative result: the dendrogram was cut at a height of 8 to yield 22 distinct clusters",
+            "deduction_rule": "Deduct 25 points if the 22 distinct clusters are missing. Deduct 10 points if the 22 clusters are mentioned but the cut height (8) is omitted."
+          },
+          {
+            "point": 30,
+            "criterion": "Identifies that asterisks denote clusters of known cell types, specifically naming cluster 13 (oculomotor neurons) and cluster 14 (retinal ganglion cells / RGCs)",
+            "deduction_rule": "Deduct 30 points if the recovery of known cell types is completely missed. Deduct 15 points if known types are mentioned but the specific biological examples (oculomotor and RGCs) are omitted. Deduct 5 points if the cell types are named but the mention of asterisks or specific cluster numbers is missed."
+          },
+          {
+            "point": 20,
+            "criterion": "Describes the visual layout: individual clusters are displayed side by side in the outline of the standard brain (gray)",
+            "deduction_rule": "Deduct 20 points if the visual arrangement (side-by-side overlay on the standard brain) is completely missing. Deduct 10 points if the standard brain is mentioned but the side-by-side comparative layout is omitted."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'NBLAST' as 'morphological similarity scoring' is acceptable.",
+          "Approximate neuron counts (e.g., '~2,100') are acceptable.",
+          "Omitting the explicit mention of 'gray' for the brain outline is acceptable, provided the 'standard brain outline' concept is retained.",
+          "Minor rephrasing of 'side by side' (e.g., 'displayed individually next to each other') is fully acceptable."
+        ],
+        "Scoring instructions": "Assign points by evaluating both the scientific extraction (clustering parameters and identified cell types) and the visual description (side-by-side layout and asterisks) according to the GT. Do not heavily penalize minor paraphrasing, but strictly deduct if specific biological terms (oculomotor, RGCs) or quantitative parameters (2143, height 8, 22 clusters) are missing."
+      }
+    },
+    "binary": {
+      "reason": "This binary rubric tests if the model successfully captures the core scientific clustering results and recognizes the basic visual layout used to present them, as defined by the GT.",
+      "rubric": {
+        "GT core conclusion": "2,143 neurons were clustered via NBLAST (cut at height 8 into 22 clusters) and displayed side-by-side in a standard brain outline, with asterisks highlighting known types like oculomotor neurons and RGCs.",
+        "Required points": [
+          "~2,143 neurons were classified using NBLAST/hierarchical clustering into 22 clusters (cut at height 8).",
+          "Clusters are displayed side by side in the standard brain outline.",
+          "Known cell types, specifically oculomotor neurons and RGCs, are identified (and denoted by asterisks)."
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing the visual layout (side-by-side, asterisks) is acceptable as long as the comparative display logic is captured.",
+          "Approximate neuron counts and omitting the word 'gray' are acceptable.",
+          "Missing the exact cluster numbers (13 and 14) is acceptable if the biological names (oculomotor, RGCs) are present."
+        ],
+        "Criteria for 1": "Assign 1 if the answer captures the NBLAST clustering of ~2143 neurons into 22 groups, states they are visually displayed in the standard brain outline, AND successfully names the known cell types (oculomotor neurons and RGCs).",
+        "Criteria for 0": "Assign 0 if the answer fails to mention the 22 clusters, fails to mention the anatomical visual overlay, or completely misses the biological validation (oculomotor neurons and RGCs)."
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "tag": "Fig_3E",
+  "rubrics": {
+    "score_100": {
+      "reason": "This merged rubric balances methodological specification of the plotted metric with the core scientific result and biological interpretation. It rewards the identification of the metric (fraction of time spent in the out-phase range of the scene-bump offset, where out-phase corresponds to |scene-bump offset| > 3π/4 or equivalent strong misalignment), the epoch-dependent pattern (significant increase from pre-learning to learning, significant decrease from learning to post-learning), the biological interpretation (the symmetric scene disrupted scene-bump alignment/landmark anchoring most strongly during the learning epoch), the statistical framework (signed-rank tests), and minor visualization elements (individual fish as dots connected by paired grey lines across epochs). Minor display details such as dot color should carry little weight.",
+      "rubric": {
+        "GT core conclusion": "The fraction of time that the scene-bump offset spent in the out-phase range (|scene-bump offset| > 3π/4) increased significantly from the pre-learning epoch to the learning epoch and then decreased significantly from the learning epoch to the post-learning epoch (signed-rank tests), showing that the symmetric scene disrupted scene-bump alignment / landmark anchoring most strongly during the learning epoch.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "States the main epoch-dependent pattern: the out-phase fraction increased from pre-learning to learning and decreased from learning to post-learning",
+            "deduction_rule": "Deduct 30 points if the across-epoch pattern is missing, substantially incomplete, or reversed. Deduct 12-18 points if only part of the pattern is stated, such as mentioning disruption in learning without describing the subsequent decrease from learning to post-learning."
+          },
+          {
+            "point": 20,
+            "criterion": "Preserves the core interpretation that scene-bump alignment / landmark anchoring was most disrupted during the learning epoch due to the symmetric scene",
+            "deduction_rule": "Deduct 20 points if the disruption interpretation is omitted or replaced with an incorrect interpretation. Deduct 8-12 points if the answer mentions only generic changes across epochs without indicating that learning showed the strongest disruption."
+          },
+          {
+            "point": 15,
+            "criterion": "Identifies that the plotted metric is the fraction of time spent in the out-phase range of the scene-bump offset",
+            "deduction_rule": "Deduct 15 points if the metric is not identified and the answer gives only a vague statement about misalignment. Deduct 6-8 points if the answer refers generally to large offsets or misalignment without clearly indicating it is a fraction of time."
+          },
+          {
+            "point": 15,
+            "criterion": "Indicates that the out-phase range corresponds to large scene-bump offsets (for example |scene-bump offset| > 3π/4) or an equivalent description of strongly misaligned states",
+            "deduction_rule": "Deduct 15 points if the out-phase concept is omitted entirely. Deduct 5-8 points if the answer mentions out-of-phase periods or large offsets but does not convey the threshold or strong-misalignment meaning."
+          },
+          {
+            "point": 10,
+            "criterion": "Mentions that the comparisons across epochs were supported by signed-rank tests or that the changes were statistically significant",
+            "deduction_rule": "Deduct 10 points if the statistical significance framework is completely missing. Deduct 3-5 points if significance is mentioned but the signed-rank comparison is not specified."
+          },
+          {
+            "point": 10,
+            "criterion": "Notes that the plot shows individual fish (dots) connected by grey lines for the same fish across epochs",
+            "deduction_rule": "Deduct 10 points only if the answer claims the panel shows population averages without individual data or completely omits the paired structure. No deduction for minor omission if the scientific pattern is preserved."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'fraction of time spent in the out-phase range' as 'proportion of time with large scene-bump mismatch', 'fraction of time with strong misalignment', or 'fraction of large-offset periods' is acceptable if the meaning is preserved",
+          "Paraphrasing 'scene-bump alignment was disrupted' as 'landmark anchoring was weakened', 'misalignment increased', or 'alignment deteriorated' is acceptable",
+          "Referring to the learning epoch as the 'symmetric scene epoch' or 'double-sun epoch' is acceptable if the temporal ordering is preserved",
+          "Omitting the exact |scene-bump offset| > 3π/4 threshold is acceptable for partial credit if the answer clearly conveys time spent in a strongly misaligned state",
+          "Omitting exact P values is acceptable if the answer clearly states that the changes were significant",
+          "Omitting minor visualization details (such as exact dot or line style) is acceptable"
+        ],
+        "Scoring instructions": "Full credit requires capturing the epoch-wise pattern of increase from pre-learning to learning and decrease from learning to post-learning, the interpretation that disruption was strongest during the learning epoch due to the symmetric scene, the identification of the plotted metric (fraction of time in the out-phase range), the out-phase threshold, and the supporting statistical framework. Partial credit should be given when the answer preserves the main trend and interpretation but simplifies the metric definition, threshold, statistical framework, or visualization details. Low scores should be assigned when the answer reduces the panel to a generic visual description (e.g., only mentioning dots and lines), reverses the direction of change across epochs, or fails to preserve the core epoch-dependent disruption pattern."
+      }
+    }
+  }
+}

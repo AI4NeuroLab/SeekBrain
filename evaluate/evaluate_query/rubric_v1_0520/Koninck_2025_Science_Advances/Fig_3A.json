@@ -1,0 +1,53 @@
+{
+  "tag": "Fig_3A",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates the largest portion (40 points) to verifying that the reproduced co-assignment matrix pattern matches the ground truth, with emphasis on within-block probability heterogeneity as evidence of correct multi-resolution consensus clustering implementation (sweeping resolution/gamma parameters). A matrix with near-binary values (uniform 1.0 within blocks, 0.0 between) indicates failure to sweep resolution parameters, producing only trivial random-seed variation rather than meaningful cross-scale consensus. The remaining 60 points assess scientific interpretation: identifying the matrix type, explaining multi-resolution consensus methodology, interpreting modular organization, and recognizing hierarchical structure.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3A shows a hierarchically clustered structural module coassignment probability matrix, indicating that zebrafish brain regions are consistently grouped into structural connectivity modules across multi-resolution modularity partitions, revealing hierarchical modular organization and cross-scale membership stability in the structural connectome.",
+        "Scoring items": [
+          {
+            "point": 40,
+            "criterion": "The reproduced co-assignment matrix pattern matches the ground truth matrix pattern across the following aspects: (a) Block-diagonal structure with correct number of major blocks (4 modules) [8 pts]; (b) Within-module co-assignment probability heterogeneity reflecting multi-resolution consensus clustering — the matrix should show continuous probability gradients within blocks, indicating different region pairs have different cross-scale membership stability (core members consistently co-assigned across all resolution parameters showing values near 1.0, peripheral members split at higher resolutions showing intermediate values around 0.5-0.8), rather than near-binary uniform values within blocks which would indicate failure to sweep resolution parameters and only trivial random-seed variation [18 pts]; (c) Non-zero between-module co-assignment values where the GT shows them, indicating that some cross-module region pairs are occasionally co-assigned at certain resolution scales [7 pts]; (d) Similar relative module sizes matching GT proportions [7 pts]",
+            "deduction_rule": "(a) Deduct 8 points if the matrix does not show 4 clear blocks or shows a qualitatively different block structure (wrong number of blocks, random noise, or no block-diagonal pattern). Deduct 4 points if 4 blocks are present but boundaries are blurry or poorly defined. (b) Deduct 18 points if within-block values are nearly uniform (all close to 1.0, appearing as flat uniform patches) without the heterogeneous probability gradients visible in the GT — this indicates the algorithm used a fixed resolution parameter with only random-seed variation rather than properly implementing multi-resolution consensus clustering with resolution/gamma sweeping, thus failing to reveal cross-scale membership stability differences among region pairs within the same module. Deduct 9-12 points if some heterogeneity is present but notably less varied than the GT. (c) Deduct 7 points if between-module regions are uniformly zero (pure black) when the GT shows non-zero co-assignment values between certain modules, indicating occasional cross-module co-assignment at lower resolution scales where modules merge. Deduct 3-4 points if some between-module values are present but the pattern differs substantially from the GT. (d) Deduct 7 points if relative block sizes are substantially different from the GT (e.g., one block dominates >45% of the matrix when GT shows a more balanced distribution with one large, one medium, one medium-small, and one small module). Deduct 3-4 points for moderate size deviations."
+          },
+          {
+            "point": 18,
+            "criterion": "Identifies the panel as a module coassignment probability matrix derived from structural connectivity or the structural connectome",
+            "deduction_rule": "Deduct 18 points if the answer does not identify the panel as structural module coassignment or community structure. Deduct 9-11 points if the answer mentions modules but does not specify that they are based on structural connectivity. Deduct full points if the panel is confused with functional connectivity or neural activity correlations."
+          },
+          {
+            "point": 17,
+            "criterion": "Explains that matrix values represent co-assignment probability derived from multi-resolution consensus clustering: the iterative Louvain algorithm is run across a range of resolution (gamma) parameters, and the matrix entry reflects how consistently each pair of regions is co-assigned to the same module across different resolution scales, thereby revealing cross-scale membership stability rather than mere stochastic variation at a single resolution",
+            "deduction_rule": "Deduct 17 points if the co-assignment probability meaning is missing entirely. Deduct 12-14 points if the answer only mentions repeated random runs at a fixed resolution without recognizing the multi-resolution (gamma sweep) nature of the consensus — running Louvain many times with only different random seeds at the same resolution parameter is insufficient to produce the observed within-block heterogeneity. Deduct 5-8 points if the answer mentions multiple partitions but does not distinguish between resolution-parameter variation (correct methodology) and mere random-initialization repetition."
+          },
+          {
+            "point": 12,
+            "criterion": "Preserves the conclusion that the structural connectome contains modular or community organization, with groups of regions preferentially clustered together",
+            "deduction_rule": "Deduct 12 points if the modular organization conclusion is omitted. Deduct 5-7 points if the answer vaguely mentions clustering but does not interpret it as structural modules or communities."
+          },
+          {
+            "point": 7,
+            "criterion": "Mentions that hierarchical clustering was applied to the coassignment matrix, revealing modules at different hierarchical levels",
+            "deduction_rule": "Deduct 7 points if the hierarchical aspect is omitted. Deduct 3-4 points if clustering is mentioned but not connected to hierarchical modular structure."
+          },
+          {
+            "point": 6,
+            "criterion": "Notes that four structural modules are shown or selected as an illustrative intermediate partition for visualization",
+            "deduction_rule": "Deduct 6 points if the four-module visualization is omitted. Deduct 3 points if the answer mentions modules but not that the displayed partition corresponds to four modules or an illustrative hierarchical level."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'coassignment probability matrix' as 'consensus matrix', 'community co-clustering matrix', or 'probability that regions belong to the same module' is acceptable",
+          "Paraphrasing 'structural connectivity' as 'anatomical connectivity', 'structural connectome', or 'wiring network' is acceptable if the structural meaning is preserved",
+          "Referring to 'modules' as 'communities', 'clusters', or 'subnetworks' is acceptable if the network-community meaning is preserved",
+          "Describing multi-resolution consensus as 'sweeping gamma', 'varying resolution parameter', 'scanning across resolution scales', or 'multi-scale modularity optimization' is acceptable",
+          "Omitting the exact Ward's linkage method is acceptable if hierarchical clustering is generally conveyed",
+          "Omitting the exact number of iterations or specific gamma range is acceptable if the multi-resolution nature is conveyed",
+          "Omitting color scale, dendrogram details, or matrix layout details is acceptable if the coassignment and modular-structure interpretation is preserved"
+        ],
+        "Scoring instructions": "Assign points based on whether the reproduced result correctly matches the ground truth matrix pattern AND preserves the scientific meaning. The highest-weighted item (40 points) requires comparing the reproduced co-assignment matrix with the GT to verify: (1) the block-diagonal pattern with 4 modules, (2) critically, within-block probability heterogeneity indicating correct multi-resolution consensus implementation — a near-binary matrix with uniform within-block values near 1.0 and between-block values near 0.0 is strong evidence that the resolution parameter was NOT swept and only random initialization was varied, which fails to capture cross-scale membership stability, (3) non-zero between-block values where GT shows them, and (4) correct relative block sizes. The methodology item (17 points) specifically distinguishes between multi-resolution consensus (correct: sweeping gamma/resolution across iterations) and fixed-resolution repetition (incorrect: only varying random seeds at one resolution). Low scores should be assigned when the matrix appears near-binary despite having 4 blocks, or when the methodology is described as simple repeated runs without resolution variation."
+      }
+    }
+  }
+}

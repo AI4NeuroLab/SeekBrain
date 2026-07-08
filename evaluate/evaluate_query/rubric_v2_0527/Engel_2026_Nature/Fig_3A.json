@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_3A",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 3A compares the likelihood of the single-neuron latent dynamical model with the PSTH baseline. The core question is whether the model captures single-trial firing variability that cannot be explained by trial averages. The graph is a box plot of log-likelihood ratios for two macaques and is worth 30 points. The likelihood-ratio definition, PSTH baseline, and normalization are central to the method and are worth 25 points. The scientific interpretation is split into two items: the model significantly outperforms the PSTH baseline in both animals, worth 25 points, and this advantage shows that single-trial firing rates systematically deviate from the trial average and can be explained by latent dynamics, worth 20 points. Point allocation: graph reproduction 30, likelihood-comparison method 25, main conclusion that the model outperforms PSTH 25, meaning of single-trial variability 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3A shows that, in both macaques, the single-neuron latent dynamical model has significantly higher likelihood than the PSTH baseline computed from trial-averaged firing rates grouped by choice direction and stimulus difficulty. The log-likelihood ratio log(L_model/L_PSTH) is significantly greater than zero for both Monkey T and Monkey O, indicating that the model outperforms the trial-averaged firing rate baseline. The core conclusion is that single-trial firing rates deviate systematically from the trial average, and this deviation cannot be attributed only to Poisson point-process noise; instead, it can be captured by differences in single-trial latent decision-variable trajectories.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Correctly analyzes and visualizes the box plot, with log(L_model/L_PSTH) on the x-axis, two boxes corresponding to Monkey T (n=117) and Monkey O (n=67), boxes showing median, Q1-Q3, whiskers, and outliers, significance annotated for both animals, and both distributions lying above zero as in the original figure.",
+            "deduction_rule": "Deduct the full 30 points if the panel is misidentified as a PSTH, multi-curve time series, scatter plot, or neuronal tuning-function plot. Deduct 12 points if the x-axis does not represent log(L_model/L_PSTH). Deduct 10 points if the two macaques are collapsed into one group or one box is missing. Deduct 6 points if significance annotation is missing or directionally wrong. Deduct 15 points if the result is plotted as concentrated below zero."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains how model likelihood is compared with PSTH likelihood: the PSTH baseline predicts lambda(t) using trial-averaged firing rates grouped by choice direction and stimulus difficulty, the PSTH likelihood is computed as an inhomogeneous Poisson process, L_model is the normalized spike-time likelihood, the normalization is used for fair comparison with PSTH, and the comparison is performed on the same cross-validation splits.",
+            "deduction_rule": "Deduct 10 points if the likelihood ratio is not described as comparing the model with the PSTH baseline. Deduct 8 points if the PSTH baseline is described as one global average curve rather than a condition-grouped trial average. Deduct 8 points if the normalization or fair-comparison logic is not described. Deduct 15 points if L_model/L_PSTH is misinterpreted as a firing-rate ratio or accuracy ratio."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly states the main conclusion that the log-likelihood ratio distributions for both macaques are significantly greater than zero, demonstrating that the single-neuron latent dynamical model significantly outperforms the PSTH baseline in both animals and that this model advantage is reliable at the population level.",
+            "deduction_rule": "Deduct 20 points if the model is claimed not to outperform PSTH or if the likelihood ratio is said to be non-significant. Deduct 8 points if only one macaque is described and the other is omitted. Deduct 10 points if only p-values or box positions are reported without explaining that the model outperforms PSTH. Deduct 8 points if significance is interpreted as a behavioral-performance difference."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the scientific meaning of the result: the model's advantage over PSTH shows that single-trial firing rates systematically deviate from their trial averages, and this variability reflects different random trajectories of the latent decision variable x(t) across trials rather than simple Poisson measurement noise.",
+            "deduction_rule": "Deduct 10 points if the model advantage is interpreted as only improving average PSTH fitting without addressing single-trial variability. Deduct 12 points if single-trial deviation is attributed entirely to random noise. Deduct 8 points if the latent decision-variable trajectory is not mentioned. Deduct 5 points if the response overstates this panel as proving every mechanism of the model on its own."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe log(L_model/L_PSTH) as the log-likelihood ratio or model improvement over the PSTH baseline.",
+          "It is acceptable to describe the PSTH baseline as the trial-averaged firing-rate baseline.",
+          "The exact medians and quartiles need not be reported, as long as the direction, order of magnitude, and significance are correct.",
+          "It is acceptable to describe the Wilcoxon signed-rank test as a paired non-parametric test.",
+          "It is acceptable to describe L_model normalization as removing reaction-time likelihood effects or spike-only likelihood normalization.",
+          "The sample sizes for Monkey T and Monkey O may be approximate, but they should not be reversed or off by an order of magnitude.",
+          "It is acceptable to describe single-trial variability as trial-by-trial latent trajectory variability."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the two-macaque log-likelihood-ratio box plot, explaining the comparison and normalization of L_model and L_PSTH, accurately stating that the likelihood ratio is significantly greater than zero, and explaining that this supports a single-trial latent dynamical model capturing systematic variability not explained by PSTH. Partial scores (40-84) should be assigned when the box plot and model-advantage direction are correct but the likelihood definition, normalization, or single-trial variability meaning is incomplete. Low scores (0-39) should be assigned when the panel is confused with a PSTH or behavioral-result plot, when the likelihood ratio is interpreted as a firing-rate ratio, or when the opposite conclusion that the model does not outperform PSTH is drawn."
+      }
+    }
+  }
+}

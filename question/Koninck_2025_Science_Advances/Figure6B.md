@@ -1,0 +1,1 @@
+To characterize the similarities of structural connectivity (SC) and functional connectivity (FC) gradients, I need to find the first several SC gradients, whose eigenvalues (i.e., their relative importance) quickly decayed. Use PROCESS_DATA_DIR/Figure6_SC_eigenvalues.npy for visualization.

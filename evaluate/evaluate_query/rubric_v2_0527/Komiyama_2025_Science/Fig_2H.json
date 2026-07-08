@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_2H",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 2H uses an SVM to decode odor-mixture identity from single-trial population activity of OB cholinergic axon segments. The core is to correctly interpret the negative result that per-session decoding accuracy is near chance. The graph is a per-session scatter plot and is worth 30 points. SVM inputs, cross-validation, repeated iterations, and the per-session p-value definition are key methodological details and are worth 25 points. The scientific interpretation is split into two items: overall decoding accuracy remains near chance and does not support systematic odor-identity encoding, worth 25 points; and the negative result supports the idea that cholinergic axons carry a general task-engagement signal rather than odor-specific information, worth 20 points. Point allocation: graph reproduction 30, SVM method 25, negative decoding conclusion 25, biological meaning 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2H shows that when odor identity is decoded from single-trial population activity vectors of OB cholinergic axon segments using an SVM, the decoding accuracy is near the 25% chance level in the vast majority of 55 imaging sessions, with only 2 sessions significantly above chance. The core conclusion is that OB cholinergic axons do not systematically encode odor-mixture identity during the odor period. Their odor-period activity is more consistent with a general task-engagement, attention, or gain-modulation signal than with an odor-specific feature signal.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Correctly analyzes and visualizes the per-session decoding-accuracy scatter plot, with each point representing the average decoding accuracy for one imaging session, the y-axis spanning approximately 0.2-0.45, a horizontal chance-level reference line at 0.25, only 2 significant sessions marked with stars, and the overall pattern matching the original figure in which most points lie near chance.",
+            "deduction_rule": "Deduct the full 30 points if the panel is misidentified as a learning curve, PSTH, pie chart, heatmap, or single-cell response-amplitude plot. Deduct 12 points if the per-session scatter structure is missing. Deduct 8 points if the 0.25 chance line is missing. Deduct 8 points if the number of significant sessions is not 2 or star labels are incorrect. Deduct 15 points if the overall trend is plotted as most sessions far above chance."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the SVM decoding method: the input is a single-trial population activity vector consisting of the mean Delta F/F0 of each axon segment during the 0-4 s odor-presentation period, not an average across segments; the classification task has 4 odor-mixture classes with 25% chance level, uses 5-fold cross-validation, repeats 300 iterations per session, and defines the per-session p-value from the proportion of iterations with decoding accuracy below chance.",
+            "deduction_rule": "Deduct 10 points if the input is described as the average response of one axon rather than a population vector. Deduct 8 points if 4-class classification or chance = 25% is wrong. Deduct 6 points if 5-fold cross-validation or 300 iterations are not mentioned. Deduct 6 points if the per-session p-value definition is not described. Deduct 18 points if the SVM method is not described at all."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the negative decoding conclusion, stating that only 2 of 55 sessions are significantly above chance and that OB cholinergic axons overall do not systematically encode odor identity; the 2 significant sessions should not be misread as evidence for reliable odor-identity coding by cholinergic axons.",
+            "deduction_rule": "Deduct 20 points if most sessions are claimed to be significantly above chance. Deduct 10 points if the response does not state that only 2 of 55 sessions are significant. Deduct 8 points if the negative conclusion is interpreted as absence of any axon activity or absence of task-related activity. Deduct 10 points if accuracies are reported without explaining that odor identity is not systematically encoded."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the biological meaning of the negative result: odor-period activity in cholinergic axons more likely carries a general engagement or task-engagement signal rather than odor-specific identity information; together with other results showing odor responses varying with task engagement, this supports a gain-modulation role for cholinergic input.",
+            "deduction_rule": "Deduct 10 points if the biological meaning of the negative result is not explained. Deduct 12 points if cholinergic axon function is described as encoding specific odor features. Deduct 8 points if general engagement or gain modulation is not mentioned. Deduct 8 points if the response overstates the result as showing that cholinergic axons are completely irrelevant to the olfactory task."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe OB cholinergic axons as olfactory bulb cholinergic axons or cholinergic feedback axons.",
+          "It is acceptable to describe odor identity as odor-mixture ratio or odor class.",
+          "It is acceptable to describe SVM decoding as RBF-kernel SVM or support vector machine classification.",
+          "It is acceptable to describe chance level as the 25% random level for four-way classification.",
+          "The p-values of significant sessions may be approximately described as about 0.019 and 0.03.",
+          "It is acceptable to describe general engagement as task engagement, attention, or a general modulatory signal.",
+          "It is acceptable to describe gain modulation as modulation of olfactory-bulb processing strength rather than specific feature encoding."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the per-session decoding-accuracy scatter plot, explaining the SVM input, cross-validation, and p-value definition, accurately stating that most sessions are at chance with only 2/55 significant, and explaining that this negative result supports a general task-engagement or gain-modulation signal rather than odor-identity information. Partial scores (40-84) should be assigned when the graph and negative direction are broadly correct but SVM methods or biological meaning are incomplete. Low scores (0-39) should be assigned when the panel is confused with a response-amplitude plot, the 2 significant sessions are misread as reliable odor coding, or the chance-level negative result is ignored."
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_5E",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5E uses a Bayesian linear scatter plot for angular data to show how cue conflict predicts offset change in 18 flies. It is key quantitative evidence that familiar cues dominate remapping and help establish a self-consistent representation. The core scoring points are correct reproduction of the scatter plot, the two-color cue-familiarity structure, and the Bayesian fit line; correct explanation of the operational definitions of the x-axis cue conflict and y-axis offset change and the fact that each fly contributes two cue-specific data points; accurate preservation of the scientific conclusion that conflict linearly predicts offset change, that the less familiar cue undergoes larger remapping, and that the more familiar cue remains relatively stable; and explanation of the Hebbian-plasticity mechanism and interpretive boundary. Point allocation: graph reproduction 30, axis definitions and data structure 25, core linear-relationship conclusion 25, Hebbian mechanism and biological meaning 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5E shows that, across 18 flies, each cue's offset change, defined as final single-cue offset minus initial single-cue offset, is linearly predicted by its conflict during the dual-cue period, defined as both-cue offset minus initial single-cue offset. The less familiar cue 1 usually has large conflict and large offset change, whereas the more familiar cue 2 usually has small conflict and small offset change. This indicates that the familiar cue dominates the HD-system reference frame during the dual-cue period and drives the less familiar cue to remap toward it. The result supports a mechanistic framework in which Hebbian plasticity builds a self-consistent spatial representation, but as a behavioral and model-fitting relationship it does not by itself prove the specific synaptic plasticity mechanism.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Correctly analyzes and visualizes the Bayesian linear scatter plot in Fig. 5E: the x-axis is cue conflict, defined as both minus initial offset; the y-axis is offset change, defined as final minus initial offset; both axes are angular variables spanning approximately -180 degrees to +180 degrees; each of 18 flies contributes two points, one for cue 1 and one for cue 2, for 36 points total; point color distinguishes the less familiar and more familiar cues; and a Bayesian linear fit is overlaid.",
+            "deduction_rule": "Deduct the full 30 points if the plot is misidentified as a time series, condition-mean comparison, or single-cue scatter plot. Deduct 15 points if the x- and y-axes are swapped without explaining an equivalent interpretation. Deduct 10 points if only 18 points are shown instead of 36 points with two cues per fly. Deduct 10 points if cue familiarity is not distinguished by color. Deduct 8 points if the Bayesian linear fit line is missing."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the operational definitions of the x-axis and y-axis and the data structure: cue conflict is the change in bump offset during the dual-cue period relative to the initial single-cue offset, not the physical angular separation between the two cues; offset change is the change in the final single-cue test offset relative to the initial single-cue offset; each fly contributes two data points, one for cue 1 and one for cue 2; and the fit uses a Bayesian linear model with von Mises noise suitable for angular data.",
+            "deduction_rule": "Deduct 20 points if conflict is defined as the physical position difference between the two cues rather than the both-minus-initial offset. Deduct 15 points if offset change is defined incorrectly, for example as both minus final or initial minus final. Deduct 8 points if the two-points-per-fly data organization is omitted. Deduct 8 points if von Mises noise is described as ordinary Gaussian noise without accounting for angular data."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly states the core linear-relationship conclusion: cue conflict linearly predicts offset change, with a slope close to 1, indicating that conflict is converted nearly one-for-one into later offset remapping. The less familiar cue 1 shows large conflict and large offset change, whereas the more familiar cue 2 shows small conflict and small offset change, indicating that the familiar cue dominates the HD-system reference frame during the dual-cue period.",
+            "deduction_rule": "Deduct 20 points if the directions of the two cues are reversed, for example if the familiar cue is claimed to undergo large remapping while the unfamiliar cue remains unchanged. Deduct 15 points if the relationship is described as nonlinear, absent, or not predictive. Deduct 10 points if only the global linear trend is described and the familiarity difference between cue 1 and cue 2 is completely omitted. Deduct 5 points if the sample size is incorrectly reported as n = 15 rather than n = 18."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the Hebbian-plasticity mechanism and biological meaning: the familiar cue has stronger pre-existing ER-to-EPG weights and dominates bump position during the dual-cue period, whereas the less familiar cue's weights are updated or remapped according to the current bump position, ultimately allowing the two cues to form a self-consistent spatial representation. The interpretation also states that Fig. 5E provides behavioral and model-fitting evidence and does not by itself prove the specific synaptic plasticity mechanism.",
+            "deduction_rule": "Deduct 15 points if Hebbian learning or ER-to-EPG weight updating is completely omitted. Deduct 8 points if the response only says that the familiar cue has higher weight without explaining how this drives remapping of the less familiar cue. Deduct 8 points if Fig. 5E is overclaimed as directly proving the neural mechanism of synaptic plasticity."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe offset as the difference between bump position and head direction.",
+          "It is acceptable to describe von Mises noise as a circular noise model or noise model suitable for angular data.",
+          "Specific Stan HMC sampling parameters may be omitted as long as Bayesian linear regression and angular-data modeling are stated.",
+          "It is acceptable to describe a slope close to 1 as conflict being mapped nearly one-for-one into offset change.",
+          "It is acceptable to describe the familiarity of cue 1 and cue 2 as more recently learned versus earlier learned, as long as the direction is consistent.",
+          "The number of points may be approximated as about 36, but the two cue-specific data points per fly cannot be omitted."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly defining cue conflict and offset change, reproducing the two-color 36-point scatter plot and Bayesian linear fit, accurately extracting the conclusion that conflict linearly predicts offset change, that the less familiar cue undergoes larger remapping, and that the familiar cue remains relatively stable and dominant, and linking the result to Hebbian plasticity and self-consistent representation formation while preserving the boundary between behavioral fitting and synaptic causality. Partial scores (40-84) should be assigned when the main direction and scatter-plot structure are broadly correct but the axis definitions, data organization, von Mises model, cue-familiarity direction, or Hebbian mechanism is incomplete. Low scores (0-39) should be assigned when conflict is defined as the physical position difference between the two cues, cue 1 and cue 2 familiarity directions are reversed, the two-points-per-fly structure is omitted, or the panel is misidentified as a time series."
+      }
+    }
+  }
+}

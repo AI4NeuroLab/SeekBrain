@@ -1,0 +1,55 @@
+{
+  "tag": "Fig_2A",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric is designed around the objective and statistical information provided in Fig_2A.json. The central purpose of Fig. 2A is to show that the Bayes-optimal prior probability of stimulus location can be decoded from neural population activity recorded in the ventrolateral orbitofrontal cortex (ORBvl) during the inter-trial interval (ITI). The scoring emphasizes the decoded brain region (ORBvl), the decoded variable (Bayes-optimal prior), the ITI decoding window, the use of neural population decoding methods such as linear regression, cross-validation and pseudosession-based significance testing, the across-trial agreement between the decoded prior, Bayes-optimal prior and true block prior, and the key quantitative results: 160 neurons, uncorrected R² = 0.35, corrected R² = 0.28, P = 0.001 and Pearson r = 0.66. Because the block-switch reversal-curve steps in the analyse_plan are not appropriate for Fig. 2A, they should not be treated as core scoring requirements.",
+      "rubric": {
+        "GT core conclusion": "During the inter-trial interval (-600 ms to -100 ms before stimulus onset), neural population activity in the ventrolateral orbitofrontal cortex (ORBvl) approximately encodes/decodes the Bayes-optimal prior probability of stimulus location. In an example session with about 160 neurons, the decoded prior tracks the Bayes-optimal prior across trials and is consistent with changes in the true block prior. Decoding performance reached uncorrected R² = 0.35 and corrected R² = 0.28, with statistical significance (P = 0.001), and the decoded prior was positively correlated with the Bayes-optimal prior (Pearson r = 0.66).",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "Clearly states that the neural activity was recorded from neural populations in the ventrolateral orbitofrontal cortex / ORBvl",
+            "deduction_rule": "Deduct 20 points if the brain region is not mentioned or is incorrectly identified. Deduct 8-12 points if the answer only refers generically to cortex, frontal cortex or orbitofrontal cortex without specifying ORBvl."
+          },
+          {
+            "point": 30,
+            "criterion": "Clearly states that the decoded variable is the Bayes-optimal prior probability of stimulus location / Bayes-optimal prior probability",
+            "deduction_rule": "Deduct 30 points if the answer incorrectly describes the decoded variable as the true block prior itself or another variable. Deduct 10-12 points if the answer only mentions a generic 'prior' without preserving the Bayes-optimal prior as the decoded target."
+          },
+          {
+            "point": 15,
+            "criterion": "States that decoding was performed during the inter-trial interval (ITI), approximately from -600 ms to -100 ms before stimulus onset",
+            "deduction_rule": "Deduct 15 points if the decoding time window is not mentioned. Deduct 15 points if the answer incorrectly places the decoding in the post-stimulus or response period. Deduct 5-8 points if the answer only says 'before stimulus onset' without specifying the ITI or approximate timing."
+          },
+          {
+            "point": 15,
+            "criterion": "Describes the neural population decoding approach, such as a linear regression decoder, cross-validation, and significance assessment using a pseudosession null distribution",
+            "deduction_rule": "Deduct 15 points if no methodological description is provided. Deduct 6-10 points if the answer only says 'decoding' but omits cross-validation or pseudosession-based significance testing. Deduct 8-15 points if the method is incorrectly described as stimulus-side classification or behavioural regression."
+          },
+          {
+            "point": 10,
+            "criterion": "States that the decoded prior tracks the Bayes-optimal prior across trials and is consistent with the true block prior / block-structure changes",
+            "deduction_rule": "Deduct 10 points if the answer does not describe the tracking relationship between the decoded prior and the Bayes-optimal prior. Deduct 5 points if it omits the true block prior or block-structure reference. Deduct 15 points if it incorrectly claims that the decoded prior is unrelated to or fails to track the prior."
+          },
+          {
+            "point": 10,
+            "criterion": "Reports the key quantitative results: about 160 neurons, uncorrected R² = 0.35, corrected R² = 0.28, P = 0.001 and Pearson r = 0.66; at minimum, the corrected R², P value and positive correlation should be preserved",
+            "deduction_rule": "Deduct 15 points if no quantitative result is reported, even though this item is worth 10 points, by capping the total score accordingly if the answer lacks all quantitative support. Deduct 5-10 points if only partial values are provided, such as only R² or only the P value. Deduct 1-3 points for minor numerical approximations that preserve the correct scale and conclusion. Deduct 10-15 points if key values are grossly incorrect or the direction of the result is wrong, such as claiming non-significance or a negative correlation."
+          }
+        ],
+        "Acceptable deviations": [
+          "'Ventrolateral orbitofrontal cortex', 'ventrolateral OFC' and 'ORBvl' may be used interchangeably",
+          "'Bayes-optimal prior', 'Bayesian optimal prior', 'optimal prior probability' and closely related phrasings are acceptable",
+          "The ITI may be described as the 'inter-trial interval', 'between trials' or the 'pre-stimulus time window', as long as it is not incorrectly described as post-stimulus activity",
+          "The time window may be reported approximately, such as 'about 600 to 100 ms before stimulus onset'",
+          "R² values may be approximated, for example corrected R² of about 0.28 and uncorrected R² of about 0.35",
+          "P = 0.001 may be described as statistically significant or approximately 0.001",
+          "r = 0.66 may be described as a strong positive correlation between the decoded prior and the Bayes-optimal prior",
+          "Plotting details such as line colours, line styles and axis formatting may be omitted",
+          "Answers are not required to reproduce the reversal-curve, block-switch alignment or exponential recovery analyses from the analyse_plan, because those steps are not appropriate for Fig. 2A"
+        ],
+        "Scoring instructions": "Score answers according to whether they preserve the neural decoding conclusion of Fig. 2A rather than merely describing visual features of the panel. Full credit requires mention of ORBvl, the Bayes-optimal prior as the decoded target, the ITI time window, neural population decoding with linear regression/cross-validation/pseudosession significance testing, tracking of the Bayes-optimal prior and true block prior across trials, and the key quantitative results. Give medium-to-high scores when the core conclusion is correct but some statistical values or methodological details are missing. Give low scores if the answer only states that 'neural activity is related to prior information' without specifying the brain region, decoded variable or time window. Substantially penalize answers that misinterpret the panel as a block-switch reversal curve, stimulus decoding, choice decoding or motor-variable decoding."
+      }
+    }
+  }
+}

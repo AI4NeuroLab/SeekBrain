@@ -1,0 +1,47 @@
+{
+  "tag": "Fig_5C",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric focuses on the direct evidence shown in Fig. 5C: pie charts compare the fractions of odor-excited, odor-suppressed, and non-responsive olfactory bulb granule cell-odor pairs under task engagement and passive odor exposure. The primary conclusion supported by this panel alone is that the proportions of response categories are broadly similar between task and passive conditions, indicating that task engagement does not substantially change the fraction of odor-responsive granule cell-odor pairs. A limited amount of credit is reserved for connecting this result to the broader interpretation that, together with Fig. 5D, task engagement is more consistent with modulation of response amplitude than large-scale recruitment of additional responders.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5C shows that the fractions of odor-excited, odor-suppressed, and non-responsive olfactory bulb granule cell-odor pairs are broadly similar between task and passive conditions: task, 26.1% excited, 20.2% suppressed, and 53.7% non-responsive; passive, 24.3% excited, 16.5% suppressed, and 59.2% non-responsive. This indicates that task engagement does not substantially change the proportion of odor-responsive granule cell-odor pairs.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "States that Fig. 5C compares the fractions of odor-excited, odor-suppressed, and non-responsive granule cell-odor pairs between task and passive conditions",
+            "deduction_rule": "Deduct 30 points if the answer does not identify that the panel compares response-category fractions between task and passive conditions. Deduct 15-20 points if task versus passive comparison is mentioned but the response categories are incomplete or vague. Deduct 10 points if the answer mentions odor-responsive granule cells but not that the unit of analysis is cell-odor pairs."
+          },
+          {
+            "point": 20,
+            "criterion": "Reports or accurately summarizes the task-condition fractions: approximately 26.1% odor-excited, 20.2% odor-suppressed, and 53.7% non-responsive",
+            "deduction_rule": "Deduct 20 points if the task-condition distribution is omitted. Deduct 8-12 points if only one or two categories are reported. Deduct 3-5 points for minor numerical rounding errors that preserve the pattern."
+          },
+          {
+            "point": 20,
+            "criterion": "Reports or accurately summarizes the passive-condition fractions: approximately 24.3% odor-excited, 16.5% odor-suppressed, and 59.2% non-responsive",
+            "deduction_rule": "Deduct 20 points if the passive-condition distribution is omitted. Deduct 8-12 points if only one or two categories are reported. Deduct 3-5 points for minor numerical rounding errors that preserve the pattern."
+          },
+          {
+            "point": 20,
+            "criterion": "Concludes that the response-category proportions are broadly similar between task and passive conditions",
+            "deduction_rule": "Deduct 20 points if the answer omits the similarity conclusion or incorrectly claims that task engagement greatly increases the fraction of odor-responsive pairs. Deduct 8-10 points if the answer implies similarity but does not state it clearly."
+          },
+          {
+            "point": 10,
+            "criterion": "Interprets the result as indicating that task engagement does not substantially change the proportion of odor-responsive granule cell-odor pairs; optionally connects this to the broader interpretation that response amplitude, rather than responder recruitment, is modulated when considered together with Fig. 5D",
+            "deduction_rule": "Deduct 10 points if the answer does not explain the implication of the similar fractions. Do not require a detailed amplitude-modulation interpretation for full credit on Fig. 5C alone; if mentioned, it should be phrased as a broader interpretation supported by Fig. 5C together with Fig. 5D."
+          }
+        ],
+        "Acceptable deviations": [
+          "Approximate percentages such as '~26%', '~20%', '~54%', '~24%', '~17%', and '~59%' are acceptable",
+          "Describing 'non-responsive' as 'unresponsive' or 'not significantly odor-responsive' is acceptable if the meaning is preserved",
+          "Describing 'odor-excited' and 'odor-suppressed' as 'activated by odor' and 'inhibited by odor' is acceptable",
+          "Omitting the exact pie chart format is acceptable",
+          "The answer does not need to mention response amplitude or gain modulation to receive high credit for Fig. 5C, as long as the similarity of response-category fractions is clearly stated",
+          "If amplitude modulation is mentioned, it should not be claimed as directly demonstrated by Fig. 5C alone; it is acceptable only as a broader interpretation when combined with Fig. 5D"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer captures the direct content and conclusion of Fig. 5C. Full credit requires identifying the task-versus-passive comparison, the three response categories, the approximate distributions in both conditions, and the conclusion that the proportions are broadly similar. Partial credit should be given when the answer correctly states that proportions are similar but omits some numerical details. Low scores should be assigned when the answer incorrectly claims a large task-dependent recruitment of odor-responsive granule cell-odor pairs, confuses the panel with response-amplitude data from Fig. 5D, or does not recognize that the figure concerns fractions of response categories."
+      }
+    }
+  }
+}

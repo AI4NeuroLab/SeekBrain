@@ -1,0 +1,69 @@
+{
+  "parent_name": "whole-brain_co-mapping_of_gene_expression_and_neuronal_activity_at_cellular_resolution_in_behaving_zebrafish",
+  "image_ids": [
+    "Fig_5A"
+  ],
+  "query": "From whole-brain calcium imaging ΔF/F traces of three fish, select neurons responsive to visual stimuli and generate a normalized activity heatmap across the full stimulus sequence (8 distinct visual stimuli presented sequentially). Sort neurons by response similarity. Annotate each neuron with its molecular subtype, brain region, and swim correlation coefficient as side vectors. Overlay the simultaneously recorded fictive swimming behavior trace and stimulus timing below the heatmap.",
+  "analyse_plan": {
+    "Objective": "Characterize the global, stimulus-specific response patterns of neurons across the entire brain to 8 controlled visual stimuli (forward/backward motion, bright/dark flashes, left/right looming), sort neurons by functional response similarity to reveal coherent response groups, and link neuronal dynamics to fictive swimming behavior.",
+    "Validation Checks": "Verify that the 8 visual stimulus types and timings are exactly aligned to the calcium imaging time axis. Confirm that ΔF/F traces are baseline-corrected and normalized uniformly across all neurons. Validate that neuron sorting is based purely on visual-evoked response similarity (not anatomy or gene expression). Ensure the fictive swimming trace is synchronized to the same temporal axis as neuronal activity.",
+    "Steps": "1. Load Data: Import whole-brain calcium ΔF/F traces, 8-visual-stimulus sequence timing, and fictive swimming behavior records from three fish.\n2. Activity Averaging: For each neuron, compute the average stimulus-evoked response across repeated stimulus presentations.\n3. Neuron Sorting: Sort all neurons hierarchically by similarity of their visual stimulus response profiles.\n4. Normalization: Normalize each neuron’s response to the range [0,1] for heatmap visualization.\n5. Visualization: Plot the sorted normalized activity heatmap (neurons × time) and overlay the corresponding fictive swimming behavior trace.\n6. Annotation: Label the 8 distinct visual stimulus periods above the heatmap for clarity.\n7. Save Results: Export the sorted, normalized activity matrix, stimulus timing metadata, and the generated heatmap plot for archival and further analysis."
+  },
+  "analysis_keywords": [
+    "visual stimulus response",
+    "whole-brain activity heatmap",
+    "neuronal response sorting",
+    "fictive swimming behavior"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Neuronal calcium activity (ΔF/F)",
+      "unit": "dimensionless",
+      "variable_type": "matrix",
+      "number": "0-0.4"
+    },
+    {
+      "variable_name": "Visual stimulus types",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "8"
+    },
+    {
+      "variable_name": "molecular subtypes",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "183"
+    },
+    {
+      "variable_name": "Swimming correlation",
+      "unit": "dimensionless",
+      "variable_type": "vector",
+      "number": "-0.4-0.4"
+    },
+    {
+      "variable_name": "Total neurons analyzed",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "~110,000 (pooled from 3 fish)"
+    },
+    {
+      "variable_name": "Visualization time window",
+      "unit": "seconds",
+      "variable_type": "vector",
+      "number": "0–140 s"
+    }
+  ],
+  "key_analysis_results": [
+    "Whole-brain neurons exhibit highly distinct, stimulus-specific activity patterns across 8 visual stimuli; neurons with similar response profiles form contiguous groups after similarity-based sorting; strong neuronal activation coincides with forward visual motion, which is tightly coupled to elevated fictive swimming behavior."
+  ],
+  "key_analysis_conclusions": [
+    "The brain encodes different visual stimuli with distinct, orderly neuronal population activity patterns; visual motion stimuli (especially forward motion) drive the strongest coincident activation of neurons and swimming behavior, establishing the functional context for analyzing molecular subtype-specific visual responses."
+  ],
+  "summary_report": {
+    "abstract": "Fig_5A presents a whole-brain neuronal activity heatmap sorted by response similarity to 8 visual stimuli, with normalized ΔF/F responses and overlaid fictive swimming behavior. It reveals distinct stimulus-specific population codes and tight coupling between forward visual motion and swimming, providing the global functional landscape for subsequent molecular subtype analyses.",
+    "methods": "Data for Fig_5A were obtained from whole-brain light-sheet calcium imaging (elavl3:H2B-GCaMP7f) in 6 dpf zebrafish larvae during 8 controlled visual stimuli: forward motion, backward motion, bright flash, dark flash, left loom, right loom, etc. ΔF/F traces were computed with a rolling baseline (10th percentile, 120 time steps). Average stimulus-evoked responses were calculated for each neuron across trials. Neurons were sorted by hierarchical clustering based on Pearson correlation of their visual response profiles. Responses were normalized to [0,1] for heatmap display. A simultaneous fictive swimming trace from ventral root electrophysiology was overlaid on the same time axis, and stimulus epochs were labeled above the heatmap.",
+    "results": "The normalized activity heatmap shows clear, discrete response blocks corresponding to each of the 8 visual stimuli. Neurons sort into contiguous functional groups with highly similar stimulus preferences. Forward visual motion elicits the strongest and most widespread neuronal activation, which directly overlaps with high-amplitude fictive swimming events. Other stimuli (e.g., flashes, looming) evoke smaller, more spatially restricted response patterns. No major artifacts or misalignment between activity and behavior are observed.",
+    "discussion": "Fig_5A establishes the global functional reference frame for all subsequent visual stimulus analyses in the paper. By sorting neurons purely by response similarity, it reveals that visual information is encoded by orderly, stimulus-specific neuronal populations rather than scattered activity. The strong coupling between forward motion responses and swimming confirms the optomotor function of this circuit, consistent with larval zebrafish behavior. This global response landscape validates that the recorded activity is behaviorally relevant and provides the necessary context to interpret how individual molecular subtypes contribute to visual processing and motor output."
+  },
+  "question": "﻿To reveal the brain-wide neuronal response landscape to a panel of 8 distinct visual stimuli. Based on whole-brain calcium imaging ΔF/F traces from three fish, compute the average neuronal activity aligned to 8 visual stimulus time courses, sort neurons by response similarity, generate a normalized activity heatmap, and overlay the simultaneously recorded fictive swimming behavior trace."
+}

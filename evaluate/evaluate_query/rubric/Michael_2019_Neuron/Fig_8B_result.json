@@ -1,0 +1,61 @@
+{
+  "tag": "Fig_8B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates most of the score to the core quantitative and conceptual result: in the larval zebrafish brain divided into 72 regions, the normalized inter-regional connection strength decays exponentially as a function of the spatial distance between regions (R = -0.39, p < 2.2e-16). This result leads directly to the main scientific conclusion that the brain exhibits an economic network organization that minimizes wiring lengths. Methodological setup (region count and variables), statistical findings, and the biological interpretation form the basis of the evaluation.",
+      "rubric": {
+        "GT core conclusion": "In the larval zebrafish brain divided into 72 brain regions (36 bilateral regions), the normalized connection strength between region pairs decays exponentially as a function of the Euclidean distance between their centers of mass (R = -0.39, p < 2.2e-16), a negative correlation that is consistent with an economic network organization which minimizes wiring lengths.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "States that the brain was divided into 72 regions (or 36 bilateral non-overlapping regions)",
+            "deduction_rule": "Deduct 20 points if the 72-region (or 36 bilateral) parcellation is missing. Deduct 10 points if region subdivision is mentioned but the numbers are substantially incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Indicates that normalized connection strength was plotted or analyzed against the spatial distance (Euclidean distance between centers of mass) between region pairs",
+            "deduction_rule": "Deduct 25 points if the core variables being compared (connection strength vs. distance) are missing. Deduct 10-15 points if they are mentioned but the normalization of connection strength or distance metric is grossly mischaracterized."
+          },
+          {
+            "point": 30,
+            "criterion": "Reports the core statistical result that connection strength decays exponentially or shows a significant negative correlation with distance (R = -0.39, p < 2.2e-16)",
+            "deduction_rule": "Deduct 30 points if the negative correlation or exponential decay is missing or reversed. Deduct 10-15 points if the relationship is described but the quantitative correlation coefficient (R = -0.39) is omitted or highly inaccurate."
+          },
+          {
+            "point": 25,
+            "criterion": "Concludes that this relationship is consistent with an economic network organization that minimizes wiring lengths or costs",
+            "deduction_rule": "Deduct 25 points if the biological conclusion regarding economic network organization or minimizing wiring lengths is completely missing. Deduct 10-15 points for a vague conclusion that misses the specific concept of minimizing wiring/cost."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'decays exponentially' as 'shows a negative correlation', 'decreases with distance', or similar wording is acceptable as long as the inverse relationship is clearly stated",
+          "Omitting the exact p-value (p < 2.2e-16) or using 'highly significant' is acceptable if the correlation coefficient (R = -0.39) is preserved",
+          "Simplifying 'Euclidean distance between centers of mass' to 'inter-regional distance' or 'anatomical distance' is acceptable",
+          "Omitting 'covering ~82% of the brain volume' or 'at 6 dpf' is acceptable if the 72-region context is preserved",
+          "Paraphrasing 'economic network organization' as 'minimizing wiring costs', 'wiring economy', or 'preference for short-range connections' is acceptable if the biological interpretation is preserved"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer preserves the main quantitative and conceptual result of the scatter plot analysis. Full credit requires capturing the 72-region parcellation, the comparison of normalized connection strength vs. distance, the statistical negative correlation (R = -0.39), and the biological conclusion regarding economic network organization/wiring minimization. Partial credit should be given if the answer captures the general negative trend but omits the specific R value, the regional count, or the exact biological interpretation. Low scores should be assigned if the core relationship between distance and connection strength is missed or reversed."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the essential scientific meaning of the analysis: the normalized connection strength across 72 brain regions negatively correlates with inter-regional distance (R = -0.39), supporting the concept of an economic network organization that minimizes wiring lengths. These elements define the main scientific contribution of the figure, connecting quantitative anatomical data to a fundamental principle of brain network organization.",
+      "rubric": {
+        "GT core conclusion": "In the larval zebrafish brain divided into 72 brain regions (36 bilateral regions), the normalized connection strength between region pairs decays exponentially as a function of the Euclidean distance between their centers of mass (R = -0.39, p < 2.2e-16), a negative correlation that is consistent with an economic network organization which minimizes wiring lengths.",
+        "Required points": [
+          "The brain was divided into 72 regions (or 36 bilateral regions)",
+          "Normalized connection strength was analyzed against inter-regional distance",
+          "There is a negative correlation / exponential decay between connection strength and distance (R = -0.39)",
+          "This relationship reflects an economic network organization that minimizes wiring lengths/costs"
+        ],
+        "Acceptable deviations": [
+          "Simplifying 'Euclidean distance between centers of mass' to 'inter-regional distance' is acceptable",
+          "Omitting the exact p-value is acceptable if the correlation coefficient (R = -0.39) or the strong significance is preserved",
+          "Paraphrasing 'economic network organization' as 'minimizing wiring costs' or 'efficiency in wiring' is acceptable",
+          "Omitting minor details like '~82% of brain volume' is acceptable"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning that, across 72 brain regions, normalized connection strength decays with spatial distance (R = -0.39), leading to the conclusion that the brain exhibits an economic network organization minimizing wiring lengths.",
+        "Criteria for 0": "Assign 0 if the answer omits the 72-region setup, fails to state the negative correlation/exponential decay between connection strength and distance, omits the biological conclusion about minimizing wiring lengths, or fundamentally misinterprets the scatter plot."
+      }
+    }
+  }
+}

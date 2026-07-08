@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_3B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric gives the largest weight to the core scientific conclusion of Fig. 3B: feeding-related encoding is organized as a structured, continuous gradient within the global UMAP encoding space, rather than as sharply separated discrete clusters. Correctly identifying the plotted behavioral feature as feeding tuning is also heavily weighted, because confusing this panel with another behavioral feature would change the scientific interpretation. Methodological context, such as CePNEM or multi-animal population embedding, receives a smaller but still meaningful score.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3B shows a UMAP embedding of neurons in a global CePNEM-derived behavioral encoding space, colored by feeding tuning direction. Feeding-activated and feeding-inhibited neurons occupy structured regions of the embedding, with feeding-related encoding varying continuously along the space. This supports the broader conclusion that behavioral representations in the C. elegans brain are organized as graded continua rather than sharply separated functional clusters.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "Identifies that the panel shows a UMAP or other low-dimensional embedding of neurons in a global behavioral encoding space.",
+            "deduction_rule": "Deduct 20 points if the answer does not identify the low-dimensional embedding or UMAP-style population space. Deduct 8-12 points if the answer only describes colored dots or regions without recognizing that these are neurons embedded according to similarity in their encoding properties."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly identifies the plotted behavioral feature as feeding encoding or feeding tuning.",
+            "deduction_rule": "Deduct 25 points if feeding is not mentioned or is replaced by an incorrect behavioral variable. Deduct 10-15 points if the answer only refers vaguely to behavioral encoding without specifying feeding."
+          },
+          {
+            "point": 15,
+            "criterion": "Explains that color represents the direction of feeding tuning, distinguishing feeding-activated neurons from feeding-inhibited neurons.",
+            "deduction_rule": "Deduct 15 points if the activated-versus-inhibited distinction is omitted. Deduct 6-8 points if feeding tuning is mentioned but directionality, positive-versus-negative response, or increased-versus-decreased activity during feeding is unclear."
+          },
+          {
+            "point": 30,
+            "criterion": "Reports the main conclusion that feeding-related encoding varies continuously or forms a smooth/structured gradient in the UMAP space rather than forming sharply separated discrete clusters.",
+            "deduction_rule": "Deduct 30 points if the continuous or graded organization is omitted. Deduct 15-20 points if the answer mentions spatial organization but does not explain that it is graded or continuous. Deduct 20-25 points if the answer incorrectly claims that the figure shows fully isolated discrete clusters. Deduct 8-10 points if the answer gives a vague statement about organization but does not clearly connect it to feeding tuning."
+          },
+          {
+            "point": 10,
+            "criterion": "Mentions that the embedding or tuning is model-derived, based on CePNEM-derived encoding properties, and/or represents a population-level pattern across neurons or animals.",
+            "deduction_rule": "Deduct 10 points if neither the model-derived nature nor the population/global encoding-space context is mentioned. Deduct 5 points if only one of these contextual details is missing."
+          }
+        ],
+        "Acceptable deviations": [
+          "Referring to UMAP as a low-dimensional embedding, encoding manifold, latent space, or global encoding space is acceptable.",
+          "Referring to feeding as pumping or pharyngeal pumping is acceptable if the behavioral meaning is clear.",
+          "Paraphrasing feeding-activated versus feeding-inhibited as positive versus negative feeding tuning, increased versus decreased activity during feeding, or excited versus inhibited by feeding is acceptable.",
+          "The exact colors, such as green and magenta, do not need to be named if their functional meaning is correctly described.",
+          "The term CePNEM may be omitted if the answer clearly states that the plotted tuning is model-derived.",
+          "The answer does not need to mention the exact number of animals.",
+          "If the answer discusses another behavioral feature instead of feeding, award credit only for correctly describing the UMAP/continuous-organization logic, but deduct the feeding-specific points."
+        ],
+        "Scoring instructions": "Assign points based on whether the answer connects the visualization to the scientific conclusion. The most important element is the conclusion that feeding-related encoding forms a structured continuum or gradient in the UMAP space rather than discrete clusters. Full credit requires identifying the UMAP or low-dimensional encoding space, recognizing that the mapped feature is feeding tuning, explaining the activated-versus-inhibited direction of feeding encoding, and concluding that feeding-related encoding is organized continuously. Partial credit should be given for answers that correctly describe the global continuous organization but miss some feeding-specific or model-derived details. Low scores should be assigned to answers that only describe colors or scattered regions without explaining the behavioral encoding feature and its continuous organization."
+      }
+    }
+  }
+}

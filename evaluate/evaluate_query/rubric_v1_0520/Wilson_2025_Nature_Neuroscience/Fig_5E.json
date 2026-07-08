@@ -1,0 +1,52 @@
+{
+  "tag": "Fig_5E",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5E shows the main learning rule for cue conflict: the amount of conflict experienced during the two-cue epoch predicts how much the cue offset changes afterward. The less familiar cue is typically associated with larger conflict and larger remapping, whereas the more familiar cue shows smaller conflict and little change. This supports the idea that the familiar cue helps guide remapping of the less familiar cue so that the representation becomes self-consistent. The figure is also fit with a Bayesian linear model, but the main scientific point is the conflict-remapping relationship and the familiarity-based interpretation.",
+      "rubric": {
+        "GT core conclusion": "Offset change is predicted by cue conflict during the two-cue epoch: the less familiar cue experiences larger conflict and larger remapping, while the more familiar cue experiences smaller conflict and little change. This indicates that the familiar cue guides remapping of the less familiar cue during multisensory spatial learning.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "States that offset change is predicted by, or increases with, cue conflict during the both-cues epoch",
+            "deduction_rule": "Deduct 30 points if the conflict-remapping relationship is missing or reversed. Deduct 12-18 points if conflict and remapping are both mentioned but their predictive relationship is unclear."
+          },
+          {
+            "point": 20,
+            "criterion": "Distinguishes the two cues by familiarity, with the less familiar cue showing larger conflict and larger remapping",
+            "deduction_rule": "Deduct 20 points if the less familiar cue is not identified or if the relationship is reversed. Deduct 8-12 points if the two cues are mentioned but the larger conflict/larger remapping pattern is not clearly stated."
+          },
+          {
+            "point": 15,
+            "criterion": "Notes that the more familiar cue shows smaller conflict and little offset change",
+            "deduction_rule": "Deduct 15 points if the more familiar cue is omitted or described incorrectly. Deduct 5-8 points if the answer says one cue is more stable without clearly stating that its conflict and remapping are smaller."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the biological interpretation that the familiar cue guides or instructs remapping of the less familiar cue to create a self-consistent representation",
+            "deduction_rule": "Deduct 15 points if the interpretive meaning is missing or wrong. Deduct 6-10 points if the answer gives a generic learning explanation without linking familiarity to instructive remapping."
+          },
+          {
+            "point": 10,
+            "criterion": "Indicates that the relationship was quantified with a fitted linear model, ideally noting the Bayesian linear model with von Mises noise",
+            "deduction_rule": "Deduct 10 points if no model or fitting method is mentioned. Deduct 4-6 points if the answer mentions only a linear fit or correlation without the Bayesian/von Mises detail."
+          },
+          {
+            "point": 10,
+            "criterion": "Notes that the panel contains paired data points per fly and/or that the analysis spans 18 flies",
+            "deduction_rule": "Deduct 10 points if the answer treats the panel as a single summary line or ignores the paired per-cue structure entirely. Minor omission of the exact fly number should not incur a full deduction if the paired structure is clear."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'offset change' as 'remapping amount', 'final offset shift', or 'change in cue offset' is acceptable if the meaning is preserved",
+          "Referring to 'cue conflict' as 'offset mismatch during the both-cues period' is acceptable",
+          "Describing the less familiar cue as 'cue 1' and the more familiar cue as 'cue 2', or using equivalent wording, is acceptable",
+          "Omitting the exact Bayesian model details is acceptable if the linear predictive relationship is clearly stated",
+          "Omitting the exact number of flies is acceptable if the paired per-fly structure is still described",
+          "Visualization details such as scatter style, color coding, or fitted line appearance are not required"
+        ],
+        "Scoring instructions": "Give most of the credit to answers that preserve the central relation between cue conflict and remapping, together with the familiarity-based distinction between the two cues. Full credit requires stating that larger conflict leads to larger remapping, that this is associated with the less familiar cue, and that the more familiar cue shows little change and guides remapping. Answers that get the main relationship right but omit the model details or exact sample size should still receive substantial partial credit. Low scores should be assigned when the answer reduces the figure to a generic scatter plot, omits the conflict-remapping relationship, or fails to explain the role of cue familiarity."
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_6H",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 6H primarily evaluates whether the response uses the paired line plot to compare LCD for the same genes during spontaneous activity and visual-stimulus activity, and whether it recognizes that the coupling between molecular identity and functional correlation is modulated by brain state. Graph structure is worth 30 points. The LCD definition and the matching/non-matching built-in control are the most easily misunderstood and are necessary for the conclusion, so they are worth 25 points. Statistical method is worth 10 points. The scientific interpretation is split into two parts: positive LCD in both states supports shared gene expression increasing local functional correlation and is worth 20 points; the further increase in LCD during visual stimulation supports brain-state-dependent modulation and a cross-gene general principle and is worth 15 points. Point allocation: graph 30, LCD and control logic 25, statistics 10, baseline-coupling conclusion 20, state-modulation conclusion 15.",
+      "rubric": {
+        "GT core conclusion": "Fig. 6H is a paired line plot comparing Local Correlation Difference (LCD) for 39 genes during spontaneous activity and visual-stimulus activity. LCD is defined as the mean activity correlation of same-gene-positive neuron pairs minus the mean activity correlation of spatially nearby but gene-nonmatching neuron pairs; positive values therefore indicate a functional-correlation gain associated with shared gene expression. All genes show positive LCD in both states, indicating that molecular identity is already coupled to local functional correlation during spontaneous activity. LCD increases further during visual stimulation, with 38 of 39 genes significant, indicating that sensory processing enhances the functional coherence of genetically defined neuronal populations.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Correctly analyzes and visualizes the paired line plot structure, in which the x-axis contains two conditions, spontaneous activity and visual-stimulus activity; the y-axis shows LCD values; colored thin lines connect the LCD values of the same gene across the two conditions; a thick black line shows the all-gene mean; significance is annotated; and the overall pattern shows that most genes increase from spontaneous activity to visual stimulation.",
+            "deduction_rule": "Deduct full points if the overall trend is reversed or shown as most genes decreasing. Deduct 10 points if paired lines connecting the same gene across the two conditions are missing. Deduct 8 points if the all-gene mean line is missing. Deduct 6 points if significance annotation is missing. Deduct full points if the panel is confused with a gene-expression-change plot, box plot, histogram, or scatter-correlation plot."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly defines LCD and explains its built-in control logic, stating that LCD equals the mean Pearson activity correlation of matching pairs minus the mean Pearson activity correlation of non-matching neighbor pairs; the response explains that non-matching neighbor pairs control for spatial proximity and other local anatomical factors, so positive LCD supports an association between shared gene expression itself and increased functional correlation.",
+            "deduction_rule": "Deduct full points if LCD is interpreted as gene-expression level, stimulus-response amplitude, or a simple average correlation coefficient. Deduct 12 points if LCD is not described as matching minus non-matching. Deduct 10 points if the spatial-control role of non-matching neighbor pairs is not explained. Deduct 6 points if the meaning of positive LCD is not explained. Deduct 4 points if the response does not state that the 39 genes were filtered by the number of matching pairs."
+          },
+          {
+            "point": 10,
+            "criterion": "Describes the statistical design by stating that LCD for the same gene is compared across the two brain states using a paired Wilcoxon signed-rank test with Bonferroni correction for multiple comparisons; the result is that 38 of 39 genes show a significant increase, only the net gene is not significant, and the all-gene mean increases from about 0.01 to about 0.015.",
+            "deduction_rule": "Deduct 4 points if the paired statistical test is not described. Deduct 3 points if Bonferroni or multiple-comparison correction is not described. Deduct 3 points if the number of significant genes is reported as all 39 or is otherwise clearly wrong. Deduct 2 points if the uniquely non-significant gene or the mean increase is not mentioned."
+          },
+          {
+            "point": 20,
+            "criterion": "Preserves the first scientific conclusion that LCD is positive for 39 genes in both brain states, showing that neuron pairs sharing gene expression are more correlated than spatially nearby but gene-nonmatching pairs, and that molecular identity is already coupled to local functional correlation during spontaneous activity.",
+            "deduction_rule": "Deduct full points if positive LCD in both states is not stated. Deduct 10 points if the response only states that visual stimulation differs, while ignoring positive LCD during spontaneous activity. Deduct 8 points if positive LCD is interpreted as increased gene expression. Deduct 6 points if the response does not connect shared gene expression to increased functional correlation."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the second scientific conclusion that LCD is significantly higher during visual stimulation than during spontaneous activity, indicating that the coupling between molecular identity and functional correlation is dynamically modulated by brain state; this enhancement spans nearly all measured genes, suggesting that genetically defined neuronal populations become more functionally coherent during sensory processing.",
+            "deduction_rule": "Deduct full points if the increase during visual stimulation relative to spontaneous activity is not stated. Deduct 8 points if the response only reports p-values or 38 of 39 significant genes without interpreting brain-state-dependent modulation. Deduct 6 points if the conclusion is restricted to a few visual-related genes rather than nearly all measured genes. Deduct 5 points if the response overstates the panel as revealing a specific synaptic mechanism or causal pathway."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe the paired Wilcoxon signed-rank test as a paired non-parametric test.",
+          "It is acceptable to describe the LCD increase as about 50% or as increasing from about 0.01 to about 0.015.",
+          "It is acceptable to describe matching pairs as same-gene-positive cell pairs or same-gene matched neuron pairs.",
+          "It is acceptable to describe non-matching neighbor pairs as spatially nearby non-matching pairs or neighboring control cell pairs.",
+          "It is acceptable to describe Bonferroni correction as multiple-comparison correction.",
+          "Omitting the 40 um neighbor-distance threshold is acceptable as long as the spatial-neighbor control is described.",
+          "It is acceptable to describe net as the only non-significant gene."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly describing the paired line plot, the LCD difference definition and spatial-control logic, the paired statistical test and multiple-comparison correction, and the two scientific conclusions: molecular-functional coupling already exists during spontaneous activity, and visual stimulation further strengthens this coupling. Partial scores (40-84) should be assigned when the upward line trend and statistical significance are described but the LCD definition, control logic, or scientific meaning is incomplete. Low scores (0-39) should be assigned when LCD is treated as gene-expression level or simple response amplitude, the panel is misinterpreted as a non-paired comparison, or the matching-minus-nonmatching control logic is missing."
+      }
+    }
+  }
+}

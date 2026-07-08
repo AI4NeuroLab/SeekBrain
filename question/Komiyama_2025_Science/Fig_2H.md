@@ -1,0 +1,1 @@
+﻿Do OB cholinergic axons encode odor identity, as assessed by SVM decoding of odor mixture identity from single-trial population activity vectors of cholinergic axon segments?

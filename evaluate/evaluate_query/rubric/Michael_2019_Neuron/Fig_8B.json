@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_8B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This merged rubric balances methodological detail with the core quantitative and conceptual result. It rewards the analytical backbone (72-region brain segmentation from 36 non-overlapping bilateral regions covering ~82% of the brain volume, normalized connection strength computed by summing neurite lengths of connecting neurons and normalizing by pair volume, plotted against Euclidean distance between centers of mass) together with the statistical result (negative Pearson correlation R = -0.39, p < 2.2e-16) and its biological interpretation (economic network organization that minimizes wiring lengths). Minor plot-rendering details should receive little weight unless they preserve the core meaning.",
+      "rubric": {
+        "GT core conclusion": "In the larval zebrafish brain divided into 36 non-overlapping regions covering ~82% of the brain volume and split into left and right hemispheres for a total of 72 brain regions, the normalized connection strength (summed neurite lengths of connecting neurons, normalized by the total volume of the two regions) between region pairs decays exponentially as a function of the Euclidean distance between their centers of mass (Pearson R = -0.39, p < 2.2e-16), a negative correlation consistent with an economic network organization that minimizes wiring lengths.",
+        "Scoring items": [
+          {
+            "point": 15,
+            "criterion": "States that the brain was divided into 72 regions (36 non-overlapping bilateral regions, ~82% of brain volume)",
+            "deduction_rule": "Deduct 15 points if the 72-region (or 36 bilateral) parcellation is missing. Deduct 6-10 points if region subdivision is mentioned but the numbers or bilateral split are substantially incorrect."
+          },
+          {
+            "point": 20,
+            "criterion": "Indicates that normalized connection strength was calculated for each pair of regions (summed neurite lengths from all connecting neurons, normalized by the total volume of the two regions)",
+            "deduction_rule": "Deduct 20 points if normalized connection strength or its calculation method is missing. Deduct 8-12 points if the normalization step or neurite-length summation is substantially incorrect."
+          },
+          {
+            "point": 15,
+            "criterion": "States that normalized connection strength was plotted against the Euclidean distance between the centers of mass of the two regions",
+            "deduction_rule": "Deduct 15 points if the core distance-connectivity relationship or Euclidean distance between centers of mass is missing. Deduct 6-8 points if distance/plot is mentioned but grossly mischaracterized."
+          },
+          {
+            "point": 25,
+            "criterion": "Reports the core statistical result that connection strength decays exponentially / shows a significant negative Pearson correlation with distance (R = -0.39, p < 2.2e-16)",
+            "deduction_rule": "Deduct 25 points if the negative correlation or exponential decay is missing or reversed. Deduct 10-15 points if the relationship is described but the quantitative correlation (R = -0.39) is omitted or highly inaccurate. Deduct 3-5 points for minor numerical simplifications that preserve the negative relationship and high significance."
+          },
+          {
+            "point": 25,
+            "criterion": "Concludes that this relationship is consistent with an economic network organization that minimizes wiring lengths or wiring costs",
+            "deduction_rule": "Deduct 25 points if the biological conclusion regarding economic network organization or minimizing wiring lengths is completely missing. Deduct 10-15 points for a vague conclusion that misses the specific concept of wiring-cost/wiring-length minimization."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'decays exponentially' as 'shows a negative correlation' or 'decreases with distance' is acceptable as long as the inverse relationship is clearly stated",
+          "Omitting the exact p-value (p < 2.2e-16) or using 'highly significant' is acceptable if the correlation coefficient (R = -0.39) is preserved",
+          "Simplifying 'Euclidean distance between centers of mass' to 'inter-regional distance' or 'anatomical distance' is acceptable",
+          "Reporting region counts approximately (e.g., ~72 brain regions) or omitting the exact ~82% coverage is acceptable if the bilateral 36-region division is preserved",
+          "Paraphrasing 'normalized connection strength' as 'normalized inter-regional connectivity' or 'volume-normalized connection strength' is acceptable if the calculation method is preserved",
+          "Paraphrasing 'economic network organization' as 'minimizing wiring costs', 'wiring economy', or 'preference for short-range connections' is acceptable if the biological interpretation is preserved",
+          "Omitting minor details like developmental stage (6 dpf) or axis labels is acceptable"
+        ],
+        "Scoring instructions": "Full credit requires capturing the 72-region parcellation, the normalized connection-strength calculation, the scatter plot versus Euclidean distance between centers of mass, the reported Pearson correlation (R = -0.39, p < 2.2e-16), and the biological interpretation of economic network organization/wiring minimization. Partial credit should be given when the answer preserves the overall negative correlation but simplifies numbers, normalization details, or interpretation phrasing. Low scores should be assigned when the core relationship between distance and connection strength is missed or reversed, the R value is materially wrong, or the economic-network conclusion is absent."
+      }
+    }
+  }
+}

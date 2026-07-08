@@ -1,0 +1,65 @@
+{
+  "tag": "Fig_2F",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric is tailored to the wording of the question itself. The question asks what was plotted and why: kappa from von Mises fits of the scene-bump offset histogram for jump and noise, together with shuffle median and 95th percentile, in order to test whether bump phase maintained a constant offset to scene orientation. Therefore, the rubric prioritizes correct identification of the comparison, metric, statistical reference, and the main result. Higher-level biological interpretation is useful but should carry less weight.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2f compares jump and noise epochs by plotting, for each fish, kappa from von Mises fits to the scene-bump offset histogram together with shuffle median and 95th percentile, showing that above-chance alignment was much more common in jump (14/24 fish) than in noise (3/24 fish).",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the figure compares the jump and noise epochs for each fish",
+            "deduction_rule": "Deduct 25 points if the jump-versus-noise comparison is missing or reversed. Deduct 10-15 points if both conditions are mentioned but their role as the main comparison is unclear."
+          },
+          {
+            "point": 25,
+            "criterion": "Identifies that the plotted quantity is kappa, or an equivalent measure of concentration/alignment strength, derived from von Mises fits to the scene-bump offset histogram",
+            "deduction_rule": "Deduct 25 points if the answer does not identify the plotted quantity at all. Deduct 10-15 points if it preserves the idea of an alignment-strength metric but omits kappa or von Mises. Deduct 20-25 points if it misidentifies what is plotted."
+          },
+          {
+            "point": 20,
+            "criterion": "States that the figure includes a shuffle- or bootstrap-based reference, such as the shuffle median and 95th percentile, to assess above-chance significance",
+            "deduction_rule": "Deduct 20 points if the chance/shuffle comparison is omitted entirely. Deduct 5-10 points if significance is mentioned but the shuffle reference is not made explicit."
+          },
+          {
+            "point": 20,
+            "criterion": "Reports the main result that significantly above-chance alignment was more common in jump than noise, ideally with the key numbers 14/24 versus 3/24 fish",
+            "deduction_rule": "Deduct 20 points if the main result is omitted. Deduct 8-12 points if only a vague statement like 'jump was stronger' is given without the main numerical contrast. Deduct 15-20 points if the numbers are wrong or reversed."
+          },
+          {
+            "point": 10,
+            "criterion": "Optionally preserves the broader interpretation that stable scene-relative anchoring was supported much more robustly in jump than in noise",
+            "deduction_rule": "Do not deduct if omitted in an otherwise strong answer. Deduct up to 10 points only if the answer gives a clearly incorrect interpretation, such as claiming noise showed equally strong or stronger stable anchoring."
+          }
+        ],
+        "Acceptable deviations": [
+          "Referring to kappa as concentration, offset consistency, or alignment strength is acceptable if the statistical meaning is preserved",
+          "Saying 'scene-bump alignment' or 'stable scene-relative offset' is acceptable instead of the exact wording 'maintained a constant offset'",
+          "Omitting the exact phrase '95th percentile' is acceptable if the answer clearly mentions a shuffle- or chance-based threshold",
+          "Reporting the result approximately, such as 'many more fish in jump than in noise', is acceptable for partial credit",
+          "Detailed plot-style descriptions such as dot colors or ordering are not required"
+        ],
+        "Scoring instructions": "Score based on whether the answer matches what the question is actually asking: what was plotted, what comparison was made, how significance was assessed, and what the main result was. Do not over-penalize answers that omit broader biological interpretation if they correctly explain the metric, comparison, and conclusion."
+      }
+    },
+    "binary": {
+      "reason": "This binary rubric matches the wording of the question. A correct answer should preserve that Fig. 2f compares jump versus noise using kappa from von Mises fits of scene-bump offset histograms, together with a shuffle-based reference, and that jump showed above-chance alignment in many more fish than noise.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2f plots kappa from von Mises fits of scene-bump offset histograms for each fish in jump and noise, together with a shuffle-based reference, and shows that above-chance alignment is much more common in jump than in noise.",
+        "Required points": [
+          "The answer identifies that the figure compares jump and noise epochs",
+          "The answer states that the figure uses kappa or an equivalent alignment-strength metric derived from scene-bump offset analysis",
+          "The answer preserves that significance is judged relative to shuffled/chance reference",
+          "The answer states that jump showed stronger or more frequent above-chance alignment than noise"
+        ],
+        "Acceptable deviations": [
+          "Exact numbers 14/24 and 3/24 are preferred but not strictly required for a binary pass",
+          "The answer may paraphrase kappa as concentration or alignment strength",
+          "The answer may omit the exact wording '95th percentile' if shuffle/chance comparison is clearly conveyed"
+        ],
+        "Criteria for 1": "Assign 1 if the answer correctly explains that Fig. 2f compares jump and noise using an offset-based alignment metric with a shuffle/chance reference, and that jump showed clearly stronger or more frequent above-chance alignment than noise.",
+        "Criteria for 0": "Assign 0 if the answer omits the jump-versus-noise comparison, misidentifies what is plotted, fails to preserve the shuffle/chance-based nature of the test, reverses the result, or reduces the figure to a generic visual description."
+      }
+    }
+  }
+}

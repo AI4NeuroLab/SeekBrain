@@ -1,0 +1,57 @@
+{
+  "parent_name": "cholinergic_feedback_for_modality-_and_context-specific_modulation_of_sensory_representations",
+  "image_ids": [
+    "Fig_5F"
+  ],
+  "query": "Identify movement-excited granule cells based on their positive correlation with orofacial motion energy during the baseline period. For both task and passive conditions, plot the orofacial motion energy trace alongside the averaged ΔF/F of these movement-excited cells. Below each pair of traces, include an activity heatmap of the top 25 movement-excited neurons sorted by movement weight.",
+  "analyse_plan": {
+    "Objective": "Visualize the temporal dynamics of movement-excited granule cell activity in relation to orofacial motion energy during task and passive conditions, comparing baseline and ITI periods.",
+    "Validation Checks": "Verify that movement-excited neurons are correctly identified; confirm that the heatmap sorting is by movement weight; check that baseline and ITI periods are correctly delineated.",
+    "Steps": "1. Identify movement-excited granule cells based on significant positive correlation between activity and orofacial motion energy during the baseline period.\n2. For task and passive conditions, extract the averaged activity of movement-excited granule cells.\n3. Plot orofacial motion energy (top row) aligned to the averaged activity of movement-excited cells (middle row) during task (left) and passive (right) conditions.\n4. Generate activity heatmap of 25 movement-excited granule cells sorted by movement weight (bottom row).\n5. Mark baseline and ITI periods.\n6. Visually compare the strength of movement-related activity between baseline and ITI for task vs. passive.\n7. Save the traces, heatmaps, and sorting indices."
+  },
+  "analysis_keywords": [
+    "movement-excited neurons",
+    "activity heatmap",
+    "movement weight sorting",
+    "baseline vs. ITI"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "motion_energy",
+      "unit": "arbitrary units",
+      "variable_type": "numeric",
+      "number": "variable"
+    },
+    {
+      "variable_name": "averaged_movement_excited_activity",
+      "unit": "ΔF/F",
+      "variable_type": "numeric",
+      "number": "0.5 ΔF/F scale bar"
+    },
+    {
+      "variable_name": "n_neurons_in_heatmap",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "25"
+    },
+    {
+      "variable_name": "time_scale",
+      "unit": "seconds",
+      "variable_type": "numeric",
+      "number": "10 sec scale bar"
+    }
+  ],
+  "key_analysis_results": [
+    "During task engagement, movement-excited granule cells showed strong movement-correlated activity during the baseline period that became visibly weaker during the ITI (stimulus) period. During passive exposure, movement-related activity persisted or slightly increased from baseline to stimulus period. The activity heatmap of 25 movement-excited neurons sorted by movement weight confirmed these patterns at the single-neuron level."
+  ],
+  "key_analysis_conclusions": [
+    "Task engagement selectively reduces movement-related responses of granule cells from baseline to the stimulus period, mirroring the pattern observed in cholinergic axons and suggesting that cholinergic modulation contributes to suppressing movement-related activity during active olfactory processing."
+  ],
+  "summary_report": {
+    "abstract": "Time series and heatmap visualization of movement-excited granule cells demonstrates reduced movement-related activity during task engagement (baseline to ITI) but not during passive exposure.",
+    "methods": "Movement-excited granule cells identified by positive correlation with motion energy during baseline. Averaged activity and individual-neuron heatmap (25 cells, sorted by movement weight) plotted for task and passive conditions. 10-sec and 0.5 ΔF/F scale bars.",
+    "results": "Task: visibly reduced movement-correlated activity from baseline to ITI. Passive: movement-correlated activity maintained or slightly enhanced from baseline to stimulus period.",
+    "discussion": "The task-specific reduction in granule cell movement responses parallels the cholinergic axon patterns and suggests that cholinergic feedback contributes to context-dependent rebalancing of sensory vs. movement representations in the OB."
+  },
+  "question": "﻿Identify movement-excited granule cells based on their positive correlation with orofacial motion energy during the baseline period. For both task and passive conditions, plot the orofacial motion energy trace alongside the averaged ΔF/F of these movement-excited cells. Below each pair of traces, include an activity heatmap of the top 25 movement-excited neurons sorted by movement weight."
+}

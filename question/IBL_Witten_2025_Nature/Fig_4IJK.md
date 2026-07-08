@@ -1,0 +1,1 @@
+﻿Evaluation of visual stimulus side encoding in the primary visual area (VISp) through contrast-dependent population decoding probability, 3D PCA trajectory analysis, and Euclidean trajectory distance comparison with shuffled control.

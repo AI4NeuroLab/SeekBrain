@@ -1,0 +1,62 @@
+{
+  "tag": "Fig_8B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates most of the score to the core scientific result: the larval zebrafish brain was divided into 36 non-overlapping regions (~82% brain volume coverage) split into left and right hemispheres for a total of 72 brain regions; normalized connection strength (summed neurite lengths of connecting neurons, normalized by pair volume) was plotted against Euclidean distance between centers of mass for every pair, revealing a negative Pearson correlation (R = -0.39, p < 2.2e-16) consistent with exponential decay. These quantitative, methodological, and statistical claims define the main scientific conclusion about economic network organization and wiring-cost minimization. Minor plot-rendering details should receive little or no weight unless they help preserve the core meaning.",
+      "rubric": {
+        "GT core conclusion": "The brain was divided into 36 non-overlapping regions covering ~82% of the brain volume, which were split into left and right hemispheres for a total of 72 brain regions__SEMI__ for each pair of brain regions, normalized connection strength (calculated by summing neurite lengths from all neurons that connect them and normalizing by the total volume of the two brain regions) was plotted against the Euclidean distance between their centers of mass, and the Pearson correlation coefficient was calculated and displayed on the plot (R = -0.39, p < 2.2e-16).",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the brain was divided into 36 non-overlapping regions (~82% coverage) split into left/right hemispheres for a total of 72 brain regions",
+            "deduction_rule": "Deduct 25 points if brain-region segmentation or the 72-region total is missing or replaced by a generic description. Deduct 10-15 points if the number of regions or bilateral split is substantially incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Indicates that normalized connection strength was calculated (summed neurite lengths of connecting neurons, normalized by pair volume) for each pair of brain regions",
+            "deduction_rule": "Deduct 25 points if normalized connection strength or its calculation method is missing. Deduct 10-15 points if the normalization step or neurite-length summation is substantially incorrect or omitted."
+          },
+          {
+            "point": 25,
+            "criterion": "Reports that normalized connection strength was plotted against Euclidean distance between centers of mass",
+            "deduction_rule": "Deduct 25 points if the scatter-plot relationship or Euclidean distance between centers of mass is missing. Deduct 10 points if distance or plotting is mentioned but substantially altered."
+          },
+          {
+            "point": 25,
+            "criterion": "States that the Pearson correlation coefficient was calculated and displayed on the plot (R = -0.39, p < 2.2e-16)",
+            "deduction_rule": "Deduct 25 points if the Pearson correlation or the reported values (R = -0.39 and p < 2.2e-16) are missing. Deduct 10-15 points if the correlation direction, exact R value, or significance is substantially incorrect. Deduct 3-5 points for minor numerical simplification that preserves the negative relationship."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'normalized connection strength' as 'normalized inter-regional connectivity' or 'connection strength (volume-normalized)' is acceptable if the calculation method is preserved",
+          "Reporting region counts approximately (~72 brain regions) or omitting the exact ~82% coverage is acceptable if the bilateral 36-region division is preserved",
+          "Omitting 'centers of mass' while still mentioning Euclidean distance between regions is acceptable",
+          "Referring to the correlation without repeating the exact R or p-value phrasing is acceptable if the negative relationship and statistical significance are clearly stated",
+          "Omitting minor plot details (axis labels, exact exponential-decay wording) is acceptable"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer preserves the main scientific result of the distance-connectivity relationship rather than figure-display details. Full credit requires capturing the 72-region segmentation, normalized connection-strength calculation, scatter plot versus Euclidean distance, and the reported Pearson correlation (R = -0.39, p < 2.2e-16). Partial credit should be given when the answer preserves the large-scale negative correlation but simplifies numbers or method details. Low scores should be assigned when the answer reduces the figure to a generic visual description or omits the core quantitative and statistical conclusions."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the core scientific result rather than figure-display details. The essential meaning is that the brain was segmented into 72 regions (36 bilateral pairs), normalized connection strength was plotted against inter-regional Euclidean distance, and a highly significant negative Pearson correlation (R = -0.39, p < 2.2e-16) was obtained. These elements define the main scientific contribution of the figure: demonstration of wiring-cost minimization (economic network organization) in the larval zebrafish brain.",
+      "rubric": {
+        "GT core conclusion": "The brain was divided into 36 non-overlapping regions covering ~82% of the brain volume, which were split into left and right hemispheres for a total of 72 brain regions__SEMI__ for each pair of brain regions, normalized connection strength (calculated by summing neurite lengths from all neurons that connect them and normalizing by the total volume of the two brain regions) was plotted against the Euclidean distance between their centers of mass, and the Pearson correlation coefficient was calculated and displayed on the plot (R = -0.39, p < 2.2e-16).",
+        "Required points": [
+          "The brain was divided into 72 regions (36 non-overlapping regions split bilaterally)",
+          "Normalized connection strength was calculated for each pair (neurite lengths summed and volume-normalized)",
+          "Normalized connection strength was plotted against Euclidean distance between centers of mass",
+          "A negative Pearson correlation (R = -0.39, p < 2.2e-16) was calculated and displayed"
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing normalized connection strength or its calculation is acceptable if the volume-normalization step is preserved",
+          "Reporting region counts approximately (~72 regions) or omitting exact coverage percentage is acceptable if bilateral segmentation is preserved",
+          "Omitting 'centers of mass' while still mentioning Euclidean distance is acceptable",
+          "Referring to the correlation without exact R/p-value phrasing is acceptable if the negative relationship and high significance are clearly stated",
+          "Omitting minor plot details is acceptable"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning that normalized inter-regional connection strength shows a highly significant negative correlation (R ≈ -0.39) with anatomical distance in the 72-region larval zebrafish brain connectome, without changing the scientific meaning.",
+        "Criteria for 0": "Assign 0 if the answer omits the 72-region segmentation, omits normalized connection strength, omits the distance plot, omits the negative Pearson correlation (or materially changes the R value or significance), or reduces the conclusion to only a generic visual description without preserving the economic-network/wiring-cost result."
+      }
+    }
+  }
+}

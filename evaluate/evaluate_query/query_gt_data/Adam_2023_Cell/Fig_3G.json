@@ -1,0 +1,40 @@
+{
+  "parent_name": "brain-wide_representations_of_behavior_spanning_multiple_timescales_and_states_in_c._elegans",
+  "image_ids": [
+    "Fig_3G"
+  ],
+  "query": "For the example animal `2022-04-12-04`, run PCA on the z-scored neural activity matrix and hierarchically cluster neurons by their top-5 PC loadings. For each neuron, display its behavioral tuning (forwardness, dorsalness, feedingness) derived from CePNEM alongside its PC1–PC5 loadings, with neurons ordered by the clustering result.",
+  "analyse_plan": {
+    "Objective": "Demonstrate that individual neurons are complex mixtures of many shared dynamics modes (PCs) rather than being dominated by single modes, and that hierarchical clustering of loadings reveals limited discrete structure.",
+    "Validation Checks": "PCA on neural activity data (not behavioral data); hierarchical clustering should reveal limited discrete structure; PC loadings should be predictive but not deterministic of encoding type.",
+    "Steps": "1. Load Data: Load the per-neuron z-scored neurons-by-time GCaMP matrix and the per-neuron CePNEM-derived behavioral tuning summary (forwardness, dorsalness, feedingness) for one example animal. 2. Filter By SNR: Exclude neurons whose signal SD is below the GFP-derived SNR threshold so that PCA is performed only on neurons with reliable dynamics. 3. Run PCA: Perform principal component analysis on the retained neurons-by-time matrix and record each neuron's loading on the top 5 principal components. 4. Hierarchically Cluster: Cluster the neurons by their 5-dimensional PC-loading vectors using hierarchical clustering to obtain a row ordering and a dendrogram. 5. Save Key Results: Save the per-neuron top-5 PC loadings, the hierarchical clustering dendrogram, the per-neuron CePNEM behavioral tuning summary, and the row ordering used for the panel. 6. Visualization: Display a combined heatmap with rows of neurons ordered by hierarchical clustering on PC loadings; the upper rows show the per-neuron behavioral tuning columns (forwardness, dorsalness, feedingness using a diverging colormap) and the lower rows show the per-neuron loadings on PCs 1-5."
+  },
+  "analysis_keywords": [
+    "PCA",
+    "principal components",
+    "population dynamics",
+    "hierarchical clustering",
+    "PC loadings",
+    "dynamics modes"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Top_PCs_displayed",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 5
+    }
+  ],
+  "key_analysis_results": [
+    "PC loadings were diverse across neurons and hierarchical clustering revealed little discrete structure. Individual neurons were described as complex mixtures of multiple PCs rather than being dominated by single PCs. The loadings were still predictive of encoding type but not deterministic."
+  ],
+  "key_analysis_conclusions": [
+    "Diverse representations of behavior arise from neurons being complex mixtures of many ongoing shared dynamics modes, not from discrete functional sub-populations."
+  ],
+  "summary_report": {
+    "abstract": "PCA shows neurons are complex mixtures of multiple dynamics modes with diverse loadings and little clustering structure.",
+    "methods": "PCA on all neural traces from one animal. Top 5 PC loadings per neuron displayed. Hierarchical clustering on loadings. CePNEM tuning overlaid.",
+    "results": "Diverse loadings; little discrete clustering structure. Loadings predictive but not deterministic of encoding type.",
+    "discussion": "Parallels observations in mammalian cortex where population activity is described by shared dimensions with continuous neuron participation."
+  }
+}

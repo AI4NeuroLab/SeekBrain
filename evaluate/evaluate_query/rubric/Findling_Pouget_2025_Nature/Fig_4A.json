@@ -1,0 +1,47 @@
+      
+{
+    "tag": "Fig_4A",
+    "rubrics": {
+      "score_100": {
+        "reason": "This panel shows Bayesian model comparison among three candidate prior models. The rubric emphasizes correct model definitions, interpretation of exceedance probability, and the computational meaning of the action-kernel model winning. Points are assigned according to the figure's priorities: 30 points for reproducing the model-comparison plot, 25 points for understanding the three candidate models and Bayesian model comparison, 20 points for identifying the action-kernel advantage, and 25 points for the heuristic-strategy interpretation and neural-computation constraints.",
+        "rubric": {
+          "GT core conclusion": "The action-kernel model has the highest exceedance probability in the Bayesian model comparison, outperforming both the Bayes-optimal prior model and the stimulus-kernel model. This indicates that mouse priors are mainly based on recent actions or choices rather than stimulus history or theoretically optimal computation. Mice appear to use their own behavior as a proxy for environmental statistics, a computationally simpler heuristic that can deviate from the theoretical optimum.",
+          "Scoring items": [
+            {
+              "point": 30,
+              "criterion": "Correctly reproduces the model-comparison figure, such as a bar plot, pie chart, or model-frequency table, showing the exceedance probability or model frequency for the three candidate models: Bayes-optimal prior, stimulus kernel, and action kernel. The figure clearly shows that the action-kernel model has the highest exceedance probability and substantially outperforms the other two models, and it compares the pattern with the original figure.",
+              "deduction_rule": "Deduct all 30 points if the model-comparison plot is confused with a time-series plot, scatter plot, or neural-activity plot. Deduct 15 points if the number of candidate models is wrong, such as showing only two models or more than three. Deduct 15 points if the superiority of the action-kernel model is not shown, such as plotting similar exceedance probabilities for all three models; these two deductions are capped at 15 points. Deduct 8 points for incorrect or confused model labels. Deduct 8 points if the reproduced pattern clearly differs from the original. The latter deductions are capped at 15 points, so the total does not exceed 30 points when the plot type is correct."
+            },
+            {
+              "point": 25,
+              "criterion": "Correctly explains the three candidate models and the Bayesian model-comparison method. The Bayes-optimal prior model uses task statistics and history to compute the theoretically optimal prior; the stimulus-kernel model uses weighted recent stimulus history; and the action-kernel model uses weighted recent action or choice history. Each candidate model is fitted to each session, evidence is aggregated across sessions, and exceedance probability is interpreted as the posterior probability that a model is better than the alternatives. The dataset includes 107 mice.",
+              "deduction_rule": "Deduct 12 points if the action kernel and stimulus kernel are confused, such as treating both as stimulus-history models or both as action-history models. Deduct 8 points if the Bayes-optimal model is incorrectly described as another simple history-weighted model. Deduct 6 points if exceedance probability is confused with simple goodness of fit, such as R^2 or accuracy. Deduct 6 points if the action kernel is misinterpreted as a motor-execution model rather than a prior-formation model. Deduct 3 points if the importance of aggregation across sessions is omitted. Multiple deductions are capped at 25 points."
+            },
+            {
+              "point": 25,
+              "criterion": "Correctly identifies that the action-kernel model has the highest exceedance probability and explains that mouse prior formation is driven mainly by recent action history, not by stimulus history or Bayes-optimal computation. The answer states that mice use their own behavior as a proxy for environmental statistics.",
+              "deduction_rule": "Deduct all 20 points if the answer only states that the action-kernel model performs best without explaining what that means. Deduct 15 points if the action-kernel advantage is misinterpreted as showing that mouse behavior is irrational or random. Deduct 12 points if the answer does not convey that mice rely on action/choice history to form priors."
+            },
+            {
+                "point": 20,
+                "criterion": "Mentions the scale of the analysis, such as 107 mice or a large multi-animal dataset, and that model comparison was aggregated across sessions.",
+                "deduction_rule": "Deduct 10 points if dataset scale and cross-session aggregation are both omitted. Deduct 5 points if one is mentioned but not the other."
+            }
+          ],
+          "Acceptable deviations": [
+            "Using 'action-history model' or 'choice-history model' instead of 'action-kernel model' is acceptable.",
+            "Using 'stimulus-history model' instead of 'stimulus-kernel model' is acceptable.",
+            "Using 'theoretical optimal model' or 'Bayesian model' instead of 'Bayes-optimal prior model' is acceptable if the meaning is clear.",
+            "Using 'model superiority probability' or 'model winning probability' instead of 'exceedance probability' is acceptable.",
+            "Omitting the exact sample size (107 mice) is acceptable if the answer states that model comparison was performed across a large multi-animal dataset.",
+            "Using 'model evidence' or 'model likelihood' instead of 'session-level evidence' is acceptable if the model-comparison logic is preserved.",
+            "Using 'simplified strategy' or 'suboptimal strategy' instead of 'heuristic strategy' is acceptable.",
+            "Cautious wording such as 'the action-kernel model better explains mouse behavior' is acceptable."
+          ],
+          "Scoring instructions": "High-scoring answers (85-100) must identify the panel as a model-comparison figure showing exceedance probabilities for three candidate models, distinguish the assumptions of the Bayes-optimal, stimulus-kernel, and action-kernel models, interpret Bayesian model comparison across sessions, identify the meaning of the action-kernel advantage, and explain the biological significance of a heuristic action-history strategy, including computational simplicity and adaptive tradeoffs. Partial-credit answers (40-84) capture the main conclusion that the action kernel wins or the broad model-comparison method but omit key details such as model definitions, exceedance probability, heuristic interpretation, or computational tradeoff. Low-scoring answers (0-39) confuse the candidate models, treat exceedance probability as simple goodness of fit, misinterpret the action kernel as motor execution rather than prior formation, misread the action-kernel advantage, or only describe the result without biological interpretation."
+        }
+      }
+    }
+  }
+  
+      

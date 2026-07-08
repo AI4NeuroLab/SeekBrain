@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_5F",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5F maps the spatial density of four classes of sensorimotor neurons across larvae. The key points are reproducing the four density maps, explaining that the maps are cross-individual statistically thresholded density distributions rather than raw single-fish point clouds, and preserving the conclusion that motor-related neurons are concentrated mainly in hindbrain regions whereas visually responsive neurons are concentrated in forebrain and tectal or habenular regions, including a left-habenula bias for bright-light responses. Exact density color appearance is secondary unless it changes the spatial-distribution interpretation.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5F shows that four sensorimotor neuron classes have distinct and reproducible spatial distributions across n = 18 larvae: motor-positive neurons are mainly hindbrain distributed, visual-response neurons are mainly forebrain, tectal, or habenular, motor-negative neurons form dispersed clusters partly overlapping noradrenergic regions, and bright-light-responsive neurons are strongly concentrated in the left habenula, supporting functional spatial segregation and habenular lateralization.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the four neuron spatial density maps, including motor-positive, motor-negative, dark-response, and bright-response neurons, projected onto a standard brain template, with color representing relative spatial density and the main spatial patterns preserved: motor-related neurons biased toward hindbrain, visually responsive neurons biased toward forebrain, and bright-response neurons concentrated in the left habenula.",
+            "deduction_rule": "Deduct the full 35 points if the density maps are misidentified as a single-fish point cloud, brain-region bar chart, or generic anatomical plot. Deduct 15 points if the four neuron classes are not shown separately. Deduct 20 points if the forebrain-hindbrain distribution of motor and visual neurons is reversed. Deduct 15 points if the left-habenula concentration of bright-response neurons is omitted."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly states that the density maps are aggregated across n = 18 larvae and statistically thresholded using a spatial P value test, retaining spatial clusters that appear consistently across individuals; color represents relative density rather than raw cell counts from a single animal.",
+            "deduction_rule": "Deduct 15 points if the maps are interpreted as raw data from a single fish. Deduct 10 points if spatial statistical thresholding is not mentioned. Deduct 8 points if color is interpreted as absolute cell count or activity intensity. Deduct 8 points if cross-individual consistency is not mentioned."
+          },
+          {
+            "point": 30,
+            "criterion": "Correctly preserves the scientific conclusion that sensorimotor neuron classes are spatially segregated: motor-related neurons are mainly located in hindbrain, whereas visual-response neurons are mainly located in forebrain, optic tectum, and habenula, supporting spatial division between forebrain visual processing and hindbrain motor-related functions in the larval zebrafish brain.",
+            "deduction_rule": "Deduct 15 points if the conclusion that motor neurons are hindbrain biased and visual neurons are forebrain biased is omitted. Deduct 15 points if the four neuron classes are claimed to be completely spatially mixed. Deduct 12 points if the response only describes heatmap colors without interpreting sensorimotor functional segregation. Deduct 8 points if optic tectum, habenula, or forebrain visual-response distribution is not mentioned."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly states that motor-negative neurons form dispersed clusters partly overlapping noradrenergic regions, and that bright-response neurons are almost concentrated in the left habenula, supporting interpretations related to movement suppression and habenular lateralization.",
+            "deduction_rule": "Deduct 8 points if motor-negative neuron clusters or noradrenergic overlap are completely omitted. Deduct 10 points if left-habenula bright-response lateralization is omitted. Deduct 8 points if the motor-negative distribution is interpreted as a movement artifact."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe spatial density as neuron density distribution.",
+          "It is acceptable to describe spatial P value test as statistical thresholding or significance filtering.",
+          "It is acceptable to describe n = 18 larvae as 18 larvae or 18 individuals.",
+          "It is acceptable to describe hindbrain as rhombencephalon, optic tectum as tectum, and habenula as habenular region.",
+          "It is acceptable to describe noradrenergic as NE-related.",
+          "It is acceptable to describe lateralization as left-right asymmetry.",
+          "Exact cell counts may be omitted as long as differences in the scales of the four populations are not misinterpreted."
+        ],
+        "Scoring instructions": "Assign points based on whether the response performs the correct spatial-density map analysis and explains its scientific meaning. High scores require identifying the panel as cross-individual, statistically thresholded density maps of four sensorimotor neuron classes, explaining color and thresholding, and interpreting the spatial segregation of hindbrain-biased motor neurons, forebrain-biased visual-response neurons, and left-habenula bright-response neurons. Partial credit should be given when the density maps are broadly correct but cross-individual thresholding, spatial segregation, or lateralization is incomplete. Low scores should be assigned when the maps are misidentified as single-animal raw point clouds, motor and visual distributions are reversed, or the left-habenula bright-response conclusion is omitted."
+      }
+    }
+  }
+}

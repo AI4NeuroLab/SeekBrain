@@ -1,0 +1,63 @@
+{
+  "tag": "Fig_5A",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates most of the score to the core scientific result: pairwise morphological similarity scores of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) at 6 dpf were computed with the NBLAST algorithm and subjected to unsupervised hierarchical clustering using Ward's method, yielding a dendrogram with eight major clusters in which cluster 7 contains exclusively all Purkinje cells while the remaining eurydendroid cells are distributed across the other seven clusters. These quantitative, methodological, and clustering claims define the main scientific conclusion about the morphological organization and classification of cerebellar output neurons. Dendrogram visualization details and background interpretation should receive little or no weight unless they help preserve the core meaning.",
+      "rubric": {
+        "GT core conclusion": "Pairwise morphological similarity scores of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) from the larval zebrafish brain at 6 dpf, computed using the NBLAST algorithm, were subjected to unsupervised hierarchical clustering with Ward's method; the resulting dendrogram is shown with colors indicating the eight major clusters, revealing that one cluster (cluster 7) consisted exclusively of all Purkinje cells while the remaining eurydendroid cells were distributed over the other seven clusters.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that pairwise morphological similarity scores were computed for 121 cerebellar efferent neurons (91 ECs and 30 PCs) using the NBLAST algorithm",
+            "deduction_rule": "Deduct 25 points if NBLAST or pairwise similarity computation for the full set of 121 neurons is missing or replaced by only a generic description of similarity. Deduct 10-15 points if NBLAST is mentioned but the neuron count or cell-type breakdown is substantially incorrect."
+          },
+          {
+            "point": 20,
+            "criterion": "Indicates that the similarity scores were subjected to unsupervised hierarchical clustering with Ward's method",
+            "deduction_rule": "Deduct 20 points if hierarchical clustering or Ward's method is missing or replaced by another clustering approach. Deduct 10 points if clustering is mentioned but the unsupervised nature or Ward's method is substantially incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Reports the resulting dendrogram with eight major clusters indicated by colors",
+            "deduction_rule": "Deduct 25 points if the eight major clusters or the dendrogram itself is missing. Deduct 10 points if cluster count is substantially wrong or colors are omitted when they are required for the claim."
+          },
+          {
+            "point": 30,
+            "criterion": "States that one cluster (cluster 7) consisted exclusively of all Purkinje cells while the remaining eurydendroid cells were distributed over the other seven clusters",
+            "deduction_rule": "Deduct 30 points if the PC/EC separation or the exclusivity of cluster 7 is missing or reversed. Deduct 10-15 points if separation is mentioned but cluster designation, cell-type exclusivity, or distribution is substantially incorrect. Deduct 3-5 points for minor numerical simplifications that preserve the separation."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'NBLAST algorithm' as 'morphological similarity scoring' or 'NBLAST-based similarity' is acceptable if the pairwise computation context is preserved",
+          "Reporting neuron counts approximately (e.g., ~121 cerebellar efferents, ~30 PCs) or omitting the exact 91/30 breakdown is acceptable if total and cell-type distinction are preserved",
+          "Omitting 'at 6 dpf' or 'larval zebrafish brain' is acceptable if the cerebellar efferent context is preserved",
+          "Referring to clusters without repeating the exact 'cluster 7' label is acceptable if the complete separation of all PCs into one homogeneous cluster is clearly stated",
+          "Omitting dendrogram color details or minor visualization phrasing is acceptable"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer preserves the main scientific result of the NBLAST/Ward's clustering analysis rather than figure-display details. Full credit requires capturing the neuron population, NBLAST pairwise scoring, Ward's hierarchical clustering, eight major clusters, and the specific PC/EC separation in cluster 7. Partial credit should be given when the answer preserves the large-scale clustering result and separation but simplifies numbers or method details. Low scores should be assigned when the answer reduces the figure to a generic visual description or omits the core quantitative clustering conclusions."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the core scientific result rather than figure-display details. The essential meaning is that pairwise NBLAST morphological similarity scores of 121 cerebellar efferent neurons (91 ECs and 30 PCs) at 6 dpf were subjected to unsupervised hierarchical clustering with Ward's method, producing a dendrogram with eight major clusters in which cluster 7 contains exclusively all Purkinje cells while the eurydendroid cells are distributed across the remaining seven clusters. These elements define the main scientific contribution of the figure: morphological homogeneity of Purkinje cells and heterogeneity of eurydendroid cells within the cerebellar output pathway.",
+      "rubric": {
+        "GT core conclusion": "Pairwise morphological similarity scores of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) from the larval zebrafish brain at 6 dpf, computed using the NBLAST algorithm, were subjected to unsupervised hierarchical clustering with Ward's method; the resulting dendrogram shows eight major clusters, with cluster 7 consisting exclusively of all Purkinje cells and the remaining eurydendroid cells distributed over the other seven clusters.",
+        "Required points": [
+          "Pairwise morphological similarity scores were computed for 121 cerebellar efferent neurons using the NBLAST algorithm",
+          "Scores were subjected to unsupervised hierarchical clustering with Ward's method",
+          "Resulting dendrogram shows eight major clusters",
+          "One cluster (cluster 7) consisted exclusively of all Purkinje cells",
+          "Remaining eurydendroid cells were distributed over the other seven clusters"
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'NBLAST algorithm' as 'morphological similarity scoring' or 'NBLAST-based similarity' is acceptable if the pairwise computation context is preserved",
+          "Reporting neuron counts approximately (e.g., ~121 cerebellar efferents, ~30 PCs) or omitting the exact 91/30 breakdown is acceptable if total and cell-type distinction are preserved",
+          "Referring to clusters without repeating the exact 'cluster 7' label is acceptable if the complete separation of all PCs into one homogeneous cluster is clearly stated",
+          "Omitting 'at 6 dpf' or 'larval zebrafish brain' is acceptable if the cerebellar efferent context is preserved",
+          "Omitting dendrogram color or visualization details is acceptable"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning that NBLAST-based hierarchical clustering of 121 cerebellar efferent neurons yielded eight major clusters, with all Purkinje cells grouped into a single distinct cluster (cluster 7), while eurydendroid cells were distributed across the other seven clusters, without changing the scientific meaning.",
+        "Criteria for 0": "Assign 0 if the answer omits the NBLAST pairwise scoring, omits Ward's hierarchical clustering, omits the eight-cluster result, omits the PC/EC separation, materially changes the numbers or cluster composition, or reduces the conclusion to only a visual description without preserving the morphological classification result."
+      }
+    }
+  }
+}

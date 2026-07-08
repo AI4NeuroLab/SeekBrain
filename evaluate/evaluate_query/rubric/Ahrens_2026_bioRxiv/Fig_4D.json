@@ -1,0 +1,38 @@
+
+{
+  "tag": "Fig_4D",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 4D shows the spatial distributions of eomesa-positive, pvalb7-positive, and eomesa-pvalb7 co-expressing neurons in 2D whole-brain projections. The core conclusions are that co-expressing cells localize to the dorsal pallium and that pvalb7 labels both dorsal pallium neurons and cerebellar Purkinje cells. Point allocation: figure structure 30, co-expression localization 35, pvalb7 dual-region distribution 35.",
+      "rubric": {
+        "GT core conclusion": "Fig. 4D uses dorsal and lateral 2D anatomical projections to show the spatial distributions of eomesa-positive, pvalb7-positive, and eomesa-pvalb7 co-expressing cells across the whole brain from three fish. eomesa-positive cells are mainly located in the telencephalon and cerebellum; pvalb7-positive cells appear along the lateral edge of the dorsal pallium and prominently label Purkinje cells in the cerebellum; and co-expressing cells are concentrated in the dorsal pallium. The figure shows that specific gene combinations can precisely anchor anatomically specialized neuronal populations to distinct brain regions.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Shows 2D whole-brain anatomical projections (dorsal and lateral views) for the three cell populations (eomesa+, pvalb7+, co-expressing), with all other neurons as gray background and selected neurons colored by mRNA spot count. The spatial distributions of the three populations are visibly distinct from each other.",
+            "deduction_rule": "Deduct 30 points if misidentified as a calcium-activity map, connectome, or neuronal morphology reconstruction. Deduct 20 points if the three populations are shown as having nearly identical whole-brain distributions. Deduct 10 points if either dorsal or lateral view is missing. Do not deduct for specific color choices, scale bar presence, or anatomical contour styling."
+          },
+          {
+            "point": 35,
+            "criterion": "Correctly identifies that eomesa-pvalb7 co-expressing cells are concentrated in the dorsal pallium (dorsolateral pallium), showing that this gene combination provides a specific molecular marker for a restricted anatomical region rather than labeling neurons brain-wide.",
+            "deduction_rule": "Deduct 35 points if co-expressing cells are localized to the cerebellum, hindbrain, or described as uniform whole-brain distribution. Deduct 15 points if the dorsal pallium localization is stated but its significance as a region-specific molecular marker is not explained. Deduct 10 points if described as hippocampus-homologous without mentioning dorsal pallium localization."
+          },
+          {
+            "point": 35,
+            "criterion": "Correctly identifies the dual regional distribution of pvalb7-positive cells: they appear along the lateral edge of the dorsal pallium and also prominently label cerebellar Purkinje cells. This dual localization shows that the same molecular marker can label specialized neuronal populations in different anatomical regions.",
+            "deduction_rule": "Deduct 20 points if the cerebellar pvalb7-positive cells are not identified as Purkinje cells (which is labeled in the figure). Deduct 15 points if only one of the two regions (dorsal pallium or cerebellum) is mentioned. Deduct 10 points if the dual-region distribution is noted but its biological meaning is not explained."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe the dorsolateral pallium as the dorsal pallium, dorsolateral telencephalic region, or zebrafish hippocampus-homologous region.",
+          "It is acceptable to describe Purkinje cells as cerebellar Purkinje cells or large cerebellar neurons.",
+          "Omitting specific RNA spot-count thresholds, atlas registration details, or EASI-FISH methodology is acceptable.",
+          "Omitting the exact mRNA spot-count color range (1-148) is acceptable as long as color is not interpreted as functional activity.",
+          "It is acceptable to mention or omit three-fish consistency (n=3).",
+          "It is acceptable to describe the hippocampus-homology relationship or to simply state dorsal pallium localization."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly showing 2D spatial distributions of the three populations, identifying dorsal pallium concentration of co-expressing cells, and identifying pvalb7 dual localization including Purkinje cells. Partial scores (40-84) should be assigned when distributions are broadly correct but one population's localization or Purkinje-cell identification is missing. Low scores (0-39) should be assigned when the panel is confused with a functional activity map, distributions of the three populations are mixed up, or no anatomical-specialization relationship is identified."
+      }
+    }
+  }
+}

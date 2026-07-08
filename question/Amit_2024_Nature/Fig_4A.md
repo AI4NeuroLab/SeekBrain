@@ -1,0 +1,1 @@
+﻿To assess this, the computed mean evoked z-scored activity for pairwise influence scores was analyzed to establish a strict connectivity threshold, and the empirical distribution of pairwise functional connectivity strength for within-dimension and cross-dimension pairs was visualized as an overlaid histogram.

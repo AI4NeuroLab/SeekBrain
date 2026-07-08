@@ -1,0 +1,49 @@
+{
+  "tag": "Fig_5D",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5D compares differential expression across 28 canonical cortical cell subclasses before eye opening (P7-P10) and after eye opening (P11-P15). The key issues are correctly interpreting the direction of log2[FC], reproducing the three-layer structure showing DE-gene number, magnitude, and individual-gene distribution, and extracting cell-type-specific transcriptomic remodeling from the directional differences between neuronal and non-neuronal subclasses. Because the panel involves differential-expression statistics and directional interpretation, graph reproduction is worth 35 points and understanding of the DE source and log2[FC] direction is worth 20 points. The scientific interpretation is split into neuronal-subclass patterns 15, non-neuronal-subclass patterns 15, and eye-opening-associated transcriptomic remodeling with causal boundary 15. Point allocation: graph reproduction 35, DE-analysis source 20, neuronal pattern 15, non-neuronal pattern 15, remodeling conclusion and boundary 15.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5D shows that all 28 canonical cortical cell subclasses in mouse visual cortex undergo cell-type-specific differential expression changes between the pre-eye-opening period P7-P10 and the post-eye-opening period P11-P15. Most neuronal subclasses, especially glutamatergic subclasses, contain many DE genes and are dominated by upregulated genes after eye opening. In contrast, non-neuronal subclasses tend to be dominated by downregulated genes, with especially prominent downregulation in populations such as microglia. The panel supports the conclusion that the eye-opening period is accompanied by broad and cell-type-specific transcriptomic remodeling, but the comparison is primarily a time-window-associated differential-expression result and does not by itself prove that visual experience is the sole direct cause of every observed gene-expression change.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the three-layer structure of Fig. 5D across 28 canonical cortical cell subclasses: the top panel shows the sum of log2[FC] for upregulated and downregulated DE genes in each subclass, the middle panel shows the number of upregulated and downregulated DE genes, the bottom panel shows the distribution of individual log2[FC] values for each DE gene, and all three layers use the same subclass order.",
+            "deduction_rule": "Deduct the full 35 points if the panel is misidentified as a UMAP, single-gene expression curve, pie chart, cluster-number curve, or ordinary heatmap. Deduct 10 points for each missing layer of the three-layer structure. Deduct 8 points if the 28 canonical cortical cell subclasses are not covered or if major subclasses are substantially omitted. Deduct 8 points if inconsistent subclass ordering prevents the three layers from being matched. Deduct 10 points if upregulated and downregulated DE genes are not distinguished."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains that DE genes come from subclass-specific differential-expression comparisons in scRNA-seq data across the 28 canonical cortical cell subclasses between the pre-eye-opening period P7-P10 and the post-eye-opening period P11-P15, and correctly interprets log2[FC] as expression change in the latter relative to the former.",
+            "deduction_rule": "Deduct 12 points if the direction of log2[FC] is reversed. Deduct 8 points if the comparison windows P7-P10 and P11-P15 are not stated. Deduct 10 points if DE genes are attributed to different brain regions or experimental groups rather than developmental time-window comparisons. Deduct 6 points if subclass-specific DE analysis is not explained."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly summarizes the main neuronal-subclass pattern: glutamatergic subclasses generally contain more DE genes and larger overall change magnitudes, most neuronal subclasses have more upregulated than downregulated genes after eye opening, and GABAergic subclasses also show cell-type-specific changes, with a notable pattern in the Pvalb subclass.",
+            "deduction_rule": "Deduct 8 points if the upregulation-dominant trend in neuronal subclasses is not stated. Deduct 8 points if glutamatergic subclasses are described as having very few DE genes. Deduct 5 points if GABAergic subclasses or the Pvalb feature are completely ignored."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly summarizes the main non-neuronal-subclass pattern: glial, immune, and vascular subclasses differ from neuronal subclasses and are overall more dominated by downregulated genes, with particularly clear downregulation in populations such as microglia and relatively few DE genes in some vascular subclasses.",
+            "deduction_rule": "Deduct 10 points if non-neuronal subclasses are described as having the same upregulation-dominant pattern as neuronal subclasses. Deduct 8 points if the downregulation tendency in non-neuronal subclasses is not mentioned. Deduct 5 points if microglia, glial, or vascular populations are completely omitted."
+          },
+          {
+            "point": 15,
+            "criterion": "Correctly states that the eye-opening period is accompanied by broad, cell-type-specific transcriptomic remodeling and cautiously explains that these changes are related to visual-cortex circuit maturation, synaptic function, and activity-dependent processes, while avoiding the interpretation that this panel alone directly proves visual experience causes all gene-expression changes.",
+            "deduction_rule": "Deduct 8 points if the transcriptomic-remodeling conclusion is not stated. Deduct 6 points if only DE-gene counts are described without interpreting cell-type specificity. Deduct 8 points if the panel is interpreted as direct proof that visual experience is the sole cause of all changes."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe DE genes as differentially expressed genes.",
+          "It is acceptable to describe the pre- and post-eye-opening comparison as P7-P10 versus P11-P15.",
+          "It is acceptable to describe log2[FC] as the after/before eye-opening expression change.",
+          "It is acceptable to describe the sum of log2[FC] as the total magnitude of upregulated or downregulated change.",
+          "It is acceptable to summarize neuronal subclasses as glutamatergic and GABAergic subclasses.",
+          "It is acceptable to summarize non-neuronal subclasses as glial, immune, and vascular subclasses.",
+          "It is acceptable to summarize the 28 canonical cortical cell subclasses as all major cortical subclasses.",
+          "It is acceptable to state the causal boundary as the panel showing time-associated DE rather than a direct perturbation experiment."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the three-layer DE-gene composite plot, explaining the subclass-specific DE analysis between P7-P10 and P11-P15 and the direction of log2[FC], extracting the up- and downregulation patterns for neuronal and non-neuronal subclasses, and interpreting eye-opening-associated transcriptomic remodeling with its cell-type specificity and causal boundary. Partial scores (40-84) should be assigned when the graph structure and some directions are correct but the DE source, log2[FC] direction, or cell-type differences are incomplete. Low scores (0-39) should be assigned when the panel is misidentified as another plot type, the log2[FC] direction is reversed, or the eye-opening transcriptomic-remodeling conclusion is completely missing."
+      }
+    }
+  }
+}

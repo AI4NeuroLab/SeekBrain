@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_2B",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 2B visualizes a mesoscopic structural connectivity network derived from single-neuron morphological reconstructions. The key points are reproducing the anatomically embedded weighted network, explaining that edge weights come from neurite terminal counts rather than activity correlations or electron-microscopy synapses, and preserving the conclusion that sparse single-neuron reconstructions reveal spatially constrained structural connectivity that significantly relates to functional connectivity. Details such as exact edge color appearance are secondary unless they change the structural-connectivity interpretation.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2B shows a weighted directed structural connectivity network among 65 brain regions, compiled from terminal counts in 4,327 reconstructed neurons. Strong structural connections are concentrated among spatially nearby regions, and structural connectivity significantly correlates with functional connectivity, indicating that anatomy constrains but does not fully determine functional relationships.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the anatomically embedded weighted structural connectivity network: node positions correspond to the centroids of 65 brain regions, edge color or thickness represents structural connection strength, and the overall pattern of stronger connections among spatially nearby brain regions is preserved.",
+            "deduction_rule": "Deduct the full 35 points if the network is misidentified as a functional connectivity network or activity-correlation network. Deduct 15-20 points if nodes are placed in a force-directed layout with no anatomical meaning rather than corresponding to brain-region positions. Deduct 10 points if edge weights do not represent connection strength differences. Deduct 12 points if the pattern of stronger connections among nearby regions is not preserved."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly states that structural connectivity comes from 4,327 single-neuron morphological reconstructions registered to 65 brain regions, and that the dataset is sparse sampling rather than a complete synapse-level connectome.",
+            "deduction_rule": "Deduct 10 points if the single-neuron reconstruction source is not stated. Deduct 10-15 points if the network is interpreted as a complete connectome. Deduct 8 points if sparse sampling is not mentioned. Deduct 5 points if the 65 brain-region nodes are not mentioned."
+          },
+          {
+            "point": 30,
+            "criterion": "Correctly preserves the scientific conclusion that structural connection weights are based on neurite terminal counts or putative synapses, that strong connections are concentrated mainly among spatially nearby brain regions and reflect wiring economy, and that structural connectivity significantly correlates with but is not identical to functional connectivity.",
+            "deduction_rule": "Deduct 15 points if weights are interpreted as Pearson correlations or functional strength. Deduct 10 points if terminal counts or putative synapses are not explained. Deduct 10 points if the SC-FC correlation or the conclusion that structure constrains function is omitted. Deduct 8 points if structural connectivity is described as fully determining functional connectivity."
+          },
+          {
+            "point": 10,
+            "criterion": "Correctly states that procedures such as region-boundary expansion and weak-edge hiding support mesoscopic structural-network visualization and provide a structural basis for later structure-function coupling and modularity analyses.",
+            "deduction_rule": "Deduct 10 points if these processing steps and the relationship to later analyses are completely omitted. Deduct 5 points if the response only describes the visual network appearance without explaining its role as a structural basis for later analyses."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe structural connectivity as anatomical connectivity.",
+          "It is acceptable to describe morphological reconstruction as neuron reconstruction.",
+          "It is acceptable to describe neurite terminals as synaptic terminals or axon terminals.",
+          "It is acceptable to approximate 4,327 reconstructed neurons as about 4,300 neurons.",
+          "It is acceptable to describe wiring economy as economical wiring or minimizing wiring cost.",
+          "It is acceptable to describe structure-function coupling as structure-function correlation."
+        ],
+        "Scoring instructions": "Assign points based on whether the response performs the correct structural-network analysis and explains its scientific meaning. High scores require identifying the panel as an anatomical structural connectivity network based on single-neuron reconstructions, explaining that edge weights come from terminal counts rather than activity correlations, and interpreting sparse sampling, nearby-region strong connections, wiring economy, and SC-FC correlation. Partial credit should be given when the network plot is broadly correct but the data source, weight definition, or structure-function interpretation is incomplete. Low scores should be assigned when structural connectivity is confused with functional connectivity, sparse sampling is interpreted as a complete connectome, or the edge-weight source is misunderstood."
+      }
+    }
+  }
+}

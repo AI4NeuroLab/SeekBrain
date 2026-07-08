@@ -1,0 +1,46 @@
+# ── Dependencies / local toolchains (large, machine-specific) ──────────────
+# .tools/ = project-local Node v24 + pi install (~2.4G); library/ ~6.4G
+node_modules/
+.tools/
+library/
+vendor/
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+
+# ── Editor / OS ──────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
+*.log
+
+# ── API keys / secrets — never commit real credentials ───────────────────────
+# NOTE: .env.example and .env.sample are kept (placeholders only, safe templates)
+.env
+.env.bak
+.env.bak.*
+.env.local
+.env.*.local
+
+# ── Agent tool configs (machine/user-specific) ───────────────────────────────
+.claude/
+.codex/
+.agents/
+
+# ── pi runtime state (keep shared config, ignore ephemeral) ──────────────────
+.pi/agent-sessions/
+.pi/agent/auth.json
+.pi/neuroscientist-level1/tmp/
+.pi/neuroscientist-level1/run_index.json
+.pi/neuroscientist-level2/tmp/
+.pi/neuroscientist-level2/run_index.json
+
+# ── Runtime output / scratch ─────────────────────────────────────────────────
+.playwright-cli/
+tmp/
+results/
+evaluate/score/
+
+# ── Root-level markdown docs (all excluded; subdirectory .md unaffected) ──────
+/*.md

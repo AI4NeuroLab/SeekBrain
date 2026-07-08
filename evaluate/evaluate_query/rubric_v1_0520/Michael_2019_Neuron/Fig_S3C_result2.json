@@ -1,0 +1,60 @@
+{
+  "tag": "Fig_S3C",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates the score across the methodology, visual representation, and scientific purpose explicitly stated in the question. The core scientific result is that registration accuracy was measured using Euclidean distances between 25 fiducial landmarks (5 SYP fiber and 20 Gal4 nuclei landmarks) and their standard brain counterparts. The visual representation (boxplot with magenta for nuclei and green for fiber landmarks) and its purpose (to visualize individual alignment accuracy and compare landmark types) are essential for full credit. Strict requirements on exact statistical numbers (like 4.38 μm) are relaxed as long as the methodology and visual mapping are correctly preserved.",
+      "rubric": {
+        "GT core conclusion": "To measure registration accuracy, five landmarks within the SYP pattern (fiber landmarks) and 20 from co-registered Gal4 patterns (nuclei landmarks) were identified, and Euclidean distances to their counterparts in the standard brain were measured; these are displayed as a boxplot with magenta indicating nuclei-based landmarks and green indicating fiber-based landmarks, enabling visualization of individual alignment accuracy and comparison between landmark types.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that five landmarks within the SYP pattern (fiber landmarks) and 20 from Gal4 patterns (nuclei landmarks) were identified",
+            "deduction_rule": "Deduct 25 points if the specific landmark counts or the distinction between SYP (fiber) and Gal4 (nuclei) landmarks are missing. Deduct 10-15 points if the numbers or pattern associations are substantially incorrect."
+          },
+          {
+            "point": 25,
+            "criterion": "Indicates that Euclidean distances to their counterparts in the standard brain were measured",
+            "deduction_rule": "Deduct 25 points if the Euclidean distance measurement or the comparison to the standard brain is missing. Deduct 10 points if the measurement is mentioned but materially altered (e.g., omitting 'standard brain')."
+          },
+          {
+            "point": 30,
+            "criterion": "Reports that distances are displayed as a boxplot, explicitly noting that magenta indicates nuclei-based (Gal4) landmarks and green indicates fiber-based (SYP) landmarks",
+            "deduction_rule": "Deduct 30 points if the boxplot and color coding are entirely missing. Deduct 15-20 points if the boxplot is mentioned but the specific color mapping (magenta=nuclei, green=fiber) is missing or reversed."
+          },
+          {
+            "point": 20,
+            "criterion": "Mentions the purpose or conclusion: to visualize alignment accuracy for individual fiducial points and enable comparison between landmark types",
+            "deduction_rule": "Deduct 20 points if the scientific purpose (visualizing accuracy/comparing types) is missing. Deduct 10 points for minor omissions (e.g., mentions accuracy but omits the comparison between types)."
+          }
+        ],
+        "Acceptable deviations": [
+          "Reporting the accuracy quantitatively (e.g., 'median distance of 4.38 μm', 'range of 0.22-14.13 μm', or 'subcellular accuracy') is highly acceptable and can substitute for the explicit phrasing of the 'purpose'",
+          "Reporting landmark counts approximately (e.g., '~25 landmarks total') is acceptable if the distinction between the two types (fiber vs. nuclei) is preserved",
+          "Paraphrasing 'Euclidean distance' as 'spatial distance' or '3D distance' is acceptable",
+          "Minor phrasing differences in describing the boxplot or colors are acceptable as long as the mapping is correct"
+        ],
+        "Scoring instructions": "Assign points based on how well the answer captures the methodology (landmark selection and distance metric), visual representation (boxplot and color coding), and scientific purpose. Full credit requires the 5/20 landmark breakdown, Euclidean distance to the standard brain, the magenta/green boxplot mapping, and the goal of visualizing accuracy/comparing types. Give partial credit if the core visualization is described but numbers or minor methodology details are simplified."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the core scientific and visual alignment meaning. The essential takeaway is that registration accuracy was evaluated by measuring Euclidean distances of two types of landmarks (SYP fiber and Gal4 nuclei) relative to the standard brain, and visualized in a boxplot comparing the two types using green and magenta colors.",
+      "rubric": {
+        "GT core conclusion": "To measure registration accuracy, Euclidean distances between 25 fiducial landmarks (5 SYP fiber and 20 Gal4 nuclei) and the standard brain were measured and displayed in a boxplot, with magenta indicating nuclei landmarks and green indicating fiber landmarks, to compare alignment accuracy.",
+        "Required points": [
+          "Identification of both fiber (SYP) and nuclei (Gal4) landmarks (exact numbers 5 and 20 are optional but preferred)",
+          "Measurement of Euclidean distances to counterparts in the standard brain",
+          "Display of distances in a boxplot",
+          "Correct color mapping: magenta for nuclei-based landmarks and green for fiber-based landmarks",
+          "Mention of visualizing alignment accuracy or comparing landmark types"
+        ],
+        "Acceptable deviations": [
+          "Providing the quantitative results (median ~4.38 μm) instead of explicitly stating 'to visualize accuracy' is fully acceptable",
+          "Paraphrasing the distance metric or the standard brain comparison is acceptable if the core meaning is preserved",
+          "Simplifying the exact counts (5 and 20) is acceptable as long as the two distinct types are clearly identified"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning: Euclidean distances of fiber and nuclei landmarks to the standard brain are plotted in a boxplot (with correct magenta/green color mapping) to evaluate and compare registration accuracy.",
+        "Criteria for 0": "Assign 0 if the answer omits the Euclidean distance method, fails to distinguish between the two landmark types, omits the boxplot visualization, reverses or omits the color coding, or completely misses the context of measuring registration accuracy."
+      }
+    }
+  }
+}

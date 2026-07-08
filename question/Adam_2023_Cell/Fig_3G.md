@@ -1,0 +1,1 @@
+﻿To understand how diverse encoding properties arise from shared population dynamics, an example animal's data shows each neuron's behavioral tuning alongside its loadings onto the top five principal components. Neurons are hierarchically clustered by their PC loadings.

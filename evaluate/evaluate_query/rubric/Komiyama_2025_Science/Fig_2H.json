@@ -1,0 +1,46 @@
+{
+  "tag": "Fig_2H",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric focuses on the core scientific message of Fig. 2H: SVM decoding analysis shows that OB cholinergic axons do not reliably encode odor mixture identity. The figure demonstrates that decoding accuracy remains at chance level (~25%) in most sessions, with only two sessions reaching significance (marked by stars). This leads to the main conclusion that phasic odor responses reflect a general state rather than specific sensory identity. Weights are distributed to emphasize both the quantitative result (chance level) and the scientific conclusion.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2H plots per-session SVM decoding accuracy of odor mixture identity from single-trial responses of individual cholinergic axon segments, showing that decoding accuracy is mostly at chance level (25%), with only two sessions showing significance (marked with stars), indicating that OB cholinergic axons do not consistently encode odor identity.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "States that the figure shows decoding accuracy (using SVM) of odor mixture identity from cholinergic axon responses",
+            "deduction_rule": "Deduct 20 points if the decoding analysis for odor identity is omitted. Deduct 5-10 points if decoding is mentioned but vague (e.g., omitting 'odor identity' or 'SVM')."
+          },
+          {
+            "point": 15,
+            "criterion": "Specifies that decoding is based on single-trial responses of individual axon segments (rather than averaged activity)",
+            "deduction_rule": "Deduct 15 points if the basis of the decoding (individual segments/single-trial) is completely omitted. Deduct 5-10 points if the description implies population activity but fails to specify single/individual axons."
+          },
+          {
+            "point": 25,
+            "criterion": "Reports that decoding accuracy is at chance level (around 0.25 or 25%) in the vast majority of sessions",
+            "deduction_rule": "Deduct 25 points if the overall result (chance-level decoding) is omitted or contradicted. Deduct 10 points if the answer states 'low accuracy' without referencing the chance level or 25% baseline."
+          },
+          {
+            "point": 15,
+            "criterion": "Mentions the exceptions: two sessions showed statistically significant decoding (indicated by stars)",
+            "deduction_rule": "Deduct 15 points if the two significant outlier sessions are omitted. Deduct 5 points if they mention some sessions were higher but fail to note they were marked as statistically significant (stars)."
+          },
+          {
+            "point": 25,
+            "criterion": "Preserves the core scientific implication: cholinergic axons do not consistently encode specific odor identity",
+            "deduction_rule": "Deduct 25 points if the answer reduces the panel to a generic plot description without mentioning the explicit scientific conclusion regarding the lack of odor identity encoding."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'individual axon segments' as 'single axons' or 'separate axons' is acceptable",
+          "Describing 'chance level' as '25%', '0.25', or 'random guessing' is acceptable",
+          "Using 'machine learning classifier' or 'SVM' interchangeably is acceptable",
+          "Omitting the exact p-values (0.019 and 0.03) is completely acceptable as long as 'significant' or 'stars' is mentioned",
+          "Omitting the exact number of non-significant sessions is acceptable"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer captures the main result that decoding of odor identity from cholinergic axons is mostly at chance. Full credit requires noting the SVM/decoding method, the chance-level performance in most sessions, the existence of two significant sessions, and the ultimate conclusion that odor identity is not consistently encoded. Partial credit is given when the answer describes the visual elements (dots, line at 0.25) but fails to extract the scientific conclusion."
+      }
+    }
+  }
+}

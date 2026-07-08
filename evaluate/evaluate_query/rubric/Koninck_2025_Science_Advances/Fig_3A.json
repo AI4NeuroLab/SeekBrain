@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_3A",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 3A analyzes structural connectivity in the larval zebrafish brain for modular organization using consensus modularity or community detection. The resulting coassignment probability matrix reveals that brain-wide regions are consistently grouped into structural modules. The key points are the correct pattern of the coassignment probability matrix and dendrogram, the meaning of repeated module coassignment, and the hierarchical modular architecture emerging from structural connectivity. Exact colorbar details are secondary unless they affect interpretation of module coassignment.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3A shows a hierarchically clustered structural module coassignment probability matrix, indicating that zebrafish brain regions are consistently grouped into structural modules across modularity partitions and revealing hierarchical modular organization in structural connectivity.",
+        "Scoring items": [
+          {
+            "point": 40,
+            "criterion": "Correctly analyzes and visualizes the coassignment probability matrix derived from structural connectivity, correctly displays the hierarchical dendrogram, and compares the reproduced matrix-block pattern and tree hierarchy with the original figure.",
+            "deduction_rule": "Deduct the full 40 points if the main pattern of the matrix and dendrogram is inaccurate. Deduct 15 points if the dendrogram is omitted. Deduct the full 40 points if the panel is confused with functional connectivity or neural activity correlations."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly states that matrix values represent the probability or frequency that a pair of brain regions is assigned to the same module across many modularity partitions or modularity runs.",
+            "deduction_rule": "Deduct the full 20 points if the meaning of coassignment probability is missing. Deduct 10 points if the response only says that similar brain regions are grouped together without explaining that the values reflect repeated coassignment across many partitions."
+          },
+          {
+            "point": 30,
+            "criterion": "Correctly preserves the conclusion that structural connectivity exhibits hierarchical modular organization: groups of brain regions are stably clustered into structural modules and form reproducible block-like organization within the hierarchy.",
+            "deduction_rule": "Deduct the full 30 points if the hierarchical modular organization conclusion is omitted. Deduct 15 points if the response vaguely mentions hierarchical clustering but does not interpret it as structural modules or communities."
+          },
+          {
+            "point": 10,
+            "criterion": "Correctly states that the four structural modules shown or selected in the panel are an illustrative intermediate partition for visualization, not the only or absolutely optimal number of modules.",
+            "deduction_rule": "Deduct 10 points if the four-module visualization is omitted. Deduct 4-6 points if modules are mentioned but the displayed partition is not explained as a four-module or illustrative hierarchical level. Deduct 8 points if four modules are claimed to be the only correct partition."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe coassignment probability matrix as a consensus matrix, community co-clustering matrix, or matrix of the probability that brain regions belong to the same module.",
+          "It is acceptable to describe structural connectivity as anatomical connectivity, structural connectome, or wiring network.",
+          "It is acceptable to describe modules as communities, clusters, or subnetworks, as long as the network-community meaning is preserved.",
+          "The exact Ward linkage method may be omitted if hierarchical clustering is generally conveyed.",
+          "The exact number of modularity partitions may be omitted.",
+          "Exact color scale, matrix layout, or dendrogram details may be omitted if the coassignment and modular-organization interpretation is preserved."
+        ],
+        "Scoring instructions": "Assign points based on whether the response performs the correct data analysis and accurately interprets the scientific meaning of the result panel, rather than merely describing its visual appearance. Full credit requires identifying the panel as a structural module coassignment probability or consensus matrix, explaining that matrix values reflect how often pairs of brain regions are assigned to the same module across modularity partitions, and interpreting the clustered blocks as evidence for hierarchical modular organization in the structural connectome. Partial credit should be given when the response captures structural modularity but omits details of coassignment probability or hierarchical clustering. Low scores should be assigned when the response describes only a generic clustered heatmap, confuses the panel with functional connectivity, or fails to convey the module or community interpretation."
+      }
+    }
+  }
+}

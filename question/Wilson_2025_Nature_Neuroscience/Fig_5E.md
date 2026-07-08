@@ -1,0 +1,1 @@
+﻿To determine whether cue conflict drives remapping, the offset change (final - initial) was plotted against offset conflict (both - initial) for both cues across 18 flies, fit with a Bayesian linear model with von Mises noise.

@@ -1,0 +1,47 @@
+{
+  "tag": "Fig_2B",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric focuses on what Fig. 2B directly demonstrates: two example behavioral sessions are shown with trial-by-trial choices aligned to GLM-HMM posterior state probabilities, illustrating that mouse behavior can be segmented into dynamically switching behavioral states within individual sessions. The highest-weighted elements are the visualization of choices and posterior probabilities, identification of the three inferred states, and recognition of within-session state transitions. Interpretation of engaged versus biased states is included but weighted slightly less because the full stimulus-dependence and reward-rate characterization are more directly supported by Fig. 2C and Fig. 2D.",
+      "rubric": {
+        "GT core conclusion": "Fig. 2B shows trial-by-trial choices and corresponding GLM-HMM posterior state probabilities from two example sessions, illustrating that behavior can be segmented into dynamically switching engaged, left-biased, and right-biased states within individual sessions.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the panel displays trial-by-trial behavioral choices from example sessions together with the corresponding GLM-HMM posterior state probabilities",
+            "deduction_rule": "Deduct 25 points if the answer does not mention either trial-by-trial choices or posterior state probabilities. Deduct 10-15 points if only choices or only probabilities are described. Deduct 5 points if the answer captures the general idea of model-based state tracking but does not clearly indicate that choices and probabilities are aligned across trials."
+          },
+          {
+            "point": 25,
+            "criterion": "Identifies that the GLM-HMM assigns behavior to three inferred states: engaged, left-biased, and right-biased",
+            "deduction_rule": "Deduct 25 points if behavioral state assignment is missing. Deduct 10-15 points if the answer mentions engaged and biased states but does not distinguish left- and right-biased states. Deduct 5-10 points if the three-state structure is implied but not clearly named."
+          },
+          {
+            "point": 20,
+            "criterion": "Explains that the posterior probability traces reveal dynamic transitions between behavioral states within individual sessions",
+            "deduction_rule": "Deduct 20 points if within-session state transitions are omitted. Deduct 10 points if the answer mentions changes in behavior or state probabilities but does not clearly describe trial-by-trial or within-session transitions. Deduct 5 points if the dynamic nature is only weakly implied."
+          },
+          {
+            "point": 20,
+            "criterion": "Describes the behavioral interpretation of the states: the engaged state corresponds to task-guided or stimulus-dependent choice behavior, whereas biased states correspond to side-preference or stimulus-independent choice tendencies",
+            "deduction_rule": "Deduct 20 points if the answer does not interpret what the states mean behaviorally. Deduct 10 points if it describes engaged behavior but not biased behavior, or vice versa. Deduct 5-10 points if the distinction is vague but generally preserves the idea of different choice strategies."
+          },
+          {
+            "point": 10,
+            "criterion": "Connects the state decomposition to its role in the broader analysis, namely enabling later comparison of cholinergic odor responses across different levels of task engagement",
+            "deduction_rule": "Deduct 10 points if the answer does not mention why identifying these states is useful for subsequent neural activity analysis. Do not deduct this point if the prompt only asks for a narrow visual description of the panel rather than its role in the paper."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'GLM-HMM' as 'hidden Markov model', 'model-based behavioral state inference', or 'state-space model' is acceptable if the model-based state inference meaning is preserved",
+          "Describing the engaged state as 'task-focused', 'task-engaged', 'accurate', or 'stimulus-guided' is acceptable if the task-relevant choice meaning is preserved",
+          "Describing left- and right-biased states as 'side-biased', 'directionally biased', or 'choice-biased' states is acceptable if the distinction from engaged behavior is clear",
+          "Omitting exact visual details such as dot colors, line colors, or the exact number of trials is acceptable",
+          "Omitting detailed reward-rate information is acceptable because this is more directly shown in Fig. 2D",
+          "Omitting detailed psychometric stimulus-dependence across odor mixtures is acceptable because this is more directly shown in Fig. 2C"
+        ],
+        "Scoring instructions": "Assign points according to whether the answer captures the main subfigure-level message of Fig. 2B. Full credit requires recognizing that the panel aligns trial-by-trial choices with GLM-HMM posterior probabilities, identifies engaged, left-biased, and right-biased states, and shows that animals can transition between these states within individual sessions. Partial credit should be given for answers that correctly describe model-based state inference but omit either the specific state identities or the dynamic transition aspect. Low scores should be assigned when the answer only describes visual elements without recognizing behavioral state decomposition, or when it incorrectly interprets the panel as directly showing neural activity rather than behavioral state inference."
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+﻿To test whether post-stimulus prior signals measured with electrophysiology and widefield imaging are consistent across cortical regions, by comparing corrected post-stimulus neurometric shifts across recording modalities.

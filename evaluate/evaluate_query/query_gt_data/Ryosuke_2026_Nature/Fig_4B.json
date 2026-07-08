@@ -1,0 +1,44 @@
+{
+  "parent_name": "plastic_landmark_anchoring_in_zebrafish_compass_neurons",
+  "image_ids": [
+    "Fig_4B"
+  ],
+  "question": "To test whether the tuning of the HD cells during the learning epoch was single or double peaked, the individual HD-cell tuning curves in the learning epoch were refit with scaled-shifted sinusoids of θ or 2θ, and the ROI-averaged R2 values were compared between the two fits.",
+  "analyse_plan": {
+    "Objective": "Compare single-frequency and double-frequency sinusoidal fits on individual HD cell tuning curves during the learning epoch.",
+    "Validation Checks": "Verify that the analysis uses only the learning epoch. Confirm that the same selected HD cells are fit with both g = 1 and g = 2 scaled-shifted sinusoids. Check that R2 values are averaged across cells within fish before the signed-rank test is applied.",
+    "Steps": "1. Load Data: Load the selected HD-cell fluorescence traces and scene-orientation values from the learning epoch. 2.Compute Tuning Curves: Calculate the tuning curve of each HD cell. 3.Fit Models: Refit each tuning curve with the reported scaled-shifted sinusoid using g = 1 and g = 2. 4.Compute Fit Quality: Compute R2 for both fits for each HD cell. 5.Aggregate Within Fish: Average the R2 values across cells within each fish. 6.Save Key Results: Save the per-cell and per-fish R2 values for downstream checking and reuse. 7. Statistical Test and Visualization: Compare the per-fish R2 values between the two fits with the reported signed-rank test and render the summary plot."
+  },
+  "analysis_keywords": [
+    "scaled-shifted sinusoidal fit",
+    "single-frequency sinusoid",
+    "double-frequency sinusoid",
+    "signed-rank test"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "fish_count",
+      "unit": "fish",
+      "variable_type": "numeric",
+      "number": 25
+    },
+    {
+      "variable_name": "signed_rank_test_p_value",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.0074
+    }
+  ],
+  "key_analysis_results": [
+    "The fit with 2θ resulted in higher R2 for the double-sun group (signed-rank test, n = 25 fish, P = 7.4 × 10−3), indicating that the tuning of the HD cells during the learning epoch was significantly better fit by sinusoids of 2θ rather than of θ, consistent with the bimodal tuning observed in the learning epoch."
+  ],
+  "key_analysis_conclusions": [
+    "The tuning of the HD cells during the learning epoch was better fit by sinusoids of 2θ rather than of θ, consistent with bimodal tuning in the learning epoch."
+  ],
+  "summary_report": {
+    "abstract": "To test whether the tuning of the HD cells during the learning epoch was single or double peaked, the individual HD-cell tuning curves in the learning epoch were refit with scaled-shifted sinusoids of θ or 2θ, and the ROI-averaged R2 values were compared between the two fits, showing that the tuning of the HD cells during the learning epoch was significantly better fit by sinusoids of 2θ rather than of θ, consistent with a bimodal learning-epoch tuning pattern.",
+    "methods": "Individual HD-cell tuning curves from the learning epoch were fit with the reported scaled-shifted sinusoidal model using either θ or 2θ. The resulting R2 values were averaged across cells within each fish, and the per-fish fit qualities were compared with a signed-rank test.",
+    "results": "The fish-level comparison showed that the fit with 2θ resulted in higher R2 for the double-sun group (signed-rank test, n = 25 fish, P = 7.4 × 10−3), indicating that the tuning of the HD cells during the learning epoch was significantly better fit by sinusoids of 2θ rather than of θ. This quantitative comparison is consistent with the visual impression that the tuning of the HD cells during the learning epoch appeared bimodal.",
+    "discussion": "This panel provides a quantitative comparison of whether the learning-epoch tuning curves were better described by single-frequency or double-frequency sinusoids. Because the fit with 2θ outperformed the fit with θ, the result supports the interpretation that the learning-epoch tuning of the HD cells was double peaked rather than single peaked."
+  }
+}

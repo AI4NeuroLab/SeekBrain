@@ -1,0 +1,39 @@
+{
+  "parent_name": "continuous_cell-type_diversification_in_mouse_visual_cortex_development",
+  "image_ids": [
+    "FIG_2B"
+  ],
+  "question": "To characterize the temporal emergence and developmental progression of transcriptomic cell subclasses in the mouse visual cortex, quantify the relative proportions of cells belonging to different subclasses across developmental ages from embryonic day E11.5 to postnatal day P56 using single-cell RNA sequencing (scRNA-seq) data.",
+  "analyse_plan": {
+    "Objective": "Quantify developmental changes in the relative abundance of transcriptomic subclasses across developmental time and assess the temporal order of subclass emergence during mouse visual cortex development.",
+    "Validation Checks": "Confirm that all cells included in the analysis pass quality-control filtering and have finalized subclass annotations. Verify that developmental ages are correctly assigned for all scRNA-seq libraries. Confirm that subclass proportions are computed independently within each developmental age bin. Verify that neuronal and non-neuronal relative proportions are interpreted cautiously because different fluorescence-activated cell sorting (FACS) strategies were used across scRNA-seq libraries",
+    "Steps": "1. Load Data: Load high-quality single-cell RNA sequencing (scRNA-seq) transcriptomes and subclass annotations across all developmental stages from embryonic day E11.5 to postnatal day P56. 2. Assign Developmental Ages: Group cells according to their developmental sampling ages. 3. Assign Transcriptomic Subclasses: Annotate cells according to the developmental transcriptomic taxonomy and subclass definitions established in the study. 4. Count Cells per Subclass and Age: For each developmental age, count the number of cells assigned to each transcriptomic subclass. 5. Compute Relative Proportions: Normalize subclass counts within each developmental age to compute relative subclass proportions. 6. Track Developmental Emergence: Identify the earliest developmental ages at which major glutamatergic, γ-aminobutyric acid (GABA)ergic and non-neuronal subclasses appear. 7. Visualize Temporal Dynamics: Plot subclass proportions across developmental ages to visualize temporal progression, subclass diversification and late-emerging cell populations. 8. Compare Developmental Patterns: Examine whether subclasses emerge sequentially or in parallel and assess whether late postnatal stages contain additional subclass diversification events. 9. Save Key Results: Export subclass proportion matrices across developmental ages for downstream trajectory and developmental analyses."
+  },
+  "analysis_keywords": [
+    "single-cell RNA sequencing",
+    "developmental trajectory analysis",
+    "relative cell proportion analysis",
+    "transcriptomic subclass annotation",
+    "temporal dynamics",
+    "developmental atlas"
+  ],
+  "statistical_info": [],
+  "key_analysis_results": [
+    "Relative proportions of transcriptomic subclasses changed dynamically across developmental stages from embryonic day E11.5 to postnatal day P56 in the mouse visual cortex.",
+    "Intermediate progenitor non-intratelencephalic projecting (IP nonIT), immature neuron non-intratelencephalic projecting (IMN nonIT), radial glia (RG) and immature neuron Cajal-Retzius (IMN CR) populations were enriched during early embryonic stages, whereas mature glutamatergic, γ-aminobutyric acid (GABA)ergic and non-neuronal subclasses became increasingly abundant during later developmental stages.",
+    "The L5/6 near-projecting (L5 NP) glutamatergic subclass emerged later than other non-intratelencephalic glutamatergic subclasses around embryonic day E18.5.",
+    "A distinct population of L6b-like cells was more abundant than canonical L6b cells during developmental stages from embryonic day E17 to postnatal day P3.",
+    "Late postnatal developmental stages showed continued diversification of cortical cell subclasses, consistent with ongoing maturation and refinement of transcriptomic identities."
+  ],
+  "key_analysis_conclusions": [
+    "Transcriptomic subclasses in the mouse visual cortex emerge progressively across embryonic and postnatal development rather than appearing simultaneously.",
+    "Distinct neuronal and non-neuronal subclasses exhibit characteristic temporal trajectories and developmental onset timings during cortical development.",
+    "The continued appearance and diversification of subclasses during postnatal stages support the concept of continuous cell-type diversification in cortical development."
+  ],
+  "summary_report": {
+    "abstract": "Relative proportions of transcriptomic subclasses were quantified across developmental stages in the mouse visual cortex using single-cell RNA sequencing (scRNA-seq) data. The analysis revealed dynamic temporal changes in subclass abundance and identified stage-specific emergence patterns for neuronal and non-neuronal subclasses.",
+    "methods": "High-quality single-cell RNA sequencing (scRNA-seq) transcriptomes collected across developmental stages from embryonic day E11.5 to postnatal day P56 were grouped according to developmental age and transcriptomic subclass identity. For each developmental stage, the number of cells assigned to each subclass was quantified and normalized to compute relative subclass proportions. Temporal progression of subclass abundance across development was visualized to examine developmental emergence and diversification patterns.",
+    "results": "Transcriptomic subclass proportions changed substantially across development. Early embryonic stages were enriched for progenitor and immature neuronal populations, whereas mature glutamatergic, γ-aminobutyric acid (GABA)ergic and non-neuronal subclasses increased during later developmental stages. The L5/6 near-projecting (L5 NP) glutamatergic subclass emerged later than other non-intratelencephalic glutamatergic subclasses around embryonic day E18.5, and L6b-like populations were particularly abundant from embryonic day E17 to postnatal day P3. Postnatal stages showed continued diversification of cortical subclasses.",
+    "discussion": "Temporal quantification of transcriptomic subclass proportions demonstrates that cortical cell-type diversification proceeds progressively across embryonic and postnatal development. Different subclasses exhibit distinct developmental timing and maturation trajectories, supporting a model in which cortical cell identities continue to diversify throughout postnatal development."
+  }
+}

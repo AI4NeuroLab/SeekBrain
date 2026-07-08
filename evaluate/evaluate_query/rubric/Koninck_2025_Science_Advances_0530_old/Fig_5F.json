@@ -1,0 +1,62 @@
+{
+  "tag": "Fig_5F",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric grades both the textual interpretation and the figure reproduction of Fig. 5F: four consensus spatial density maps of sensorimotor neuronal populations across many larvae. Most of the score depends on (a) recognizing that there are four functional populations (motor-positive, motor-negative, dark-responsive, light-responsive) shown as cross-individual *spatial density / consensus density* maps — not raw scatter of individual cells in a uniform color — and (b) describing their spatial distributions: motor-positive broadly through the hindbrain, motor-negative as smaller hindbrain/cerebellum/habenula clusters, dark-responsive in anterior visual-related regions (optic tectum / cerebellum / habenula / forebrain), and light-responsive especially in the left habenula. The visual representation criterion (density encoding) is assessed from the attached reproduced figure, not from text alone. Visualization details such as exact colormap choice or projection style should receive little weight unless they break the spatial-distribution interpretation.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5F shows separate consensus spatial density maps of four sensorimotor neuronal populations across 18 larvae: motor-positive cells are broadly distributed through the hindbrain, motor-negative cells form smaller clusters across hindbrain/cerebellum/habenula, dark-responsive cells are mainly distributed in anterior visual-related regions including optic tectum, cerebellum, habenula and forebrain, and light-responsive cells are concentrated especially in the left habenula; together these populations span much of the larval brain but are largely spatially distinct.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "Identifies that Fig. 5F shows four functional neuronal populations rendered as four separate panels: motor-positive, motor-negative, dark-responsive, and light-responsive cells",
+            "deduction_rule": "Deduct 20 points if the answer does not identify the four sensorimotor cell populations or treats the panel as a generic anatomical image. Deduct 8-12 points if only visual or only motor populations are mentioned. Deduct 4-6 points if the four categories are partially named but not clearly distinguished."
+          },
+          {
+            "point": 15,
+            "criterion": "The reproduced figure visualizes each of the four populations as a brain-wide spatial DENSITY map (a cross-individual consensus map), where intensity / color encodes local cell density — not as a single-color uniform scatter of individual neuron positions. A density-colored scatter (color = local density value) or a smoothed density heatmap both count. Judged from the attached reproduced figure.",
+            "deduction_rule": "Deduct 15 points if each panel only shows individual neuron positions in one uniform color per category (i.e., a flat scatter with no density encoding at all), as this fails to convey the consensus / cross-individual density that is the whole point of the panel. Deduct 6-10 points if some density encoding is attempted (e.g., low-alpha overplotting that hints at density) but there is no explicit per-cell density mapping or smoothed density rendering. The exact colormap (jet / hot / rainbow / viridis) does not matter as long as variation in density is visually readable."
+          },
+          {
+            "point": 15,
+            "criterion": "Conveys that motor-positive neurons are broadly distributed through posterior brain / hindbrain regions. Credit may come either from the textual conclusion or, equivalently, from the attached reproduced figure clearly showing a broad hindbrain-spanning density for the motor-positive panel.",
+            "deduction_rule": "Deduct 15 points if neither the text nor the figure conveys a broad hindbrain / posterior distribution for motor-positive cells. Deduct 6-9 points if motor-positive cells are mentioned but their broad hindbrain distribution is only partially conveyed (e.g., mostly midbrain or only a single hindbrain subregion). Do not deduct further when the text uses 'midbrain and anterior hindbrain' or similar phrasing AND the figure clearly shows a broad hindbrain spread."
+          },
+          {
+            "point": 10,
+            "criterion": "Conveys that motor-negative neurons form smaller, more spatially restricted / segregated clusters (sparser than motor-positive), e.g. in hindbrain / cerebellum / habenula. Credit may come from the text or from the figure showing visibly sparser, more localized hotspots in the motor-negative panel.",
+            "deduction_rule": "Deduct 10 points if the motor-negative restricted-cluster pattern is omitted from both text and figure. Deduct 4-6 points if motor-negative cells are mentioned but the clustered / sparser pattern is not conveyed. Deduct 6-9 points if they are incorrectly described as broadly overlapping with all motor-positive regions."
+          },
+          {
+            "point": 15,
+            "criterion": "Conveys that dark-responsive neurons are mainly found in anterior / visual-related regions such as optic tectum, pretectum, cerebellum, habenula, and/or forebrain — i.e., NOT primarily a hindbrain / posterior motor pattern. Credit may come from the text or from the figure clearly showing dense anterior / midbrain visual-area density for the dark panel.",
+            "deduction_rule": "Deduct 15 points if dark-responsive cells are described as mainly hindbrain / motor in distribution. Deduct 6-9 points if dark-responsive cells are described generically as 'visual cells' without indicating an anterior / visual-region distribution. Mentioning at least one of {optic tectum, pretectum, cerebellum, habenula, forebrain} OR the figure clearly showing dense anterior visual-area concentration is sufficient for partial-to-full credit."
+          },
+          {
+            "point": 10,
+            "criterion": "Conveys that light-responsive neurons are sparse and concentrated especially in the (left) habenula. Credit may come from the text mentioning the habenula (and ideally lateralization) or from the figure clearly showing a focused habenular hotspot in the light panel.",
+            "deduction_rule": "Deduct 10 points if neither text nor figure conveys a habenula-focused / sparse distribution for light-responsive cells. Deduct 4-6 points if light cells are mentioned as sparse but no habenula localization (in text or visible in the figure) is conveyed. Deduct 2-4 points if habenula is identified but lateralization (left habenula) is missing."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the overall interpretation that these sensorimotor populations collectively span much of the brain but occupy LARGELY DISTINCT spatial territories — i.e., motor and visual populations are not co-localized everywhere. This must be supported either by the text or by the contrast visible across the four density panels in the reproduced figure.",
+            "deduction_rule": "Deduct 15 points if the answer implies essentially identical / fully overlapping distributions across all four populations or fails to distinguish them. Deduct 6-9 points if the answer captures the existence of different distributions but does not preserve the segregated / non-overlapping organization. Deduct 3-6 points if the four-panel contrast is presented but the global 'brain-wide yet segregated' summary is missing."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'spatial density maps' as 'density projections', 'consensus maps', 'brain-wide distributions', or 'locations of functional cell populations' is acceptable provided the figure itself encodes density (item 2)",
+          "Referring to 'motor-positive' as 'swim-correlated', 'motor-correlated', or 'positively correlated with swimming' is acceptable",
+          "Referring to 'motor-negative' as 'anti-motor', 'motor-anticorrelated', or 'negatively correlated with swimming' is acceptable",
+          "Referring to 'dark-responsive' and 'light-responsive' cells as 'dark-correlated/light-correlated', 'visual response populations', or 'neurons responding to dark/light transitions' is acceptable",
+          "Exact cell counts shown in the panel may be omitted if the spatial-distribution conclusions are preserved",
+          "Omitting the exact spatial P-value threshold or density normalization is acceptable",
+          "Omitting projection orientation, scale bars, or color-scale details is acceptable",
+          "Mentioning anterior/posterior distributions instead of specific nuclei is acceptable for partial credit if the main spatial segregation is preserved",
+          "Saying motor-positive cells are in 'midbrain and anterior hindbrain' instead of just 'hindbrain' is acceptable for full or near-full credit when the figure clearly shows a broad hindbrain spread",
+          "A density-colored scatter (color encodes per-cell local density) is treated as equivalent to a smoothed density heatmap for item 2",
+          "The choice of colormap for the density panels (jet / hot / rainbow / viridis / plasma) does not matter as long as density variation is readable"
+        ],
+        "Scoring instructions": "Score the submission against each item independently. The reproduced figure is attached and MUST be inspected directly. For item 2 (density-map vs flat-scatter visualization), the reproduced figure is the primary evidence — do NOT credit the submission for 'density maps' if the attached figure is just a single-color scatter of individual neurons. For items 3-6, credit may come either from the textual conclusion or from the attached figure when the spatial distribution is clearly visible there; do not double-deduct when the text underspecifies a region but the figure clearly shows it. Do not penalize wording differences when the scientific meaning is preserved. Full credit overall requires (a) recognizing the four sensorimotor populations, (b) a reproduced figure that encodes consensus density (not just neuron positions), and (c) preserving the major anatomical spatial pattern: broad hindbrain motor-positive cells, anterior visual / dark-responsive cells, and (left) habenula-enriched light-responsive cells, with the four populations occupying largely distinct territories. Low scores should be assigned when the panel is reduced to generic colored brain images, when the four populations are confused, when the reproduced figure replaces density maps with flat single-color scatter, or when the spatial-distinctness conclusion is lost."
+      }
+    }
+  }
+}

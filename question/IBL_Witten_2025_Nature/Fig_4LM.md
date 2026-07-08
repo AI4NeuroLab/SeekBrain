@@ -1,0 +1,1 @@
+﻿Compute time-resolved Euclidean distances between population neural trajectories for left vs. right stimulus  conditions across brain regions. Plot the distance time courses for representative regions. For each region, extract the maximal response amplitude and modulation latency, and plot their relationship across all regions, marking statistically significant regions.

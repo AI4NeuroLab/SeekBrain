@@ -1,0 +1,52 @@
+{
+  "parent_name": "brain-wide_representations_of_behavior_spanning_multiple_timescales_and_states_in_c._elegans",
+  "image_ids": [
+    "Fig_2C"
+  ],
+  "query": "To characterize the distribution of encoding timescales across the neuronal population, the empirical cumulative distribution function (ECDF) of the median model half-decay time is plotted for all neurons that significantly encode at least one behavior. Shading shows standard deviation between animals.",
+  "analyse_plan": {
+    "Objective": "Reveal the range and distribution of temporal integration timescales across the encoding neuronal population.",
+    "Validation Checks": "Half-decay computed from CePNEM timescale parameter s; ECDF includes all encoding neurons; shading = inter-animal SD.",
+    "Steps": "1. Load Data: Load the CePNEM posterior samples of the timescale parameter s for each behavior-encoding neuron in the 14 SWF415 animals (fits across both 8-minute halves) and the per-neuron significance flags from the encoding analysis. 2. Restrict To Encoding Neurons: Keep only the neurons that significantly encode at least one behavior in either 8-minute half (per the deconvolved-activity-matrix test with FDR 0.05). 3. Convert Timescale Parameter To Half-Decay: For each retained (neuron, time-half) fit, take the median of s across posterior particles and convert it to half-decay time using the EWMA relation. 4. Compute Per-Animal ECDF: For each animal, compute the empirical cumulative distribution function (ECDF) of the per-neuron median half-decay times pooled across the two time halves of that animal. 5. Aggregate Across Animals: Average the ECDFs across the 14 animals at every half-decay value to obtain the across-animal mean ECDF, and compute the across-animal SD at every half-decay value for shading. 6. Save Key Results: Save the per-neuron median half-decay times, the per-animal ECDFs, the across-animal mean ECDF, and the across-animal SD used for the panel. 7. Visualization: Plot the across-animal mean ECDF of half-decay times as a single curve (x = half-decay seconds, y = cumulative fraction of neurons), with the across-animal SD displayed as a shaded band around the mean."
+  },
+  "analysis_keywords": [
+    "half-decay time",
+    "ECDF",
+    "timescale distribution",
+    "exponentially-weighted moving average",
+    "temporal integration"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "N_animals",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 14
+    },
+    {
+      "variable_name": "N_encoding_neurons_per_animal_mean",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 83
+    },
+    {
+      "variable_name": "N_encoding_neurons_per_animal_sd",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 10
+    }
+  ],
+  "key_analysis_results": [
+    "Most neurons primarily encoded current behavior (short half-decay), but a sizeable subset weighed past behavior with half-decay times extending to tens of seconds. The distribution was continuous, not bimodal."
+  ],
+  "key_analysis_conclusions": [
+    "Encoding timescales form a continuous spectrum, with a substantial subset integrating the animal's recent behavioral history over tens of seconds, enabling simultaneous representation of current and past locomotion state."
+  ],
+  "summary_report": {
+    "abstract": "ECDF of half-decay times reveals a continuous spectrum of encoding timescales.",
+    "methods": "Median half-decay from CePNEM posteriors for all encoding neurons. ECDFs per animal (n=14), shown as mean +/- SD.",
+    "results": "Range: 0.9-31.7 sec. Most neurons short half-decay; sizeable subset extends to tens of seconds. Continuous distribution.",
+    "discussion": "Multi-timescale encoding may enable relating past actions to current outcomes, a computation necessary for behavioral adaptation."
+  },
+  "question": "﻿To characterize the distribution of encoding timescales across the neuronal population, the empirical cumulative distribution function (ECDF) of the median model half-decay time is plotted for all neurons that significantly encode at least one behavior. Shading shows standard deviation between animals."
+}

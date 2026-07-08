@@ -1,0 +1,60 @@
+{
+  "tag": "Fig_4G",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric allocates most of the score to the core scientific result: the relationship between scene orientation (θ) and bump phase changes across epochs. In the pre- and post-learning epochs the bump phase follows the diagonal mapping (bump phase = θ), whereas in the symmetric-scene learning epoch the mapping changes to bump phase = 2θ (mod 2π). This slope-2 relationship demonstrates that the HD population remaps such that 180° of the visual scene spans the full 360° HD representation. Visualization details such as scatter plotting or dashed reference lines should receive little weight unless they help preserve this mapping interpretation.",
+      "rubric": {
+        "GT core conclusion": "During the learning epoch with the symmetric scene, the bump phase follows a slope-2 relationship with scene orientation (bump phase ≈ 2θ mod 2π), whereas in the pre- and post-learning epochs the relationship is approximately bump phase = θ.",
+        "Scoring items": [
+          {
+            "point": 40,
+            "criterion": "States that the mapping between scene orientation and bump phase changes in the learning epoch from bump phase = θ to bump phase ≈ 2θ (mod 2π)",
+            "deduction_rule": "Deduct 40 points if the slope-2 relationship is missing, reversed, or replaced by a generic statement about 'change in alignment'. Deduct 20-25 points if both mappings are mentioned but the difference between θ and 2θ relationships is unclear."
+          },
+          {
+            "point": 25,
+            "criterion": "Identifies that the pre- and post-learning epochs follow the standard diagonal mapping (bump phase = θ)",
+            "deduction_rule": "Deduct 25 points if the answer omits the baseline θ relationship or incorrectly claims that the slope-2 mapping occurs in all epochs. Deduct 10-15 points if the pre/post epochs are mentioned but the diagonal relationship is not clearly described."
+          },
+          {
+            "point": 20,
+            "criterion": "Preserves the interpretation that the slope-2 mapping means that 180° of the visual scene maps onto the full 360° HD representation",
+            "deduction_rule": "Deduct 20 points if the answer omits this mapping interpretation or replaces it with an incorrect explanation. Deduct 8-12 points if the mapping is mentioned but the 180°→360° implication is not clearly conveyed."
+          },
+          {
+            "point": 15,
+            "criterion": "Indicates that the relationship was visualized by plotting bump phase against scene orientation across epochs",
+            "deduction_rule": "Deduct 15 points if the scatter relationship between bump phase and θ is not mentioned at all. Deduct 5-8 points if the plot is described vaguely without specifying that bump phase is compared directly with scene orientation."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'bump phase = 2θ (mod 2π)' as 'slope-2 relationship' or 'double-angle mapping' is acceptable if the meaning is preserved",
+          "Describing the diagonal mapping as 'bump phase tracks scene orientation' is acceptable",
+          "Referring to the learning epoch as the 'symmetric scene' or 'double-sun condition' is acceptable",
+          "Omitting the exact modulo notation (mod 2π) is acceptable if the double-angle relationship is preserved",
+          "Omitting visualization details such as dashed lines or scatter points is acceptable"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer preserves the main scientific result rather than figure-display details. Full credit requires capturing that the learning epoch shows a slope-2 mapping between bump phase and scene orientation, while the pre- and post-learning epochs follow the standard diagonal mapping (bump phase = θ). Partial credit should be given when the answer captures the slope-2 concept but simplifies the mapping interpretation. Low scores should be assigned when the answer reduces the panel to a generic visualization description or fails to preserve the key mapping change."
+      }
+    },
+    "binary": {
+      "reason": "This rubric emphasizes the core scientific result rather than figure-display details. The essential meaning is that the bump-phase mapping changes in the symmetric scene: instead of following bump phase = θ, the relationship becomes bump phase ≈ 2θ (mod 2π). This indicates that the HD representation expands the symmetric visual input such that 180° of visual space corresponds to the full 360° neural representation.",
+      "rubric": {
+        "GT core conclusion": "In the symmetric scene (learning epoch), bump phase follows a slope-2 relationship with scene orientation (bump phase ≈ 2θ mod 2π), whereas in the pre- and post-learning epochs the mapping remains approximately bump phase = θ.",
+        "Required points": [
+          "The answer identifies that bump phase is plotted against scene orientation across different epochs",
+          "The answer states that the learning epoch shows a slope-2 or 2θ mapping between bump phase and scene orientation",
+          "The answer states that the pre- and post-learning epochs follow the normal bump phase = θ relationship"
+        ],
+        "Acceptable deviations": [
+          "The exact equation '2θ (mod 2π)' may be paraphrased as 'slope-2 relationship' or 'double-angle mapping'",
+          "The diagonal mapping may be described as 'bump phase tracks scene orientation'",
+          "The learning epoch may be referred to as the symmetric-scene or double-sun condition",
+          "Omitting visualization details such as dashed reference lines or scatter plotting is acceptable"
+        ],
+        "Criteria for 1": "Assign 1 if the answer preserves the core meaning that the learning epoch shows a slope-2 (2θ) mapping between scene orientation and bump phase while the pre- and post-learning epochs follow the standard bump phase = θ relationship.",
+        "Criteria for 0": "Assign 0 if the answer omits the comparison across epochs, reverses the relationship, claims the same mapping in all epochs, or reduces the panel to a generic visualization description without preserving the mapping interpretation."
+      }
+    }
+  }
+}

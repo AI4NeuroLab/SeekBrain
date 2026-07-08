@@ -1,0 +1,55 @@
+{
+  "parent_name": "brain-wide_representations_of_prior_information_in_mouse_decision-making",
+  "image_ids": [
+    "Fig_4F"
+  ],
+  "question": "Estimate inverse decay constants from neural activity data (electrophysiology and widefield imaging) to quantify how neural responses decay over past trials. For each session, pair these neural inverse decay constants with the corresponding behavioural inverse decay constants from the action kernel model, and compute the Pearson correlation between the two across sessions, separately for each recording modality.",
+  "analyse_plan": {
+    "Objective": "Test whether neural temporal dynamics are correlated with the behavioral decay constants estimated from the action kernel model.",
+    "Validation Checks": "Verify that behavioral inverse decay constants are estimated from the action kernel model. Confirm that neural inverse decay constants are computed separately for electrophysiology and widefield imaging using the corresponding neural models. Ensure that behavioral and neural estimates are paired within the same sessions. Check that Pearson correlation is computed separately for the two recording modalities.",
+    "Steps": "1.Load Behavioral Model Results: Load behavioral inverse decay constants estimated from the action kernel model. 2.Load Neural Data Results: Load neural inverse decay constants estimated from electrophysiology and widefield imaging data. 3.Estimate Neural Constants: Use the modality-specific neural models to quantify the temporal dependence of neural activity on past actions and obtain neural inverse decay constants. 4.Match Session-level Estimates: Pair behavioral inverse decay constants with neural inverse decay constants from the same sessions. 5.Compute Correlations: Compute Pearson correlations between behavioral and neural inverse decay constants separately for electrophysiology and widefield imaging. 6.Save Key Results: Save paired inverse decay constants, correlation coefficients, P values, and sample metadata for downstream analysis and visualization. 7.Visualization: Plot neural inverse decay constants against behavioral inverse decay constants for electrophysiology and widefield imaging with fitted correlation lines."
+  },
+  "analysis_keywords": [
+    "action kernel model",
+    "Pearson correlation",
+    "inverse decay constant"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "pearson_correlation_ephys",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.23
+    },
+    {
+      "variable_name": "p_value_ephys",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.0037
+    },
+    {
+      "variable_name": "pearson_correlation_wfi",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.49
+    },
+    {
+      "variable_name": "p_value_wfi",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.0006
+    }
+  ],
+  "key_analysis_results": [
+    "Behavioral inverse decay constants estimated from the action kernel model were positively correlated with neural inverse decay constants in electrophysiology recordings (Pearson R = 0.23, P = 0.0037). Behavioral inverse decay constants estimated from the action kernel model were also positively correlated with neural inverse decay constants in widefield imaging data (Pearson R = 0.49, P = 0.0006)."
+  ],
+  "key_analysis_conclusions": [
+    "Neural inverse decay constants are correlated with behavioural inverse decay constants across sessions, indicating similarity between neural and behavioural temporal dynamics related to past actions."
+  ],
+  "summary_report": {
+    "abstract": "The analysis tests whether the temporal integration timescale estimated from behavior is reflected in neural activity by comparing behavioral and neural inverse decay constants.",
+    "methods": "Behavioral inverse decay constants were estimated from the action kernel model fitted to mouse choices. Neural inverse decay constants were estimated from electrophysiology and widefield imaging recordings using modality-specific models of temporal dependence on past actions. Pearson correlations were computed separately for the two recording modalities.",
+    "results": "Behavioral inverse decay constants were significantly correlated with neural inverse decay constants in electrophysiology (R = 0.49, P = 0.0006) and in widefield imaging (R = 0.23, P = 0.0037).",
+    "discussion": "The significant correlations indicate similarity between neural temporal dynamics and behavioural temporal dynamics related to past actions."
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "parent_name": "cholinergic_feedback_for_modality-_and_context-specific_modulation_of_sensory_representations",
+  "image_ids": [
+    "Fig_2B"
+  ],
+  "query": "Can GLM-HMM successfully decompose behavioral data within individual sessions into distinct behavioral states (engaged, left-bias, right-bias), as shown by example session choices and state probability traces?",
+  "analyse_plan": {
+    "Objective": "Visualize GLM-HMM-identified behavioral states in example sessions, showing trial-by-trial choices and the corresponding posterior state probabilities.",
+    "Validation Checks": "Verify that choices align with the stated rules (left for 60:40 and 53:47, right for 47:53 and 40:60); confirm that state probabilities sum to 1 at each trial; check that engaged state corresponds to stimulus-dependent choices.",
+    "Steps": "1. Fit GLM-HMM to behavioral data with predictors: previous trial choice, current stimulus, current trial choice.\n2. Extract posterior state probabilities for each trial in each session.\n3. Label states based on choice patterns: engaged state (stimulus-dependent), left-bias, right-bias.\n4. For two example sessions, plot trial-by-trial choices (odor mixture and left/right choice, colored by correct/incorrect/miss) in the top panel.\n5. Plot corresponding posterior state probabilities (P(state)) for the three states across trials in the bottom panel.\n6. Save the GLM-HMM parameters and state assignments."
+  },
+  "analysis_keywords": [
+    "GLM-HMM",
+    "hidden Markov model",
+    "behavioral state decomposition",
+    "posterior state probability"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "state_probability",
+      "unit": "dimensionless",
+      "variable_type": "numeric",
+      "number": "0-1"
+    },
+    {
+      "variable_name": "trial_number",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "0-50 range per session"
+    },
+    {
+      "variable_name": "n_sessions",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "55"
+    },
+    {
+      "variable_name": "n_mice",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": "6"
+    }
+  ],
+  "key_analysis_results": [
+    "GLM-HMM successfully identified three distinct behavioral states from two example sessions. In the engaged state, mice chose left or right based on odor mixture identity (mostly correct trials). In the biased states, mice were biased toward one choice regardless of odor (mixture of correct and incorrect). State transitions within sessions were clearly captured by the posterior probability traces."
+  ],
+  "key_analysis_conclusions": [
+    "GLM-HMM provides a principled, data-driven method to decompose behavioral sessions into meaningful states reflecting different levels of task engagement, enabling subsequent analysis of neural responses conditional on engagement level."
+  ],
+  "summary_report": {
+    "abstract": "Example sessions demonstrate that GLM-HMM can identify distinct behavioral states (engaged, left-bias, right-bias) from trial-by-trial choice data during olfactory discrimination.",
+    "methods": "GLM-HMM with three states was fit to behavioral data using previous choice, current stimulus, and current choice as predictors. Posterior state probabilities were computed per trial. Two example sessions were selected for visualization. n = 55 sessions from 6 mice.",
+    "results": "Two example sessions show clear transitions between engaged and biased states. The engaged state is characterized by stimulus-dependent choices (mostly correct), while biased states show choice biases independent of stimulus.",
+    "discussion": "The GLM-HMM behavioral state decomposition provides the foundation for examining whether cholinergic axon responses vary with engagement level, going beyond the binary task/passive comparison."
+  }
+}

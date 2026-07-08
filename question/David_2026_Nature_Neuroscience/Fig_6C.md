@@ -1,0 +1,1 @@
+﻿To display and compare, in regular-spiking versus narrow-spiking neurons, how the proportion of subspace dimensions for positive-symmetric and negative-symmetric tuning nonlinearities varies across cortical layers.

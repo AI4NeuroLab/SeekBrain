@@ -1,0 +1,212 @@
+{
+  "parent_name": "continuous_cell-type_diversification_in_mouse_visual_cortex_development",
+  "image_ids": [
+    "Fig_4B"
+  ],
+  "question": "To visualize developmental expression trajectories of representative marker genes across mouse visual cortex cell types, grouped by major excitatory, inhibitory, and glial lineages, and to assess whether their temporal dynamics align with predefined expression trajectory categories such as Up, Transient Up, Down, and Constant.",
+  "analyse_plan": {
+    "Objective": "To provide a visual assessment of the predefined gene trajectory categories by plotting the expression profiles of representative marker genes over development.",
+    "Validation Checks": "Confirm that the plotted genes are well-established markers for the indicated cell classes. Verify that the line colors used for the genes correspond to the intended trajectory categories: Green for 'Up', Light Blue/Cyan for 'Transient Up', Red for 'Down', and Black/Grey for 'Constant' trajectories.",
+    "Steps": "1. Load data: the single-cell RNA-seq dataset covering developmental timepoints E11.5 to P56, and the defined cell subclass annotations. 2. Select Marker Genes: Choose specific genes known to mark Pan-Glutamatergic, IT-Glutamatergic, NonIT-Glutamatergic, GABAergic, and Glial lineages. 3. Extract Expression Data: Retrieve the scaled expression values for these genes across all cells, binned by age. 4. Map to Trajectories: Assign each gene to its corresponding trajectory category (e.g., Up, Transient Up, Down) based on its fitted temporal expression pattern. 5. Save Key Results: Save the gene expression data, gene-to-trajectory category mapping, plotting data for visualization, and axis information. 6. Visualization: Generate line plots showing the temporal progression of gene expression, with each line colored according to its assigned trajectory category."
+  },
+  "analysis_keywords": [
+    "marker genes",
+    "temporal expression",
+    "line plot",
+    "validation",
+    "cell lineage"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Total Number of Genes Plotted",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 19
+    },
+    {
+      "variable_name": "Detailed Gene List with Assigned Trajectories",
+      "unit": "mapping",
+      "variable_type": "table",
+      "number": {
+        "columns": [
+          "Gene Symbol",
+          "Cell Class",
+          "Assigned Trajectory Category"
+        ],
+        "rows": [
+          [
+            "Neurod2",
+            "Pan Glut",
+            "Up (Trajectory 1)"
+          ],
+          [
+            "Tbr1",
+            "Pan Glut",
+            "Up (Trajectory 1)"
+          ],
+          [
+            "Neurod1",
+            "Pan Glut",
+            "Up (Trajectory 1)"
+          ],
+          [
+            "Neurod6",
+            "Pan Glut",
+            "Up (Trajectory 1)"
+          ],
+          [
+            "Satb2",
+            "Pan Glut",
+            "Up (Trajectory 1)"
+          ],
+          [
+            "Cux2",
+            "IT Glut",
+            "Up (Trajectory 2)"
+          ],
+          [
+            "Pou3f1",
+            "IT Glut",
+            "Up (Trajectory 2)"
+          ],
+          [
+            "Rorb",
+            "IT Glut",
+            "Up (Trajectory 2)"
+          ],
+          [
+            "Foxo1",
+            "IT Glut",
+            "Up (Trajectory 2)"
+          ],
+          [
+            "Foxp2",
+            "IT Glut",
+            "Up (Trajectory 3)"
+          ],
+          [
+            "Fezf2",
+            "IT Glut",
+            "Up (Trajectory 3)"
+          ],
+          [
+            "Sox5",
+            "IT Glut",
+            "Up (Trajectory 4)"
+          ],
+          [
+            "St18",
+            "NonIT Glut",
+            "Up (Trajectory 5)"
+          ],
+          [
+            "Bhlhe22",
+            "NonIT Glut",
+            "Up (Trajectory 6)"
+          ],
+          [
+            "Etv1",
+            "NonIT Glut",
+            "Up (Trajectory 7)"
+          ],
+          [
+            "Dlx1",
+            "GABA",
+            "Transient Up (Trajectory 8)"
+          ],
+          [
+            "Mafb",
+            "GABA",
+            "Transient Up (Trajectory 8)"
+          ],
+          [
+            "Lhx6",
+            "GABA",
+            "Down (Trajectory 24)"
+          ],
+          [
+            "Prox1",
+            "GABA",
+            "Down (Trajectory 24)"
+          ],
+          [
+            "Nfib",
+            "GABA",
+            "Down (Trajectory 24)"
+          ],
+          [
+            "Olig1",
+            "Glia",
+            "Transient Up (Trajectory 8)"
+          ],
+          [
+            "Olig2",
+            "Glia",
+            "Transient Up (Trajectory 8)"
+          ]
+        ]
+      }
+    },
+    {
+      "variable_name": "Cell Subclass Distribution",
+      "unit": "list",
+      "variable_type": "table",
+      "number": {
+        "columns": [
+          "Cell Class",
+          "Specific Subclasses"
+        ],
+        "rows": [
+          [
+            "IT Glut",
+            [
+              "CLA-EPd-CTX Car3 Glut",
+              "L6 IT CTX Glut",
+              "L5 IT CTX Glut",
+              "L4/5 IT CTX Glut",
+              "L2/3 IT CTX Glut",
+              "L5 ET CTX Glut",
+              "L6b CTX Glut"
+            ]
+          ],
+          [
+            "NonIT Glut",
+            [
+              "L5 NP CTX Glut",
+              "L6 CT CTX Glut"
+            ]
+          ],
+          [
+            "GABA",
+            [
+              "Sncg Gaba",
+              "Lamp5 Gaba",
+              "PValb Gaba",
+              "Sst Gaba"
+            ]
+          ],
+          [
+            "Glia",
+            [
+              "Astro-TE NN",
+              "OPC NN",
+              "Peri NN",
+              "VLMC NN",
+              "Endo NN",
+              "Microglia NN",
+              "BAM NN"
+            ]
+          ]
+        ]
+      }
+    }
+  ],
+  "key_analysis_results": "The plot visually assesses the coherence of gene expression patterns with the predefined trajectory categories. Excitatory neuron-related genes (Pan Glut, IT Glut, NonIT Glut) predominantly exhibit early, sustained upregulation (green lines, 'Up' category), consistent with neurogenesis and differentiation timelines. In contrast, marker genes for inhibitory neurons (GABAergic) and glial cells display diverse dynamics, including transient upregulation (light blue/cyan lines, 'Transient Up' category) and early high expression followed by sustained downregulation (red lines, 'Down' category), reflecting the differential maturation kinetics of these lineages.",
+  "key_analysis_conclusions": "Visualization of specific gene expression patterns confirms that the predefined trajectory categories (Up, Transient Up, Down) accurately capture the major modes of transcriptional dynamics during cortical development. Different cell subclasses not only follow distinct 'expression schedules' but the temporal profile of their marker genes (e.g., sustained vs. transient) aligns precisely with the biological processes of their respective cell fate establishment and maturation.",
+  "summary_report": {
+    "abstract": "This figure illustrates the scaled expression trajectories of representative marker genes throughout mouse visual cortex development. By mapping genes to explicit trajectory categories (sustained up, transient up, down), the analysis provides an intuitive visual assessment of these categories' biological relevance and reveals subtype-specific transcriptional dynamics.",
+    "methods": "Scaled expression values were extracted for specified marker genes across various cell subclasses and plotted as temporal line graphs. Line colors were directly annotated based on the trajectory category (Up, Transient Up, Down) assigned to each gene through prior analysis of its expression pattern over time.",
+    "results": "The results demonstrate characteristic temporal expression patterns for different cell lineages, which cluster into the defined categories. For instance, genes like Neurod2 show continuous elevation ('Up') in excitatory neurons, whereas genes like Dlx1 exhibit a transient peak ('Transient Up') in inhibitory neurons. Distinct downregulation patterns ('Down') are observed for genes associated with early progenitor states.",
+    "discussion": "This visualization supports the biological validity of classifying gene expression dynamics into distinct trajectory types. It also refines the understanding of cell subclass-specific developmental timing. These dynamic expression profiles provide direct evidence for the distinct molecular programs that underpin cortical cell type diversification."
+  }
+}

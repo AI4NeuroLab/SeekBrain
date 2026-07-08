@@ -1,0 +1,41 @@
+{
+  "parent_name": "A_Cellular-Resolution_Atlas_of_the_Larval_Zebrafish_Brain",
+  "image_ids": [
+    "Fig_5B"
+  ],
+  "question": "To visualize the spatial distribution of cerebellar efferent neurons clustered by morphological similarity, all 121 cerebellar output cells (91 eurydendroid cells and 30 Purkinje cells) from the larval zebrafish brain at 6 dpf were clustered by hierarchical clustering based on NBLAST similarity scores (Figure 5A), then all neurons were mirrored to the right hemisphere and overlaid on the outline of the standard brain (gray surface), with different colors representing the different clusters from Figure 5A and Purkinje cells (cluster 7) omitted for clarity, and black rectangles indicating regions zoomed in for detailed viewing.",
+  "analyse_plan": {
+    "Objective": "To visualize the spatial distribution and morphological diversity of cerebellar efferent neurons by displaying all traced neurons overlaid on the standard brain template, with color coding corresponding to cluster identities from hierarchical clustering.",
+    "Validation Checks": "1. Cluster Color Consistency: Verify that the colors assigned to neurons in Figure 5B match the cluster colors shown in the Figure 5A dendrogram. 2. PC Exclusion Verification: Confirm that Purkinje cells (cluster 7) are omitted from the visualization as indicated in the legend. 3. Hemispheric Mirroring: Check that all neurons are displayed mirrored to the right hemisphere for consistent comparison. 4. Region of Interest Indication: Verify that black rectangles correctly identify regions that are zoomed in for detailed viewing. 5. Spatial Distribution Assessment: Evaluate whether neurons from different clusters show distinct spatial distributions within the cerebellum and brain.",
+    "Steps": "1. Neuron Population Selection: Identify all cerebellar output cells (n=121) comprising 91 eurydendroid cells (ECs) and 30 Purkinje cells (PCs). 2. Cluster Assignment: Assign each neuron to its morphological cluster based on the hierarchical clustering results from Figure 5A. 3. Hemispheric Standardization: Mirror all neurons to the right hemisphere to enable consistent visualization and comparison. 4. PC Exclusion: Remove Purkinje cells (cluster 7) from the visualization for clarity, as indicated in the figure legend. 5. Template Overlay: Overlay all remaining ECs on the gray surface outline of the standard brain template. 6. Color Coding Application: Apply colors to each neuron corresponding to its cluster identity from Figure 5A. 7. Region of Interest Identification: Identify and mark with black rectangles specific regions where higher magnification views will be shown. 8. Spatial Distribution Analysis: Examine whether neurons from different clusters occupy distinct spatial positions or show different projection patterns."
+  },
+  "analysis_keywords": [
+    "Morphological clusters"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Total neurons",
+      "unit": "cells",
+      "variable_type": "numeric",
+      "number": "121"
+    },
+    {
+      "variable_name": "Scale bars",
+      "unit": "μm",
+      "variable_type": "numeric",
+      "number": "100"
+    }
+  ],
+  "key_analysis_results": [
+    "Of the eight major clusters, one (cluster 7) consisted exclusively of all PCs, with the remaining ECs distributed over the other seven clusters."
+  ],
+  "key_analysis_conclusions": [
+    "Color coding these clusters revealed that the dendrites of the individual EC clusters tile the granule cell layer, suggesting segregation of inputs."
+  ],
+  "summary_report": {
+    "abstract": "This analysis aims to visualize the spatial distribution and morphological diversity of cerebellar efferent neurons in the larval zebrafish brain by displaying all traced neurons overlaid on the standard brain template, with color coding corresponding to the cluster identities derived from hierarchical clustering in Figure 5A.",
+    "methods": "We identified 121 cerebellar output cells whose cell bodies reside along the medio-to-lateral and rostral-to-caudal extent of the cerebellar corpus. The majority of those are eurydendroid cells (ECs, 91/121) and the rest are Purkinje cells (PCs, 30/121). Following hierarchical clustering based on NBLAST morphological similarity scores (Figure 5A), all cerebellar efferent neurons were mirrored to the right hemisphere and overlaid on the outline of the standard brain (gray surface). Different colors represent the different clusters from Figure 5A. For clarity, Purkinje cells (cluster 7) were omitted from the visualization. Black rectangles indicate regions that are zoomed in for detailed viewing.",
+    "results": "The overlay reveals the spatial distribution of cerebellar efferent neurons within the standard brain framework, with different colors representing the seven eurydendroid cell clusters identified in Figure 5A. The black rectangles highlight specific regions of interest for higher magnification viewing.",
+    "discussion": "The visualization demonstrates that eurydendroid cells from different morphological clusters occupy distinct spatial positions within the cerebellum and project to different target regions. This spatial segregation, combined with the morphological clustering, suggests that ECs are organized into functionally distinct subtypes with specialized projection patterns."
+  }
+}

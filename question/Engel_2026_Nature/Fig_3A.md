@@ -1,0 +1,1 @@
+﻿Compute the log-likelihood ratio of the single-neuron  latent dynamical model against a PSTH baseline for each neuron. Plot the distribution of log-likelihood ratios separately for monkey T and monkey O, and test whether the  model significantly outperforms the baseline across the population.

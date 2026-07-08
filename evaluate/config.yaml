@@ -1,0 +1,59 @@
+# ============================================================================
+# Evaluate config — central path & API configuration
+# ============================================================================
+# All paths can be:
+#   - absolute (e.g. /data/benchmark)
+#   - relative to this config file's directory (e.g. ../benchmark)
+#
+# Override any field via CLI:  python score_outputs.py --config <path>
+# Or via env var BENCHMARK_DIR / RUBRIC_DIR / SCORES_DIR (takes precedence).
+#
+# When deploying to the server, copy this file to config.server.yaml and
+# adjust the paths; pass `--config config.server.yaml` to the scripts.
+# ============================================================================
+
+# ── Benchmark resources (shared, read-only) ─────────────────────────────────
+# benchmark_dir/
+#   ├── query_gt_data/<id>/<letter>.json     GT analysis info (query, conclusions, etc.)
+#   ├── gt_figure/<id>/<letter>.png          GT figure images
+#   ├── query_questions/<id>/<letter>.md     Benchmark question prompts
+#   └── rubric/<id>/<letter>.json            Rubric per benchmark question
+benchmark_dir:    ./evaluate_query
+ground_truth_dir: ${benchmark_dir}/query_gt_data
+gt_figures_dir:   ${benchmark_dir}/gt_figure
+
+# ── Evaluation resources (this repo) ────────────────────────────────────────
+# rubric_dir/<id>/<letter>.json — one rubric per benchmark question
+rubric_dir: ${benchmark_dir}/rubric
+
+# Where score_v*.json files are written. The runner appends the basename
+# of the model output dir (e.g. scores_dir/output_cc/, scores_dir/output_ns/).
+scores_dir: ./scores
+
+# ── Default model output locations ──────────────────────────────────────────
+# Defaults used by eval_cc.sh / eval_ours.sh when no path is passed on the
+# command line. Always overridable at the CLI:
+#     bash eval_cc.sh   /path/to/cc_output
+#     bash eval_ours.sh /path/to/ns_output
+#
+# These paths are resolved relative to this config file (evaluate/).
+# Edit per environment (local vs. server) — leave blank to require explicit CLI.
+default_output_cc:  /home/zhuyuqing-p/CC/output   # CC layout: <id>/<letter>/{conclusion.md,analyze.png,...}
+default_output_ours:  ./output_ns_latest/              # NS layout: <id>/<letter>-<ts>/round_N/... (set per env)
+
+# ── API configuration ───────────────────────────────────────────────────────
+api:
+  base_url: http://35.220.164.252:3888/v1
+  # API key resolution order:
+  #   1. CLI flag --api-key
+  #   2. api.key field below (literal — explicit override, beats stale env vars)
+  #   3. env var OPENAI_API_KEY
+  #   4. env var ANTHROPIC_API_KEY
+  #   5. api.key_env field below (read from named env var)
+  # DO NOT commit secrets in api.key.
+  key_env: OPENAI_API_KEY
+  key: sk-0YVRVUkWZawVWMD6Z1MiqRpytHaD3PaNAtUoSI2tlXuaxPNT
+  # key: sk-...
+
+# ── Default eval model ──────────────────────────────────────────────────────
+default_model: claude-opus-4-6

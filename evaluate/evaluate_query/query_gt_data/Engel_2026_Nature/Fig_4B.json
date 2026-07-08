@@ -1,0 +1,36 @@
+{
+  "parent_name": "the_dynamics_and_geometry_of_choice_in_the_premotor_cortex",
+  "image_ids": [
+    "Fig_4B"
+  ],
+  "query": "What are the trial-averaged firing rate profiles (PSTHs) of simultaneously recorded neurons in a population, sorted by chosen side and stimulus difficulty?",
+  "analyse_plan": {
+    "Objective": "Visualize the heterogeneous temporal response profiles of 14 simultaneously recorded neurons from an example session, demonstrating the diversity of single-neuron responses during decision-making.",
+    "Validation Checks": "Verify that neurons show diverse temporal profiles including ramping, non-monotonic, and complex patterns. Confirm that responses separate by chosen side and show modulation by stimulus difficulty. Ensure error bars represent standard error of the mean over trials.",
+    "Steps": "1. Load Data: Load spike times from the 14 simultaneously recorded neurons in the example session, together with the trial labels for chosen side (left versus right) and stimulus difficulty (easy versus hard). 2. Data Selection: Select the 14 simultaneously recorded neurons from the example session for visualization. 3. PSTH Computation: Compute trial-averaged firing rates aligned to stimulus onset using spike counts measured in 75-ms bins sliding at 10-ms steps. 4. Condition Sorting: Sort trials by chosen side (left [red] versus right [green]) and stimulus difficulty (hard [dark] versus easy [light]). 5. Save Key Results: Save the trial-averaged firing-rate traces for all 14 neurons, the standard error of the mean (s.e.m.) values, the trial-condition labels, and the neuron ordering used for the panel. 6. Visualization: Plot PSTHs for all 14 neurons with error bars representing standard error of the mean (s.e.m.) over trials."
+  },
+  "analysis_keywords": [
+    "standard error of the mean"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "firing rate",
+      "unit": "Hz",
+      "variable_type": "vector",
+      "number": ""
+    }
+  ],
+  "key_analysis_results": [
+    "The 14 simultaneously recorded PMd neurons from an example session exhibit heterogeneous trial-averaged firing rate profiles ranging approximately 0-80 Hz when sorted by chosen side (left: red traces; right: green traces) and stimulus difficulty (hard: dark traces; easy: light traces). Temporal dynamics include ramping (e.g., neurons 1, 2), non-monotonic (e.g., neurons 3, 4), and transient activation patterns (e.g., neuron 5). Responses show clear choice selectivity with higher firing rates for one chosen side, and stimulus difficulty modulates response slope and magnitude. Error bars represent s.e.m. over trials."
+  ],
+  "key_analysis_conclusions": [
+    "The diversity of trial-averaged firing rate profiles across simultaneously recorded neurons demonstrates that response heterogeneity is an intrinsic property of the local neural population rather than an artifact of cross-session variability. This heterogeneity in PSTHs reflects the underlying diversity of neural tuning functions within the population."
+  ],
+  "summary_report": {
+    "abstract": "Fourteen simultaneously recorded PMd neurons show heterogeneous trial-averaged firing rate profiles (0-80 Hz) when sorted by chosen side and stimulus difficulty, displaying diverse temporal dynamics including ramping, non-monotonic, and transient patterns (error bars: s.e.m.).",
+    "methods": "Trial-averaged firing rates (PSTHs) were computed by averaging spike counts in 75-ms bins sliding at 10-ms steps, aligned to stimulus onset. Error bars represent standard error of the mean (s.e.m.) over trials. Responses are shown for four conditions: left hard (dark red), left easy (light red), right hard (dark green), right easy (light green).",
+    "results": "Neuron index 1-14 show diverse temporal profiles: some ramp up or down (neurons 1-2), others show non-monotonic patterns (neurons 3-4) or transient responses (neuron 5). All neurons exhibit choice selectivity with higher firing rates for one chosen side. Stimulus difficulty modulates the slope and magnitude of responses across the population.",
+    "discussion": "The heterogeneous PSTHs across simultaneously recorded neurons confirm that response diversity is a property of the population, not due to recording from different sessions or animals. This heterogeneity is explained by diverse tuning functions (as shown in Fig. 4D) rather than different underlying dynamics."
+  },
+  "question": "﻿What are the trial-averaged firing rate profiles (PSTHs) of simultaneously recorded neurons in a population, sorted by chosen side and stimulus difficulty?"
+}

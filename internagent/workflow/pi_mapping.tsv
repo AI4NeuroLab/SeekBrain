@@ -1,0 +1,15 @@
+# exp_data	label	meta_items
+# Source: reference/project/launch_discovery.py meta_items (NeuroScientist backend).
+koninck	Koninck_2025_Science_Advances	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/27_meta.json
+ahrens	Ahrens_2026_bioRxiv	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/13_meta.json
+wanglab	WangLab2024FreeMoving	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/library/data/neuroscientist_meta/wanglab_meta.json
+michael	Michael_2019_Neuron	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/5_meta.json
+adam	Adam_2023_Cell	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/11_meta.json
+findling	Findling_2025_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/3_meta.json
+komiyama	Komiyama_2025_Science	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/26_meta.json
+wilson	Wilson_2025_Nature_Neuroscience	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/14_meta.json
+ryosuke	Ryosuke_2026_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/7_meta.json
+engel	Engel_2026_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/17_meta.json
+ibl	IBL_Witten_2025_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/2_meta.json
+zeng	Zeng_2025_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/15_meta.json
+chen	Chen_2026_Nature	/mnt/shared-storage-gpfs2/ai4neuro-share/neuro_scientist/benchmark/meta_529/1_meta.json

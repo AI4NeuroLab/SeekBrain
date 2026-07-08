@@ -1,0 +1,43 @@
+{
+  "tag": "Fig_5F",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 5F compares changes in movement-related activity of movement-excited granule cells from Baseline to ITI/stimulus period under Task and Passive conditions. The core is to understand that task engagement selectively reduces movement-related activity in granule cells. The graph is a three-row by two-column composite figure and is worth 35 points. The definition of movement-excited cells, Baseline/ITI time windows, and heatmap sorting are worth 20 points. The scientific interpretation is split into two items: reduced movement-related activity from Baseline to ITI under Task is worth 25 points, and the Passive-condition control plus its relation to cholinergic modulation is worth 20 points. Point allocation: graph reproduction 35, analysis object and time windows 20, Task-condition conclusion 25, Passive control and cholinergic link 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5F shows that task engagement selectively reduces movement-related activity in granule cells. Under the Task condition, both the average activity and single-cell heatmap of movement-excited granule cells show a clear decrease in movement-related activity from Baseline to ITI, the odor-stimulus period. Under the Passive condition, this decrease is absent; movement-related activity is maintained or slightly enhanced. This pattern parallels the shift in cholinergic axons from movement responses toward odor responses during task engagement, suggesting that cholinergic input participates in task-specific suppression of movement-related granule-cell activity.",
+        "Scoring items": [
+          {
+            "point": 35,
+            "criterion": "Correctly analyzes and visualizes the three-row by two-column composite structure: the top row shows orofacial movement-energy time series with Baseline and ITI/stimulus-period windows labeled, the middle row shows average Delta F/F activity of movement-excited granule cells with scale bars, and the bottom row shows activity heatmaps of 25 movement-excited granule cells sorted by movement weight; the left column is Task and the right column is Passive, and the temporal dynamics and heatmap patterns match the original figure.",
+            "deduction_rule": "Deduct the full 35 points if the panel is misidentified as a pie chart, learning curve, decoding scatter plot, or single-cell example trace. Deduct 10 points if any of the three rows, movement energy, average activity, or heatmap, is missing. Deduct 12 points if the Task and Passive columns are not distinguished. Deduct 6 points if heatmap sorting or movement-weight ordering is missing. Deduct 8 points if Baseline and ITI/stimulus-period windows are not labeled."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the analysis object and time windows: movement-excited granule cells are defined as cells significantly positively correlated with movement energy during Baseline, heatmaps are sorted by movement weight from high to low, and ITI in the Task condition corresponds to the odor-stimulus period or stimulus-related inter-trial interval and must be distinguished from Baseline.",
+            "deduction_rule": "Deduct 8 points if the definition of movement-excited cells is not described. Deduct 10 points if the analysis object is misdescribed as all granule cells or cholinergic axons. Deduct 5 points if heatmap sorting by movement weight is not described. Deduct 8 points if Baseline and ITI/stimulus period are confused."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the core Task-condition finding: movement-related activity of movement-excited granule cells clearly decreases from Baseline to ITI under task engagement, and both the average activity trace and single-cell heatmap support this trend; the decrease occurs during the task-related odor-stimulus period, not during Baseline.",
+            "deduction_rule": "Deduct 18 points if movement-related activity is claimed to increase rather than decrease under the Task condition. Deduct 8 points if only the average trace is described and the single-cell heatmap support is ignored. Deduct 8 points if the decrease is not located in the ITI/stimulus period. Deduct 10 points if the result is interpreted as cell death or recording-quality deterioration."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains the Passive-condition control and biological meaning: in the Passive condition, movement-related activity does not decrease from Baseline to stimulus period and may slightly increase; this Task-specific contrast parallels the pattern in cholinergic axons, whose movement responses weaken and odor responses strengthen during task engagement, suggesting that cholinergic input contributes to task-specific suppression of movement-related granule-cell activity.",
+            "deduction_rule": "Deduct 10 points if the Passive-condition control is not described. Deduct 12 points if the Passive condition is claimed to show the same decrease as the Task condition. Deduct 8 points if the relationship to cholinergic axon patterns or task-specific modulation is not explained. Deduct 5 points if the panel is overstated as independently proving a cholinergic causal mechanism."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe movement-excited granule cells as movement-positive or movement-correlated granule cells.",
+          "It is acceptable to describe orofacial movement energy as facial movement energy or movement intensity.",
+          "ITI may be described as stimulus period, odor-stimulus period, or stimulus-related inter-trial window as long as it is correctly distinguished from Baseline.",
+          "It is acceptable to describe movement weight as a movement-related sorting index.",
+          "It is acceptable to describe Task-specific suppression as task-related selective suppression or task-engagement-related weakening of movement responses.",
+          "Exact scale-bar values are not required if the graph structure and trend are correct.",
+          "It is acceptable to describe the cholinergic link as paralleling the cholinergic axon response pattern."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly reproducing the three-row by two-column composite figure, explaining the definition of movement-excited granule cells and the Baseline/ITI windows, accurately stating that movement-related activity decreases from Baseline to ITI under the Task condition, and using the Passive control to show task specificity and its parallel with cholinergic modulation. Partial scores (40-84) should be assigned when the graph structure and Task trend are correct but the analysis object, time windows, or Passive-control interpretation is incomplete. Low scores (0-39) should be assigned when the panel is confused with another graph type, the Task-condition trend is reversed, granule cells are confused with cholinergic axons, or the task-specific control is ignored."
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_5F",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric focuses on the direct visual evidence in Fig. 5F: time series of orofacial motion energy, averaged activity of movement-excited olfactory bulb granule cells, and heatmaps of individual movement-excited cells are shown for task and passive conditions. The panel visually illustrates that movement-related granule cell activity is reduced from baseline to the ITI period during task engagement, whereas this reduction is not apparent during passive odor exposure, where movement-related activity persists or slightly increases. Because Fig. 5F is primarily a representative visualization and Fig. 5G provides the quantitative summary, the rubric emphasizes the qualitative pattern while avoiding overstatement of statistical conclusions.",
+      "rubric": {
+        "GT core conclusion": "Fig. 5F shows representative time series and heatmaps indicating that movement-excited olfactory bulb granule cells have strong movement-correlated activity during baseline, which becomes visibly weaker during the ITI period in the task condition, whereas movement-related activity persists or slightly increases during the ITI period in the passive condition.",
+        "Scoring items": [
+          {
+            "point": 20,
+            "criterion": "States that the figure shows orofacial motion energy together with movement-excited olfactory bulb granule cell activity, including averaged activity traces and/or individual-neuron heatmaps",
+            "deduction_rule": "Deduct 20 points if the answer does not identify that the panel shows movement-related granule cell activity together with motion energy. Deduct 8-12 points if only one visual component is mentioned, such as only the heatmap or only the averaged trace. Deduct 5 points if granule cells are not specified but movement-related neuronal activity in the olfactory bulb is correctly described."
+          },
+          {
+            "point": 20,
+            "criterion": "Clearly states that the comparison is between baseline and ITI periods, and is shown separately for task and passive conditions",
+            "deduction_rule": "Deduct 20 points if the baseline-versus-ITI comparison is omitted. Deduct 10 points if task versus passive is mentioned but the temporal comparison is unclear. Deduct 5-8 points if the answer vaguely refers to 'before and after' without identifying baseline and ITI. Do not give credit for incorrectly describing the ITI as the odor presentation period."
+          },
+          {
+            "point": 25,
+            "criterion": "Identifies the key qualitative pattern in the task condition: movement-related activity of movement-excited granule cells is visibly reduced during the ITI period compared with baseline",
+            "deduction_rule": "Deduct 25 points if the task-specific reduction is omitted or contradicted. Deduct 10-15 points if reduction is mentioned but not linked clearly to the task condition or the baseline-to-ITI comparison."
+          },
+          {
+            "point": 25,
+            "criterion": "Identifies the contrasting qualitative pattern in the passive condition: movement-related activity persists or slightly increases during the ITI period rather than being reduced",
+            "deduction_rule": "Deduct 25 points if the passive-condition pattern is omitted. Deduct 10-15 points if the answer only says passive is 'different' without specifying that movement-related activity remains strong or is not reduced. Deduct 25 points if the answer incorrectly claims that movement-related activity is reduced in both task and passive conditions."
+          },
+          {
+            "point": 10,
+            "criterion": "Interprets the panel as illustrating context-dependent suppression of movement-related granule cell responses during task engagement; optionally notes that this pattern parallels the tuning shift observed in cholinergic axons",
+            "deduction_rule": "Deduct 10 points if the answer provides only a visual description without interpreting the task-specific reduction as context-dependent modulation. Do not require explicit mention of cholinergic axons for full credit on this item if the context-dependent suppression of movement responses is clearly stated."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'movement-excited granule cells' as 'movement-responsive granule cells', 'movement-correlated granule cells', or 'cells activated during movement' is acceptable if the movement-excited meaning is preserved",
+          "Referring to the ITI as 'intertrial interval', 'intertrial period', or 'periods without sensory stimulation between trials' is acceptable",
+          "Describing the task condition as 'task engagement' or 'olfactory task' is acceptable",
+          "Describing the passive condition as 'passive odor exposure' is acceptable",
+          "Omitting the exact number of neurons in the heatmap or the sorting criterion is acceptable",
+          "Explicit statistical significance is not required for Fig. 5F alone because the quantitative comparison is shown in Fig. 5G",
+          "It is not acceptable to describe the ITI as the odor presentation period or stimulus period, because the ITI is an intertrial period without sensory stimulation"
+        ],
+        "Scoring instructions": "Assign points based on whether the answer captures the direct qualitative message of Fig. 5F. Full credit requires recognizing the plotted components, the baseline-versus-ITI comparison, the task-specific reduction in movement-related granule cell activity, and the contrasting persistence or slight enhancement of movement-related activity during passive exposure. Partial credit should be given for answers that correctly identify the visual elements but miss either the task/passive contrast or the baseline-to-ITI temporal comparison. Low scores should be assigned if the answer confuses this panel with odor-response amplitude data, claims equivalent suppression in both conditions, or incorrectly treats ITI as the odor stimulus period."
+      }
+    }
+  }
+}

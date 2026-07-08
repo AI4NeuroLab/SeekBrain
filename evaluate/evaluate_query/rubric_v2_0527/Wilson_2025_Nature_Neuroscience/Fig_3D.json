@@ -1,0 +1,42 @@
+{
+  "tag": "Fig_3D",
+  "rubrics": {
+    "score_100": {
+      "reason": "Fig. 3D shows ring-attractor network model simulations in which scanning ER amplitude reproduces the across-individual negative-correlation pattern between HD encoding accuracy and bump width seen in Fig. 3C. The panel is easily confused with an experimental scatter plot, so the response must clearly identify the simulation nature, the color-encoded parameter, and the driving direction of ER amplitude. The scientific conclusion is that changing a single parameter can qualitatively reproduce the individual-difference pattern observed experimentally and supports a sensory input strength interpretation, while preserving the boundary between model prediction and direct experimental causal proof. Point allocation: graph reproduction 30, ER-amplitude meaning and direction 25, model-validation conclusion 25, Hebbian-mechanism explanation and boundary 20.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3D shows that, in a ring-attractor network model, varying only ER amplitude under the dim-cue condition qualitatively reproduces the across-individual negative correlation observed in the Fig. 3C experimental data. In the model, higher ER amplitude means stronger activation of ER neurons by the external visual cue, and corresponds to higher HD encoding accuracy and narrower bump width. This result supports the idea that individual differences can be explained by differences in sensory input strength, without first invoking differences in network topology. However, the model result is mechanistic-consistency evidence and should not be stated as direct proof of the causal mechanism behind experimental individual differences.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Correctly analyzes and visualizes the model-simulation scatter-plot structure of Fig. 3D: the x-axis is HD encoding accuracy, the y-axis is bump width, scatter points come from 11 ER-amplitude parameter values with 5 simulation trials per value, for 55 model data points, point color continuously encodes ER amplitude, the overall trend is a negative correlation in which higher accuracy corresponds to narrower bumps, and the panel is explicitly identified as model simulation rather than experimental data.",
+            "deduction_rule": "Deduct 20 points if the plot is misidentified as the experimental scatter plot from Fig. 3C without distinguishing model from experiment. Deduct 20 points if the negative-correlation direction is reported as positive. Deduct 20 points if the color encoding is interpreted as different visual-cue conditions, animal identity, or random seed rather than ER amplitude. Deduct 8 points if the 11 x 5 simulation design is omitted."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly explains the meaning and driving direction of ER amplitude: ER amplitude is the model parameter for activation strength of ER neurons by the external visual cue, and higher values represent stronger visual cue drive. As ER amplitude increases, model points shift from lower accuracy and wider bumps toward higher accuracy and narrower bumps. The model uses a 120 s burn-in to reach a steady state of Hebbian weights before a 30 s evaluation period.",
+            "deduction_rule": "Deduct 20 points if the direction of ER amplitude is reversed, for example if high ER amplitude is said to produce lower accuracy or wider bumps. Deduct 15 points if ER amplitude is confused with an EPG self-excitation parameter, a global inhibition parameter, or another network parameter. Deduct 5 points if the burn-in or steady-state evaluation meaning is omitted. Deduct 10 points if the meaning of the color encoding is wrong."
+          },
+          {
+            "point": 25,
+            "criterion": "Correctly states the core model-validation conclusion: scanning ER amplitude alone qualitatively reproduces the negative relationship between HD encoding accuracy and bump width seen experimentally, showing that differences in visual input strength are sufficient to explain part of the inter-individual variation and supporting the sensory-drive interpretation proposed for Fig. 3C.",
+            "deduction_rule": "Deduct 10 points if the key conclusion that a single-parameter scan can reproduce the negative correlation is omitted. Deduct 10 points if the model result is described as quantitatively identical to the experimental data rather than a qualitative match. Deduct 10 points if the model conclusion is overgeneralized as direct proof of the only causal mechanism for experimental individual differences."
+          },
+          {
+            "point": 20,
+            "criterion": "Correctly explains how Hebbian learning links ER amplitude to bump properties: higher ER amplitude deepens the inhibitory trough or strengthens the disinhibitory effect in the ER-to-EPG weight matrix through Hebbian LTD, producing a sharper, narrower bump that is more stably locked to head direction. The response avoids claiming that Fig. 3D alone proves the existence of Hebbian learning.",
+            "deduction_rule": "Deduct 15 points if Hebbian mechanisms or ER-to-EPG weight updating are completely omitted. Deduct 10 points if LTP rather than LTD trough deepening is claimed as the dominant mechanism in a way that contradicts the model. Deduct 8 points if Fig. 3D is claimed to independently prove synaptic plasticity without requiring other evidence."
+          }
+        ],
+        "Acceptable deviations": [
+          "It is acceptable to describe ER amplitude as sensory input strength, visual drive strength, or visual input strength.",
+          "Specific model parameters such as tau, alpha, and beta may be omitted as long as the ER-amplitude scan and simulation nature are explained.",
+          "It is acceptable to describe Hebbian LTD trough deepening as weight updating that strengthens disinhibition or sharpens the bump.",
+          "The number of model points may be approximated as about 55 simulated points, but the parameter scan and repeated-trial design cannot be completely omitted.",
+          "The exact colorbar values are not required as long as color is correctly identified as ER amplitude.",
+          "It is acceptable to describe qualitative reproduction as the model matching the negative-correlation trend in the experimental data."
+        ],
+        "Scoring instructions": "High scores (85-100) require correctly identifying Fig. 3D as a model simulation rather than experimental data, reproducing the negative scatter relationship between HD encoding accuracy and bump width, explaining that color encodes ER amplitude and its driving direction, extracting the conclusion that a single-parameter scan qualitatively reproduces the experimental individual-difference pattern, and reasonably explaining the Hebbian LTD mechanism and model-evidence boundary. Partial scores (40-84) should be assigned when the negative-correlation pattern and model nature are broadly correct but the meaning of ER amplitude, parameter-scan design, mechanistic explanation, or causal boundary is incomplete. Low scores (0-39) should be assigned when the model plot is misidentified as an experimental plot, the negative-correlation direction is reversed, or color encoding is misinterpreted as cue condition or animal identity."
+      }
+    }
+  }
+}

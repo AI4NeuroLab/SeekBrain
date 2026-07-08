@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_1E",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric emphasizes the core scientific meaning of Fig. 1E: whole-brain functional connectivity in larval zebrafish was quantified by computing pairwise correlations between region-averaged spontaneous calcium activity signals, and individual matrices were averaged across 22 larvae to obtain a group-level FC matrix over 65 brain regions. The largest weights are assigned to correctly identifying the panel as a group-averaged FC matrix and explaining the correlation-based computation of FC. Quantitative coverage, spontaneous-activity context, and group averaging are also important. Plotting details such as anterior-to-posterior ordering and visible block structure receive smaller weight because they support interpretation but are not the primary scientific conclusion.",
+      "rubric": {
+        "GT core conclusion": "The figure shows a group-averaged functional connectivity matrix from 22 zebrafish larvae, computed as pairwise correlations between region-averaged spontaneous calcium activity signals across 65 brain regions, thereby providing a mesoscopic whole-brain map of functional interactions.",
+        "Scoring items": [
+          {
+            "point": 30,
+            "criterion": "Identifies the plotted figure as a group-averaged functional connectivity matrix, FC heatmap, or whole-brain functional interaction map",
+            "deduction_rule": "Deduct 30 points if the answer does not identify the panel as functional connectivity or only describes it as a generic heatmap/colored matrix. Deduct 15-20 points if connectivity is mentioned but the answer does not make clear that it is a group-level or brain-wide FC matrix. Deduct 5-10 points if the answer identifies a connectivity matrix but omits that it represents functional rather than structural connectivity."
+          },
+          {
+            "point": 30,
+            "criterion": "Explains that FC values were computed as pairwise correlations between region-averaged calcium/neural activity signals",
+            "deduction_rule": "Deduct 30 points if the correlation-based definition of FC is missing. Deduct 15-20 points if the answer only says that regions are 'connected', 'interacting', or 'related' without specifying correlations between activity signals. Deduct 5-10 points if the answer mentions correlations but not that they are computed between regional activity traces."
+          },
+          {
+            "point": 15,
+            "criterion": "States that the matrix was derived from spontaneous, baseline, resting, or unstimulated brain activity",
+            "deduction_rule": "Deduct 15 points if the spontaneous-activity context is omitted or if the answer incorrectly implies that the matrix was computed from stimulus-evoked activity only. Deduct 5-8 points if the answer vaguely refers to brain activity without distinguishing spontaneous/baseline activity."
+          },
+          {
+            "point": 15,
+            "criterion": "Indicates that the FC matrix spans 65 anatomical brain regions in larval zebrafish, reflecting mesoscopic whole-brain regional coverage",
+            "deduction_rule": "Deduct 15 points if the regional scale or 65-region coverage is omitted. Deduct 8-10 points if the answer states whole-brain or multi-region connectivity but gives no indication of the 65-region parcellation. Deduct 3-5 points for minor numerical simplifications such as 'about 65 regions' or 'dozens of brain regions' if the regional whole-brain meaning is preserved."
+          },
+          {
+            "point": 10,
+            "criterion": "notes anatomically structured correlation patterns such as anterior-to-posterior ordering or stronger posterior/hindbrain correlations",
+            "deduction_rule": "Deduct 10 points if neither across-larvae averaging nor anatomical organization/structured correlation patterns are mentioned. Deduct 4-6 points if the answer only says 'multiple larvae' without the group-average nature or exact sample size. Deduct 3-5 points if the answer mentions visible blocks/colors but does not relate them to regional correlation structure."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'functional connectivity matrix' as 'FC heatmap', 'correlation matrix', 'connectivity map', or 'map of functional interactions' is acceptable if the functional-correlation meaning is preserved",
+          "Referring to 'region-averaged calcium activity' as 'regional fluorescence traces', 'GCaMP signals', 'neural activity traces', or 'average activity in each brain region' is acceptable",
+          "Paraphrasing 'spontaneous activity' as 'resting', 'baseline', 'ongoing', or 'unstimulated' activity is acceptable",
+          "Reporting the number of regions approximately, such as 'about 65 regions' or '65 atlas regions', is acceptable",
+          "Omitting the exact sample size n = 22 is acceptable for partial credit if group-level averaging across larvae is clearly conveyed",
+          "Omitting anterior-to-posterior ordering, color scale, or detailed block-pattern description is acceptable if the core FC-matrix conclusion is complete",
+          "Mentioning strong hindbrain/posterior correlations is acceptable but not required for full credit if all core methodological and quantitative details are present"
+        ],
+        "Scoring instructions": "Assign points according to whether the answer captures the scientific interpretation of the matrix rather than only its visual appearance. Full credit requires identifying Fig. 1E as a group-averaged functional connectivity matrix, explaining that matrix entries are pairwise correlations of region-averaged spontaneous calcium activity, and indicating that the analysis covers 65 zebrafish brain regions across 22 larvae. Partial credit should be given when the answer captures the FC concept but omits one or more quantitative details such as n = 22 or 65 regions. Low scores should be assigned when the answer merely describes a colored grid or heatmap without explaining that it represents correlation-based whole-brain functional connectivity."
+      }
+    }
+  }
+}

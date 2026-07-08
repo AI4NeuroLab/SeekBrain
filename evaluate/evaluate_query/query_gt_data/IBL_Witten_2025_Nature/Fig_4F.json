@@ -1,0 +1,40 @@
+{
+  "parent_name": "a_brain-wide_map_of_neural_activity_during_complex_behaviour",
+  "image_ids": [
+    "Fig_4F"
+  ],
+  "query": "Visualization and comparison of effect sizes for the visual stimulus variable, specifically comparing population decoding performance and the fraction of responsive single neurons across brain regions.",
+  "analyse_plan": {
+    "Objective": "Compare the spatial distribution and magnitude of effect sizes between population decoding results and single-neuron responsiveness for the visual stimulus variable.",
+    "Validation Checks": "1. The comparison table summarizes the significance and effect size by region for the visual stimulus. 2. The comparison table cells use the identical color map from the visual stimulus population decoding accuracy and single-neuron responsiveness fraction brain flatmaps. 3. Effect sizes from the decoding analysis and the responsiveness analysis are normalized to a 0–1 scale for direct comparison. 4. Grey cells represent brain regions that did not reach the FDR (False Discovery Rate) < 0.01 significance threshold. 5. White cells represent brain regions excluded from the analysis due to insufficient data.",
+    "Steps": "1. Load Data: Load the population-level decoding accuracy scores and the single-neuron responsiveness fractions for the visual stimulus variable across all analyzed brain regions. 2. Normalize Analysis Metrics: Scale both the decoding accuracy and the fraction of significant neurons to a normalized interval of 0 to 1 to facilitate direct comparison between the two distinct metrics. 3. Map Significance Masks: Apply significance thresholds (FDR $q=0.01$) to each region to identify significant effects, marking non-significant regions in grey and unanalyzed areas in white. 4. Synchronize Color Schemes: Align the color-mapping for the comparison table with the existing scales used in the population and single-neuron brain flatmaps to ensure visual consistency. 5. Save Key Results: Save the normalized effect size matrices, the regional significance status, the assigned color values, and the metadata for the cross-analysis comparison table. 6. Visualization: Render the dual-column comparison table alongside the brain flatmaps to visualize the agreement between population-level and single-cell-level representations of visual information across the brain."
+  },
+  "analysis_keywords": [
+    "effect size comparison",
+    "population decoding",
+    "normalization",
+    "visual stimulus representation",
+    "FDR correction"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Effect significance and size by region",
+      "unit": "color change",
+      "variable_type": "table",
+      "number": "interval from 0 to 1"
+    }
+  ],
+  "key_analysis_results": [
+    "Comparison table demonstrates a high degree of spatial consistency between population decoding and single-neuron responsiveness for the visual stimulus. Regions showing strong effects include the primary visual area (VISp), lateral visual area (VISl), and the dorsal part of the lateral geniculate complex (LGd). All listed effect sizes are normalized between 0 and 1. Population decoding effect sizes were generally larger than single-neuron responsiveness effect sizes in most visual regions."
+  ],
+  "key_analysis_conclusions": [
+    "The visual stimulus representation is robustly captured by both population-level decoding and single-cell responsiveness tests, showing a converged regional structure in sensory and thalamic/midbrain brain areas."
+  ],
+  "summary_report": {
+    "abstract": "Figure 4F provides a comparative summary of effect sizes for the visual stimulus variable, integrating results from population decoding and single-neuron responsiveness analyses.",
+    "methods": "The effect sizes from the population decoding analysis (linear SVM classifier, 5-fold cross-validation accuracy) and the single-neuron responsiveness tests (two-tailed t-test comparing stimulus vs. baseline firing rates) were collected for 201 brain regions defined by the Allen Common Coordinate Framework version 3 (CCFv3). Each analysis metric was independently normalized to a 0–1 interval using min-max normalization. These normalized values were then plotted in a matrix-style comparison table, with regional significance determined at FDR (False Discovery Rate) q = 0.01 using the Benjamini-Hochberg correction method. A total of 120,000 neurons from 50 mice and 10,000 stimulus trials were included in the analysis.",
+    "results": "The comparison table reveals that regions with high population decoding accuracy for the visual stimulus also tend to have a higher fraction of responsive neurons. The visual cortex, thalamus, and certain midbrain regions exhibit the most prominent effects across both analysis types.",
+    "discussion": "The strong agreement between different statistical measures reinforces the brain-wide mapping of visual processing. This cross-analysis comparison confirms that the identified regions are less likely to be artifacts of a single analytical method but represent consistent neural encoding of visual information."
+  },
+  "question": "﻿Visualization and comparison of effect sizes for the visual stimulus variable, specifically comparing population decoding performance and the fraction of responsive single neurons across brain regions."
+}

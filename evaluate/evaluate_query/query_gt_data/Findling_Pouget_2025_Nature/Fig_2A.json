@@ -1,0 +1,63 @@
+{
+  "parent_name": "brain-wide_representations_of_prior_information_in_mouse_decision-making",
+  "image_ids": [
+    "Fig_2A"
+  ],
+  "question": "Decode the prior probability of right stimulus from ventrolateral orbitofrontal cortex (ORBvl) neural activity recorded during the inter-trial interval. For an example session, plot the trial-by-trial decoded prior alongside the Bayes-optimal prior and the true block prior. Quantify the correspondence between the decoded prior and the Bayes-optimal prior using Pearson correlation and corrected R².",
+  "analyse_plan": {
+    "Objective": "Demonstrate that neural population activity in ventrolateral orbitofrontal cortex encodes the Bayes-optimal prior probability during the inter-trial interval.",
+    "Validation Checks": "Confirm that neural activity is extracted from the inter-trial interval window (-600 ms to -100 ms before stimulus onset). Verify that neural population vectors are aligned across trials. Confirm that cross-validation is used for decoding. Verify that pseudosession method generates a null distribution for decoding performance.",
+    "Steps": "1. Detect Block Switches: Identify transitions between blocks with different stimulus prior probabilities from the behavioural sequence. 2. Align Trials to Block Switches: Re-index trials relative to each switch event, setting trial 0 as the block transition and defining pre- and post-switch trajectories. 3. Compute Mouse Reversal Curve: Select zero-contrast trials, compute performance (proportion of correct choices), and average across aligned switch events to obtain the mouse reversal curve. 4. Compute Bayes-Optimal Observer Reversal Curve: Simulate or extract responses from a Bayes-optimal observer under the same block structure and compute the corresponding reversal curve. 5. Fit Exponential Recovery Model: Fit an exponential function to the reversal curves to quantify recovery dynamics following block switches. 6. Extract Decay Constants: Extract decay constants from the fitted exponential functions as quantitative measures of recovery speed for mice and the Bayes-optimal observer. 7. Perform Statistical Comparison: Compare decay constants between mice and the Bayes-optimal observer using a two-tailed paired t-test and obtain the t statistic and P value. 8. Save Key Results: Store reversal curves, fitted exponential parameters, decay constants, and statistical test results in a structured format for reproducibility. 9. Visualize Reversal Dynamics: Plot reversal curves for mice and the Bayes-optimal observer aligned to block switches, overlay exponential fits, and annotate decay constants and statistical significance."
+  },
+  "analysis_keywords": [
+    "linear regression decoder",
+    "neural population decoding",
+    "cross-validation",
+    "pseudosession method",
+    "coefficient of determination"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "number_of_neurons_example_session",
+      "unit": "neurons",
+      "variable_type": "numeric",
+      "number": 160
+    },
+    {
+      "variable_name": "uncorrected_R²",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.35
+    },
+    {
+      "variable_name": "corrected_R²",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.28
+    },
+    {
+      "variable_name": "p_value",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.001
+    },
+    {
+      "variable_name": "pearson_correlation",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": 0.66
+    }
+  ],
+  "key_analysis_results": [
+    "Neural population activity in ventrolateral orbitofrontal cortex during the inter-trial interval encodes the Bayes-optimal prior probability. In an example session, the decoded prior closely tracks both the Bayes-optimal prior and the true block prior across trials. Decoding performance reached an uncorrected R² of 0.35 and a corrected R² of 0.28 with statistical significance (P = 0.001), and the decoded prior was positively correlated with the Bayes-optimal prior (r = 0.66)."
+  ],
+  "key_analysis_conclusions": [
+    "Ventrolateral orbitofrontal cortex neural population activity represents prior probability during the inter-trial interval before stimulus onset."
+  ],
+  "summary_report": {
+    "abstract": "Demonstration that Bayes-optimal prior probability can be decoded from ventrolateral orbitofrontal cortex neural population activity during the inter-trial interval.",
+    "methods": "Neural population activity during the inter-trial interval was used to train a cross-validated linear regression decoder to predict Bayes-optimal prior probability. Decoding performance was quantified using coefficient of determination and assessed with a pseudosession null distribution.",
+    "results": "Decoded prior closely tracked both Bayes-optimal prior and true block prior across trials. Decoding performance reached R² = 0.35 (uncorrected) and R² = 0.28 (corrected) with P = 0.001 and correlation r = 0.66.",
+    "discussion": "Neural population activity in ventrolateral orbitofrontal cortex encodes prior probability before stimulus onset."
+  }
+}

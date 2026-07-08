@@ -1,0 +1,1 @@
+﻿To compare the prediction accuracy of the subspace encoding model, derived from flattening the CNN, with the full Convolutional Neural Network model.

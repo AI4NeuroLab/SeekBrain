@@ -1,0 +1,47 @@
+{
+  "parent_name": "A_Cellular-Resolution_Atlas_of_the_Larval_Zebrafish_Brain",
+  "image_ids": [
+    "Fig_S3C"
+  ],
+  "question": "To measure the accuracy of the registration, five landmarks within the SYP pattern (fiber landmarks) and 20 from compact cell clusters in various co-registered Gal4 patterns (nuclei landmarks), which were easily recognizable across individual brains, were identified and the Euclidean distances to their counterparts in the standard brain were measured; these distances are displayed as a boxplot with magenta indicating nuclei-based landmarks from Gal4 patterns and green indicating fiber-based landmarks from SYP patterns, to visualize the alignment accuracy for the individual fiducial points and enable comparison between landmark types.",
+  "analyse_plan": {
+    "Objective": "To visualize the registration accuracy for individual fiducial points using a boxplot, with separate distributions shown for nuclei-based landmarks (from Gal4 patterns) and fiber-based landmarks (from SYP patterns), enabling comparison of alignment quality between different landmark types.",
+    "Validation Checks": "1. Landmark-Type Comparison: Compare registration accuracy between nuclei-based landmarks (from Gal4 patterns) and fiber-based landmarks (from SYP patterns) to assess whether alignment quality differs by landmark type. 2. Individual Landmark Performance Evaluation: Assess the distribution of registration errors for each individual fiducial point to identify any landmarks with consistently higher or lower accuracy. 3. Outlier Detection: Identify any fiducial points with registration errors substantially outside the typical range. 4. Cross-Landmark Consistency Assessment: Evaluate whether both landmark types achieve subcellular resolution with comparable accuracy.",
+    "Steps": "1. Fiducial Point Identification: Identify five landmarks within the SYP pattern (fiber landmarks, green) and 20 from compact cell clusters in various co-registered Gal4 patterns (nuclei landmarks, magenta) that are easily recognizable across individual brains. 2. Coordinate Recording: Record the x, y, z coordinates of each fiducial point in the original image stacks. 3. Image Registration: Register the image stacks to the standard brain using the reference channel. 4. Coordinate Transformation: Apply the transformations to the coordinates of the fiducial points. 5. Distance Calculation: Measure the Euclidean distances from the aligned fiducial points to their counterparts in the standard brain. 6. Boxplot Generation: Compile all distance measurements and generate a boxplot showing the distribution of alignment accuracy for individual fiducial points, with color coding to distinguish nuclei-based landmarks (magenta) from fiber-based landmarks (green). 7. Cross-Type Comparison: Compare the accuracy distributions between the two landmark types to assess whether registration quality differs between nuclei and fiber landmarks. 8. Save important calculation results"
+  },
+  "analysis_keywords": [
+    "Euclidean distance"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "Number of fiducial points",
+      "unit": "none",
+      "variable_type": "numeric",
+      "number": "25"
+    },
+    {
+      "variable_name": "Distance range",
+      "unit": "μm",
+      "variable_type": "numeric",
+      "number": "[0.22,14.13]"
+    },
+    {
+      "variable_name": "Median distance",
+      "unit": "μm",
+      "variable_type": "numeric",
+      "number": "4.38"
+    }
+  ],
+  "key_analysis_results": [
+    "To measure the accuracy of the registration, five landmarks within the SYP pattern (fiber landmarks) and 20 from compact cell clusters in various co-registered Gal4 patterns (nuclei landmarks) were identified and the Euclidean distances to their counterparts in the standard brain were measured; the distance varied between 0.22 and 14.13 μm with most data points between 2 and 7 μm and a median of 4.38 μm. The boxplot indicates the alignment accuracy for the individual fiducial points, with magenta referring to nuclei (Gal4-pattern) based landmarks and green to fiber (SYP-pattern) based landmarks."
+  ],
+  "key_analysis_conclusions": [
+    "The boxplot indicates the alignment accuracy for the individual fiducial points, demonstrating that both nuclei-based and fiber-based landmarks achieve subcellular registration accuracy with a median of 4.38 μm, which corresponds to a fraction of the typical cell body diameter in larval brains (3-7 μm) and confirms the large degree of stereotypy in brain architecture."
+  ],
+  "summary_report": {
+    "abstract": "This analysis aims to quantify the registration accuracy for individual fiducial points by measuring the Euclidean distances between landmarks identified in individual brains after alignment to the standard brain and their corresponding locations in the standard brain, and to visualize the distribution of these alignment errors separately for fiber-based landmarks and nuclei-based landmarks using a boxplot.",
+    "methods": "To measure the accuracy of the registration, we identified five landmarks within the SYP pattern (fiber landmarks) and 20 from compact cell clusters in various co-registered Gal4 patterns (nuclei landmarks), which were easily recognizable across individual brains. For each fiducial point, we measured the Euclidean distance between its location after alignment to the standard brain and its counterpart in the standard brain. These distances were compiled and visualized as a boxplot, with magenta representing nuclei (Gal4-pattern) based landmarks and green representing fiber (SYP-pattern) based landmarks, to show the alignment accuracy for the individual fiducial points.",
+    "results": "The distance varied between 0.22 and 14.13 μm with most data points between 2 and 7 μm and a median of 4.38 μm. The boxplot shows the distribution of alignment accuracy separately for nuclei-based landmarks (magenta) and fiber-based landmarks (green).",
+    "discussion": "The boxplot reveals the registration accuracy for individual fiducial points, with separate distributions shown for nuclei-based landmarks from Gal4 patterns and fiber-based landmarks from SYP patterns. This visualization allows comparison of alignment quality between different types of anatomical landmarks and identification of any landmarks with consistently higher or lower registration errors."
+  }
+}

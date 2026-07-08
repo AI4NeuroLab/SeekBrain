@@ -1,0 +1,1 @@
+﻿To examine whether individual differences in HD encoding accuracy correlate with bump width across individuals experiencing the same cue, a scatter plot of bump width versus HD encoding accuracy was generated for 15 flies in the dim cue condition with Pearson correlation.

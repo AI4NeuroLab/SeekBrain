@@ -1,0 +1,1 @@
+﻿To define the connectome-constrained teacher model for the adult Drosophila central complex heading-direction circuit, plot the synaptic weight matrix of the reconstructed circuit and plot the input and target output of EPG neurons arranged by heading-tuning angle, where a transient bump input at a random orientation must be maintained as persistent activity.

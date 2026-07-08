@@ -1,0 +1,45 @@
+      
+{
+    "tag": "Fig_4LM",
+    "rubrics": {
+      "score_100": {
+        "reason": "Fig. 4L-M shows the temporal dynamics and functional hierarchy of brain-wide visual-stimulus encoding. The core is to distinguish two response modes: early onset responses in visual areas and sustained ramping modulation in midbrain/hindbrain regions. Point allocation: graph structure and scientific pattern 30, trajectory-distance definition 10, two response modes and functional hierarchy 40, latency-amplitude relationship 20.",
+        "rubric": {
+            "GT core conclusion": "Fig. 4L-M shows that visual information has hierarchical spatiotemporal dynamics across the brain. Classical visual and thalamic regions such as LGd show early transient responses that peak and decline, while VISp shows rapid onset within 50 ms with sustained activity. Midbrain and hindbrain-related regions such as PRNc and IRN show sustained ramping modulation from 50 to 150 ms. The relationship between maximal trajectory distance and modulation latency reveals a functional hierarchy from rapid sensory encoding to later sensory-motor integration and decision preparation.",
+            "Scoring items": [
+            {
+              "point": 30,
+              "criterion": "Correctly shows the multi-region time-series distance curves and the max-distance-versus-latency scatter plot. In the distance curve figure, early visual regions show rapid onset before about 0.05 s, whereas PRNc, IRN, and related regions rise continuously from about 0.05 s to 0.15 s. In the scatter plot, short-latency regions and long-latency ramping regions are clearly separated, with statistically significant regions distinguished from non-significant ones.",
+              "deduction_rule": "Deduct 30 points if the panel is misidentified as a single-region PSTH, PCA trajectory plot, or anatomical map. Deduct 15 points if either the time-series curves or the scatter plot is missing. Deduct 12 points if early peak regions and sustained ramping regions are not distinguishable. Do not deduct for specific color choices, axis ranges, symbol styles, or layout differences."            },
+            {
+            "point": 10,
+            "criterion": "Correctly explains that the population trajectory distance measures the separation between population neural activity under left and right visual-stimulus conditions across brain regions.",
+            "deduction_rule": "Deduct 10 points if trajectory distance is interpreted as anatomical distance or a single-neuron firing-rate difference. Deduct 5 points if the comparison between left- and right-stimulus conditions is not described."
+            },
+            {"point": 40,
+            "criterion": "Correctly identifies and explains the two response modes and their functional meaning: classical visual and thalamic regions (LGd, VISp) show early rapid onset reflecting sensory encoding, while midbrain and hindbrain regions (PRNc, IRN) show sustained ramping modulation reflecting sensory-motor integration or decision preparation. The latency-amplitude relationship in the scatter plot supports a functional hierarchy from early sensory processing to later decision-related processing.",
+            "deduction_rule": "Deduct 25 points if early visual regions are described as sustained ramping or PRNc/IRN are described as brief transient responders. Deduct 15 points if only one response mode is identified without the other. Deduct 10 points if the two modes are described without explaining their functional meaning (sensory vs sensory-motor). Deduct 10 points if scatter plot's support for the hierarchy is completely ignored."
+            },
+
+            {"point":20,
+            "criterion": "Notes the relationship between maximal response amplitude and modulation latency across brain regions: regions with larger maximal distances tend to have specific latency profiles, revealing that response strength and timing jointly characterize the functional role of each region in visually guided behavior.",
+            "deduction_rule": "Deduct 20 points if the amplitude-latency relationship is not mentioned. Deduct 10 points if only amplitude or only latency is discussed without relating them."
+            }
+          ],
+          "Acceptable deviations": [
+            "It is acceptable to describe population trajectory distance as population activity distance or left-right stimulus trajectory separation.",
+            "It is acceptable to describe early transient responses as rapid transient responses or fast peak responses.",
+            "It is acceptable to describe ramping modulation as sustained ramping, gradually increasing response, or continuous rise.",
+            "It is acceptable to summarize LGd, VISp, and related regions as visual thalamic and classical visual cortical regions.",
+            "It is acceptable to summarize PRNc and IRN as midbrain/hindbrain sensory-motor-related regions.",
+            "The significance distinction may be described as diamonds vs circles, filled vs unfilled, or any other clear marker.",
+            "Omitting specific statistical thresholds (FDR q=0.01, permutation details) is acceptable."
+
+],
+
+"Scoring instructions": "High scores (85-100) require correctly showing both panels, explaining trajectory distance as left-right population separation, accurately identifying early transient and sustained ramping response modes with their functional meaning, and noting the amplitude-latency relationship. Partial scores (40-84) should be assigned when the main graph and response trends are correct but the functional interpretation or amplitude-latency relationship is incomplete. Low scores (0-39) should be assigned when the panel is confused with another plot type, when early visual and ramping-region response types are reversed, or when the functional hierarchy is not extracted."
+        }
+      }
+    }
+  }
+  

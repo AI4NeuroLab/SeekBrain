@@ -1,0 +1,60 @@
+{
+    "tag": "Fig_3C",
+    "rubrics": {
+      "score_100": {
+        "reason": "Fig. 3C shows that the same dim visual cue has different functional effects across flies. Flies with better HD encoding tend to have narrower bumps, while flies with poorer HD encoding tend to have wider bumps. The main scoring weight is therefore placed on the negative across-fly relationship between HD encoding accuracy and bump width, with smaller but still meaningful credit for the dim-cue context, statistical support, and biological interpretation. Relative to the base rubric (whose five items sum to 90), two independent items are added, each worth 5 points, bringing the total to 100. Addition 1: a lenient bump-width-source item that, following new_rubric but relaxed, credits a limited operationalization of where bump width comes from (a fitted or von Mises-derived width metric) without requiring the exact derivation. Addition 2: a separate item targeting the existing analysis requirement that both metrics use movement periods only; because a model lacks the original immobility flags it may operationalize movement periods with a proxy such as an angular-speed threshold, which is permitted as a limited operationalization but only if the answer also provides the threshold value, a sensitivity check, and an uncertainty statement. The two additions are scored separately.",
+        "rubric": {
+          "GT core conclusion": "In the dim visual cue condition, HD encoding accuracy is negatively correlated with bump width across 15 flies: flies with better HD encoding have narrower bumps, whereas flies with poorer encoding have wider bumps.",
+          "Scoring items": [
+            {
+              "point": 35,
+              "criterion": "Correctly states the negative relationship between HD encoding accuracy and bump width",
+              "deduction_rule": "Deduct 35 points if the relationship is missing or reversed. Deduct 15-20 points if the answer mentions a correlation but does not make clear that higher accuracy corresponds to narrower bumps. Deduct 8-12 points if the answer only states one side of the relationship, such as 'narrow bumps mean good encoding', without clearly describing the overall negative correlation."
+            },
+            {
+              "point": 15,
+              "criterion": "Makes clear that the relationship is measured across individual flies rather than within a single fly over time",
+              "deduction_rule": "Deduct 15 points if the answer implies that the correlation was computed from time points within one animal. Deduct 5-8 points if the answer vaguely describes the result as 'across data points' without making the across-individual comparison clear."
+            },
+            {
+              "point": 15,
+              "criterion": "Notes that the correlation is statistically significant, preferably with Pearson correlation and P = 0.01",
+              "deduction_rule": "Deduct 15 points if statistical support is entirely omitted. Deduct 5-8 points if the answer states the relationship is significant but gives no test or P value. Do not penalize heavily for approximate language such as P < 0.05."
+            },
+            {
+              "point": 10,
+              "criterion": "Identifies the relevant condition as the dim visual cue condition",
+              "deduction_rule": "Deduct 10 points if the answer attributes the relationship to the wrong condition, such as the bright-cue or no-cue condition. Deduct 3-5 points if the answer only says 'the same cue condition' or 'low-salience cue' without explicitly naming the dim cue."
+            },
+            {
+              "point": 15,
+              "criterion": "Preserves the biological interpretation that different flies experience the same dim cue as more or less informative, and this variation is reflected in bump width",
+              "deduction_rule": "Deduct 15 points if the answer gives no interpretation beyond a generic scatter-plot description. Deduct 8-10 points if it mentions individual variability but does not connect it to cue informativeness or HD-system encoding quality. Deduct 15 points if it concludes that bump width is unrelated to cue informativeness or HD encoding."
+            },
+            {
+              "point": 5,
+              "criterion": "ADDITION 1 (lenient bump-width source). Provides at least a limited operationalization of the source of bump width, treating it as a fitted or derived width metric of the EPG activity bump (for example a von Mises-derived width or full width at half maximum) rather than a raw count of EPG neurons, a count of ROIs above a deltaF/F threshold, or a pixel width. A full or exact von Mises derivation is NOT required; a limited operationalization is acceptable.",
+              "deduction_rule": "Score this item leniently. Award the full 5 points whenever bump width is described as a fitted or derived width metric of the activity bump. Do NOT deduct for omitting the exact von Mises formula or the precise kappa-to-width relationship. Deduct the full 5 points only if bump width is operationalized in a clearly invalid way, such as a raw count of EPG neurons or a pixel width."
+            },
+            {
+              "point": 5,
+              "criterion": "ADDITION 2 (operationalization of the movement-period inclusion criterion, independent of Addition 1). Both bump width and HD encoding accuracy are computed using movement periods only; the GT defines these by discarding time points flagged as immobile. A model that lacks the original immobility flags is PERMITTED to operationalize movement periods with a proxy, such as an angular-speed (or forward-speed) threshold, and this limited operationalization is acceptable, but only if the answer (a) states the threshold value and the variable used to define movement (for example an angular-speed cutoff in deg/s), (b) includes a sensitivity check showing or noting that the correlation result is robust to the chosen threshold, and (c) acknowledges the uncertainty that this proxy definition introduces. The same requirement applies to any other limited operationalization of an inclusion criterion (for example the fit-quality cutoff).",
+              "deduction_rule": "Do NOT penalize a model for using an angular-speed threshold (or similar proxy) instead of the original immobility flags to define movement periods; treat this as an acceptable limited operationalization. However, it is permitted only when all three qualifications are present. Deduct 2 points if a movement-period or inclusion threshold is used or implied but its value or defining variable is not stated. Deduct 2 points if no sensitivity or robustness check of the threshold choice is provided. Deduct 1 point if the answer does not acknowledge the uncertainty introduced by the operationalization. If movement-period selection is ignored entirely (neither a restriction to movement periods nor any threshold is mentioned), this item receives 0. This item is scored independently of the bump-width-source item in Addition 1."
+            }
+          ],
+          "Acceptable deviations": [
+            "It is acceptable to describe HD encoding accuracy as 'head-direction tracking accuracy', 'offset stability', 'encoding precision', or 'how consistently the bump follows HD', as long as the meaning is preserved.",
+            "It is acceptable to state the result as 'narrower bumps are associated with better HD encoding' instead of explicitly saying 'negative correlation'.",
+            "The exact sample size of 15 flies may be omitted if the answer clearly says the comparison is across flies or across individuals.",
+            "The P value may be given approximately, for example P ~ 0.01 or P < 0.05.",
+            "The dim cue may be described as a low-intensity or low-contrast visual cue.",
+            "Details of the scatter plot, regression line or marker style are not necessary if the scientific relationship is correctly described.",
+            "For Addition 1 (bump-width source), a limited operationalization is sufficient: describing bump width as a fitted width metric (for example full width at half maximum or a von Mises-derived width) without giving the exact formula is acceptable.",
+            "For Addition 2 (movement-period operationalization), using an angular-speed or forward-speed threshold instead of the original immobility flags is acceptable, and the threshold value, sensitivity check, and uncertainty statement may be phrased informally (for example 'movement defined as angular speed > X deg/s', 'the correlation held across nearby thresholds', 'this proxy adds some uncertainty'), as long as all three notions are present."
+          ],
+          "Scoring instructions": "Give most credit for correctly capturing the direction and meaning of the relationship: higher HD encoding accuracy goes with narrower bumps, and lower accuracy goes with wider bumps. Full-credit answers should also make clear that this is an across-fly comparison in the dim-cue condition and that the relationship is statistically supported. Answers that get the main relationship right but omit the P value or exact sample size should receive substantial partial credit. Two independent added items are scored separately: Addition 1 leniently credits a limited operationalization of the bump-width source (no exact von Mises derivation required), and Addition 2 covers how the model operationalizes the movement-period inclusion criterion, permitting a proxy such as an angular-speed threshold only when accompanied by the threshold value, a sensitivity check, and an uncertainty statement. Answers should receive low scores on the core items if they reverse the relationship, treat the panel as a within-fly time-series result, or describe only the appearance of the scatter plot without the scientific conclusion."
+        }
+      }
+    }
+  }
+  

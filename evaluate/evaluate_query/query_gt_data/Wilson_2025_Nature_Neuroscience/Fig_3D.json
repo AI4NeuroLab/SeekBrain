@@ -1,0 +1,44 @@
+{
+  "parent_name": "multimodal_cue_integration_and_learning_in_a_neural_representation_of_head_direction",
+  "image_ids": [
+    "Fig_3D"
+  ],
+  "query": "To test whether variation in ER input amplitude can account for the relationship between head-direction encoding accuracy and EPG bump width under dim-cue conditions, run ring-attractor model simulations across multiple ER amplitude settings, with repeated independent trials for each amplitude. For each simulation trial, compute HD encoding accuracy and bump width from the simulated EPG activity during the evaluation period. HD encoding accuracy should summarize the circular consistency between simulated EPG bump phase and head direction, and bump width should summarize the angular width of the simulated EPG activity bump in degrees. Each trial should contribute one pair of values, together with its ER amplitude setting. Use an ER amplitude sweep with multiple values and repeated trials per value, so that the final result is a cloud of simulated points rather than a single averaged curve. Visualize the simulation results as a single scatter plot with HD encoding accuracy on the x-axis and bump width in degrees on the y-axis. Plot one point per simulation trial and color-code points by ER amplitude. Add a colorbar or legend for ER amplitude, and save the per-trial HD encoding accuracy values, bump width values, ER amplitude values, model settings, and final figure.",
+  "analyse_plan": {
+    "Objective": "Validate that ER amplitude variations produce correlated changes in bump width and HD encoding accuracy.",
+    "Validation Checks": "Confirm ER amplitude range and trial count match Methods; verify qualitative match with data. HD encoding accuracy is computed as 1 - circular variance of the EPG bump-phase relative to HD.",
+    "Steps": "1. Load Data: Load the ring attractor model configuration (N = M = 32, τ = 50 ms, α = −8.93, D = 5.19, β = 0.11, vrel = 3.64, η = 0.34, wmax = 1/17, g0 = 1) and the simulation protocol settings for the across-individual variability sweep. 2. Sweep Dim-Cue Intensity: Run the network with a single external input across 11 ER amplitude scale values from 0.5 to 1 in steps of 0.05, with 5 simulation trials per amplitude. 3. Initialize Each Trial: For each trial, initialize EPG activity to its steady-state cosine profile and the ER → EPG weight matrix randomly from [0, 1) normalized to Frobenius norm ‖W‖_F = 1.5; run a 120-s burn-in. 4. Evaluate Each Trial: After burn-in, evaluate bump width (FWHM of EPG bump) and HD encoding accuracy (1 − circular variance over a causal 8-s window) over a 30-s evaluation period for each trial. 5. Color-Code By ER Amplitude: Color each (HD encoding accuracy, bump width) point by its ER amplitude scale value using the 0.531–1.062 Ak colormap. 6. Save Key Results: Save the per-trial HD encoding accuracy and bump width values, the per-trial ER amplitude assignments, and the colormap parameters used for the panel. 7. Visualization: Plot bump width (y-axis) versus HD encoding accuracy (x-axis) across the 55 simulation trials (5 trials × 11 amplitudes), color-coded by ER amplitude, recapitulating the strongly correlated experimental relationship from the dim-cue empirical data."
+  },
+  "analysis_keywords": [
+    "ring attractor model",
+    "ER amplitude variation",
+    "individual variation simulation"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "n_trials_per_amplitude",
+      "unit": "trials",
+      "variable_type": "numeric",
+      "number": 5
+    },
+    {
+      "variable_name": "n_amplitude_values",
+      "unit": "count",
+      "variable_type": "numeric",
+      "number": 11
+    }
+  ],
+  "key_analysis_results": [
+    "Model produced strongly correlated changes in bump width and HD encoding accuracy when ER amplitude was varied, matching the experimental data pattern."
+  ],
+  "key_analysis_conclusions": [
+    "Individual variations in sensory input intensity explain cross-individual correlation between bump width and encoding accuracy."
+  ],
+  "summary_report": {
+    "abstract": "Model validated individual-level bump width-accuracy correlation.",
+    "methods": "11 ER amplitudes, 5 trials each, 120-s burn-in, 30-s evaluation.",
+    "results": "Strong negative correlation matching experimental data.",
+    "discussion": "Single-parameter variation explains individual differences."
+  },
+  "question": "To test whether variation in ER input amplitude can account for the relationship between head-direction encoding accuracy and EPG bump width under dim-cue conditions, run ring-attractor model simulations across multiple ER amplitude settings, with repeated independent trials for each amplitude. For each simulation trial, compute HD encoding accuracy and bump width from the simulated EPG activity during the evaluation period. HD encoding accuracy should summarize the circular consistency between simulated EPG bump phase and head direction, and bump width should summarize the angular width of the simulated EPG activity bump in degrees. Each trial should contribute one pair of values, together with its ER amplitude setting. Use an ER amplitude sweep with multiple values and repeated trials per value, so that the final result is a cloud of simulated points rather than a single averaged curve. Visualize the simulation results as a single scatter plot with HD encoding accuracy on the x-axis and bump width in degrees on the y-axis. Plot one point per simulation trial and color-code points by ER amplitude. Add a colorbar or legend for ER amplitude, and save the per-trial HD encoding accuracy values, bump width values, ER amplitude values, model settings, and final figure."
+}

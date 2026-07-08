@@ -1,0 +1,41 @@
+{
+  "parent_name": "brain-wide_representations_of_behavior_spanning_multiple_timescales_and_states_in_c._elegans",
+  "image_ids": [
+    "Fig_1H"
+  ],
+  "query": "To demonstrate that individual neurons encode velocity over different timescales, three example neurons from one animal are shown, each correlated with an exponentially-weighted moving average of the animal's recent velocity computed with different decay constants. Inset shows half-decay times of exponentials and correlations of neurons to the filtered traces.",
+  "analyse_plan": {
+    "Objective": "Illustrate that neurons vary in how much they weigh past versus present velocity by showing optimal correlations with exponentially-filtered velocity traces of different decay times.",
+    "Validation Checks": "Exponential filters should span sub-second to tens of seconds; GCaMP7f indicator half-decay is <1 sec, so long timescales reflect neural rather than indicator properties.",
+    "Steps": "1. Load Data: Load the per-neuron F/F_mean traces and the synchronized velocity time series for the chosen example recording, and select three neurons with visually distinct timescale properties. 2. Compute Velocity Trace: Compute the animal's velocity trace from the 20-Hz NIR brightfield videos by Group-Sparse Total-Variation Denoising of the metacorpus position followed by projection of the differentiated position onto the pharynx-facing direction. 3. Construct Filtered Velocity Family: For a range of exponential decay parameters spanning half-decay times from <1 s to >30 s, compute the exponentially weighted moving average (EWMA) of velocity for each decay parameter using gradient descent to minimize the MSE between the candidate filtered velocity and the neural trace (with EWMA chosen over Gaussian smoothing, optimal-shift, and lowpass filtering as it best matches neural dynamics). 4. Compute Per-Filter Correlations: For each example neuron, compute the Pearson correlation coefficient between its z-scored GCaMP trace and each filtered velocity trace. 5. Identify Optimal Filter: For each neuron, identify the half-decay time that maximizes the absolute Pearson correlation as the optimal velocity-encoding timescale. 6. Save Key Results: Save the per-neuron optimal half-decay parameters, the per-neuron Pearson correlation values at the optimum, the optimally filtered velocity traces, and the exponential kernels for each example neuron used for the panel. 7. Visualization: Plot each example neuron's z-scored activity (blue) overlaid with its optimally filtered velocity trace (gray), with the matching exponential kernel (red) and the half-decay time and Pearson correlation reported as an inset for each neuron."
+  },
+  "analysis_keywords": [
+    "exponentially-weighted moving average",
+    "timescale encoding",
+    "half-decay time",
+    "velocity encoding",
+    "temporal integration",
+    "Pearson correlation"
+  ],
+  "statistical_info": [
+    {
+      "variable_name": "GCaMP7f_half_decay_seconds_upper_bound",
+      "unit": "seconds",
+      "variable_type": "numeric",
+      "number": 1
+    }
+  ],
+  "key_analysis_results": [
+    "Three neurons showed dramatically different timescale encoding: one with short half-decay closely tracking instantaneous velocity, one with intermediate timescale, and one integrating recent velocity over tens of seconds. Population-wide half-decay ranged from 0.9 to 31.7 seconds, far exceeding the GCaMP7f indicator half-decay of <1 second."
+  ],
+  "key_analysis_conclusions": [
+    "C. elegans neurons differ in how much they reflect past versus present behavior, with some integrating the animal's recent locomotion history over tens of seconds. This multi-timescale encoding is a genuine neural property, not an artifact of the calcium indicator."
+  ],
+  "summary_report": {
+    "abstract": "Three example neurons demonstrate velocity encoding spanning different timescales from sub-second to tens of seconds, revealing multi-timescale integration as a key encoding motif.",
+    "methods": "GCaMP trace correlated with exponentially-weighted moving averages of velocity at varying decay parameters. Optimal half-decay identified by maximizing Pearson correlation.",
+    "results": "Half-decay range 0.9-31.7 sec across population, far exceeding GCaMP7f indicator kinetics (<1 sec). Inset shows per-neuron half-decay and correlation.",
+    "discussion": "Multi-timescale encoding allows the nervous system to represent both current and recent locomotion state, potentially enabling computations relating past actions to current outcomes."
+  },
+  "question": "﻿To demonstrate that individual neurons encode velocity over different timescales, three example neurons from one animal are shown, each correlated with an exponentially-weighted moving average of the animal's recent velocity computed with different decay constants. Inset shows half-decay times of exponentials and correlations of neurons to the filtered traces."
+}

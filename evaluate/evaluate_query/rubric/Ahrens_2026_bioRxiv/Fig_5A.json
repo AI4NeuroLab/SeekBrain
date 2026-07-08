@@ -1,0 +1,46 @@
+      
+{
+    "tag": "Fig_5A",
+    "rubrics": {
+      "score_100": {
+        "reason": "Fig. 5A primarily evaluates whether the response recognizes the panel as the whole-brain functional reference frame for the visual-stimulation experiment. The sorted normalized heatmap, eight stimulus annotations, and fictive-swimming trace form the main visual structure and are worth 30 points. Sorting, normalization, and temporal alignment determine whether the figure can be interpreted correctly and are worth 20 points. The scientific interpretation is split into three parts: stimulus-specific ordered population coding is worth 20 points, forward-motion and fictive-swimming synchrony is worth 20 points, and the role of the panel as context for later molecular-subtype functional analysis, while avoiding causal overinterpretation, is worth 10 points. Point allocation: graph structure 30, analysis source 20, population-coding conclusion 20, visual-motor coupling conclusion 20, interpretive boundary and study context 10.",
+        "rubric": {
+          "GT core conclusion": "Fig. 5A shows a normalized Delta F/F response heatmap for about 110000 whole-brain neurons during eight visual stimuli, with neurons sorted by similarity of visual-stimulus responses and the stimulus epochs aligned to the same time axis as the fictive-swimming trace. The figure shows that different visual stimuli evoke organized neuronal population responses, with forward visual motion producing the strongest and broadest activity and aligning closely with fictive swimming. The core conclusion is that visual information is represented across the whole brain through ordered population responses, and that forward-motion-swimming coupling provides the functional context for later analysis of molecular subtypes involved in the optomotor response.",
+          "Scoring items": [
+            {
+              "point": 25,
+              "criterion": "Correctly analyzes and visualizes the sorted normalized whole-brain activity heatmap, in which rows represent about 110000 neurons, columns represent an approximately 0-140 s time axis, Delta F/F responses are displayed after normalization, response bands corresponding to eight visual stimuli are visible, and the fictive-swimming trace is overlaid on or aligned to the heatmap time axis.",
+              "deduction_rule": "Deduct full points if the panel is confused with a gene-expression heatmap, anatomical distribution map, or single-subtype activity plot. Deduct 10 points if the eight visual-stimulus time annotations are missing. Deduct 8 points if the fictive-swimming trace is missing or not aligned to the heatmap time axis. Deduct 6 points if Delta F/F or calcium activity is not described. Deduct 6 points if the neuron count or whole-brain scale is off by an obvious order of magnitude."
+            },
+            {
+              "point": 15,
+              "criterion": "States that neurons are sorted or hierarchically clustered by visual-stimulus response similarity, that responses are baseline-corrected and normalized so temporal patterns can be compared across neurons, that the sorting basis is functional response rather than brain region, gene-expression subtype, or cell spatial position, and that fictive swimming, stimuli, and neural activity are strictly time aligned.",
+              "deduction_rule": "Deduct 10 points if the basis of sorting is not explained. Deduct full points if the sorting basis is described as anatomical position, brain region, molecular subtype, or gene expression. Deduct 6 points if the response does not state that normalization makes color represent relative response strength. Deduct 6 points if it does not state that fictive swimming, stimuli, and neural activity share the same time axis."
+            },
+            {
+              "point": 30,
+              "criterion": "Preserves the first scientific conclusion that different visual stimuli activate different neuronal subsets, and that sorting by response similarity reveals continuous ordered functional groups, showing that visual information is organized as systematic whole-brain population coding rather than random scattered activity.",
+              "deduction_rule": "Deduct full points if the response only describes color intensity or band appearance without explaining stimulus-specific population coding. Deduct 10 points if it states that all stimuli activate the same neuronal population. Deduct 8 points if the ordered groups are incorrectly attributed to anatomical sorting rather than response similarity. Deduct 6 points if the whole-brain functional-organization meaning is not explained."
+            },
+            {
+              "point": 30,
+              "criterion": "Preserves the second scientific conclusion that forward visual motion evokes the strongest and broadest neural activity and is closely synchronized with fictive swimming, supporting that the experiment captures optomotor-response-related visual-motor coupling rather than sensory input alone.",
+              "deduction_rule": "Deduct full points if the special strong response to forward motion is not identified. Deduct 10 points if the strong forward-motion response is identified but not linked to fictive-swimming synchrony. Deduct full points if the fictive-swimming trace is misinterpreted as the visual stimulus signal or a neural activity trace. Deduct 6 points if the synchrony is written as direct causal proof without preserving correlational wording. "
+            }
+          ],
+          "Acceptable deviations": [
+            "It is acceptable to describe hierarchical clustering as sorting by response similarity or functional sorting.",
+            "It is acceptable to describe fictive swimming as motor output, ventral-root recording, or fictive swimming.",
+            "It is acceptable to describe the neuron count as about 100000 or about 110000.",
+            "It is acceptable to summarize the eight visual stimuli as multiple visual stimuli, as long as stimulus-specific responses are preserved.",
+            "It is acceptable to describe the optomotor response as a visual-motor reflex or forward-motion-induced swimming.",
+            "Omitting the exact baseline-correction window is acceptable as long as normalization or standardization is described.",
+            "It is acceptable to describe forward motion as forward visual flow."
+          ],
+          "Scoring instructions": "High scores (85-100) require correctly describing the heatmap structure, sorting and normalization source, temporal alignment, stimulus-specific ordered population coding, forward-motion-fictive-swimming synchrony, and the role of the panel as context for later subtype analysis. Partial scores (40-84) should be assigned when the graph is described broadly correctly but the sorting basis, normalization, fictive-swimming synchrony, or scientific conclusions are incomplete. Low scores (0-39) should be assigned when the panel is confused with a gene-expression plot, anatomical map, or single-subtype plot; when sorting is misattributed to brain region or gene identity; or when the forward-motion-swimming relationship is not recognized."
+        }
+      }
+    }
+  }
+  
+      

@@ -1,0 +1,54 @@
+{
+  "tag": "Fig_5A",
+  "rubrics": {
+    "score_100": {
+      "reason": "This merged rubric balances methodological accuracy with biological interpretation. It rewards the quantitative/methodological backbone (NBLAST pairwise similarity on 121 cerebellar efferent neurons, Ward's hierarchical clustering, eight major dendrogram clusters) as well as the core biological finding and its implication (PCs form one homogeneous cluster while ECs are distributed across the remaining seven clusters, suggesting functional specialization within the cerebellar output pathway). Dendrogram visualization details and background phrasing carry little weight unless they preserve the core meaning.",
+      "rubric": {
+        "GT core conclusion": "Pairwise morphological similarity scores of 121 cerebellar efferent neurons (91 eurydendroid cells and 30 Purkinje cells) from the larval zebrafish brain at 6 dpf, computed using the NBLAST algorithm, were subjected to unsupervised hierarchical clustering with Ward's method. The resulting dendrogram reveals eight major clusters: all Purkinje cells (PCs) form a single, morphologically homogeneous cluster (cluster 7), while the eurydendroid cells (ECs) are distributed across the remaining seven clusters, demonstrating morphological heterogeneity and suggesting functional specialization within the cerebellar output pathway.",
+        "Scoring items": [
+          {
+            "point": 18,
+            "criterion": "States that pairwise morphological similarity scores were computed for 121 cerebellar efferent neurons (91 ECs and 30 PCs) using the NBLAST algorithm",
+            "deduction_rule": "Deduct 18 points if NBLAST or pairwise morphological similarity computation for the full set of 121 cerebellar efferent neurons is missing or replaced by only a generic description of similarity. Deduct 8-10 points if NBLAST is mentioned but the neuron count or cell-type breakdown is substantially incorrect. Deduct 5 points if the morphological basis is present but the cell population (cerebellar efferent/output neurons) is not explicitly defined."
+          },
+          {
+            "point": 12,
+            "criterion": "Indicates that the similarity scores were subjected to unsupervised hierarchical clustering with Ward's method",
+            "deduction_rule": "Deduct 12 points if hierarchical clustering is missing or replaced by another clustering approach. Deduct 6 points if hierarchical clustering is mentioned but Ward's method or its unsupervised nature is substantially incorrect."
+          },
+          {
+            "point": 15,
+            "criterion": "Reports the resulting dendrogram with eight major clusters",
+            "deduction_rule": "Deduct 15 points if the eight major clusters or the dendrogram itself is missing. Deduct 5-8 points if the cluster count is substantially wrong, or if the eight clusters are mentioned but not described as 'major' or 'primary' branches."
+          },
+          {
+            "point": 20,
+            "criterion": "Concludes that all Purkinje cells (PCs) form a single exclusive cluster (cluster 7), demonstrating morphological homogeneity",
+            "deduction_rule": "Deduct 20 points if the exclusive clustering of all PCs into one cluster is omitted or reversed. Deduct 10-12 points if PCs are said to be in one cluster but homogeneity/uniformity is not interpreted. Deduct 3-5 points for minor numerical simplifications or omission of the exact 'cluster 7' label if full PC separation is preserved."
+          },
+          {
+            "point": 20,
+            "criterion": "Concludes that eurydendroid cells (ECs) are distributed across the remaining seven clusters, demonstrating morphological heterogeneity",
+            "deduction_rule": "Deduct 20 points if the wide distribution of ECs across the other seven clusters is missing or reversed. Deduct 10-12 points if ECs are said to occupy multiple clusters but heterogeneity/diversity/distinct subtypes are not interpreted. Deduct 3-5 points for minor simplifications that still preserve the 1-vs-7 PC/EC split."
+          },
+          {
+            "point": 15,
+            "criterion": "Connects the morphological clustering results to the deeper scientific implication of functional specialization (e.g., diverse functional subtypes or projection targets) within the cerebellar output pathway",
+            "deduction_rule": "Deduct 15 points if the implication of functional specialization or projection diversity is completely missing. Deduct 7-8 points if functional differences are vaguely hinted at but not clearly linked to the morphological heterogeneity of ECs."
+          }
+        ],
+        "Acceptable deviations": [
+          "Paraphrasing 'NBLAST algorithm' as 'morphological similarity scoring' or 'NBLAST-based similarity' is acceptable if the pairwise computation context is preserved",
+          "Omitting the specific name of the clustering algorithm ('Ward's method') is acceptable provided unsupervised hierarchical clustering is mentioned",
+          "Reporting neuron counts approximately (e.g., ~121 cerebellar efferents, ~30 PCs) or omitting the exact 91/30 breakdown is acceptable if the total and cell-type distinction are preserved",
+          "Omitting 'at 6 dpf' or 'larval zebrafish brain' is acceptable if the cerebellar efferent context is preserved",
+          "Omitting the exact cluster identifier 'cluster 7' is acceptable as long as it is clearly stated that all PCs form a single exclusive/homogeneous cluster",
+          "Paraphrasing 'morphological heterogeneity' as 'diverse subtypes' or 'various distinct morphological groups' is acceptable",
+          "Paraphrasing 'functional specialization' as 'different projection targets' or 'distinct functional roles' is acceptable",
+          "Omitting dendrogram color or visualization details is acceptable"
+        ],
+        "Scoring instructions": "Evaluate the answer on its progression from methodological description to biological inference. Full credit requires capturing (1) the NBLAST pairwise similarity computation on 121 cerebellar efferent neurons, (2) unsupervised hierarchical clustering with Ward's method, (3) the eight major clusters in the dendrogram, (4) the exclusive grouping of all PCs into a single homogeneous cluster, (5) the distribution of ECs across the remaining seven clusters indicating heterogeneity, and (6) the implication of functional specialization. Partial credit should be awarded when the large-scale clustering result and PC/EC separation are preserved but numbers or method details are simplified. Low scores should be assigned when the answer reduces the figure to a generic visual description, omits the 1-vs-7 split, or omits the biological interpretations of homogeneity/heterogeneity and functional specialization."
+      }
+    }
+  }
+}

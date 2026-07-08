@@ -1,0 +1,48 @@
+{
+  "tag": "Fig_3G",
+  "rubrics": {
+    "score_100": {
+      "reason": "This rubric emphasizes the core purpose of Fig. 3G: relating each neuron's behavioral encoding properties to its participation in shared population dynamics, as summarized by principal component loadings. The largest weight is assigned to the key interpretation that individual neurons show diverse mixtures of multiple PCs/shared neural dynamics modes rather than being cleanly dominated by a single PC. Methodological and display elements, including PCA of neural activity, top PC loadings, and hierarchical clustering by PC-loading profiles, are also scored because they are necessary to understand the figure.",
+      "rubric": {
+        "GT core conclusion": "Fig. 3G shows, for one example animal, each neuron's CePNEM-derived behavioral tuning alongside its loadings onto the top principal components of neural population activity, with neurons hierarchically clustered by their PC-loading profiles. The panel illustrates that neurons have diverse loading patterns across multiple shared dynamics modes rather than cleanly mapping onto single PCs or sharply separated clusters, while these PC-loading patterns still relate to behavioral encoding type.",
+        "Scoring items": [
+          {
+            "point": 25,
+            "criterion": "States that the figure compares each neuron's behavioral tuning or CePNEM-derived encoding properties with its PC-loading profile.",
+            "deduction_rule": "Deduct 25 points if the relationship between behavioral tuning and PC loadings is omitted. Deduct 10-15 points if PCA or PC loadings are mentioned but not connected to behavioral tuning. Deduct 5 points if the answer mentions only one behavioral tuning feature but still captures the comparison between encoding and PC loadings."
+          },
+          {
+            "point": 15,
+            "criterion": "Identifies that the PC loadings come from PCA of neural population activity and represent the top principal components or main shared neural dynamics modes.",
+            "deduction_rule": "Deduct 15 points if the PCA/neural population activity origin of the PCs is omitted or misidentified. Deduct 8-10 points if PCA is mentioned only generally without explaining that neurons are represented by loadings across multiple PCs. Deduct 12-15 points if PCs are incorrectly described as behavioral variables rather than neural activity modes."
+          },
+          {
+            "point": 15,
+            "criterion": "States that neurons are hierarchically clustered or ordered according to their PC-loading profiles.",
+            "deduction_rule": "Deduct 15 points if the hierarchical clustering or ordering by PC loadings is omitted. Deduct 5-8 points if clustering is mentioned but the basis of clustering is unclear. Deduct 10-15 points if the answer incorrectly states that neurons were clustered by behavioral labels rather than PC loadings."
+          },
+          {
+            "point": 30,
+            "criterion": "Reports the key conclusion that individual neurons show diverse mixtures of multiple PCs/shared dynamics modes rather than being cleanly dominated by a single principal component.",
+            "deduction_rule": "Deduct 30 points if the multi-PC mixture conclusion is omitted. Deduct 15-20 points if the answer only says there are complex or diverse patterns without explaining that individual neurons combine multiple shared dynamics modes. Deduct 25-30 points if the answer incorrectly claims each neuron maps cleanly onto one PC or one discrete PC-defined class."
+          },
+          {
+            "point": 15,
+            "criterion": "Preserves the broader interpretation that the PC-loading patterns show limited sharply separated cluster structure, while still relating to or partially predicting behavioral encoding type.",
+            "deduction_rule": "Deduct 15 points if both the limited discrete clustering and the relationship to behavioral encoding are omitted. Deduct 5-8 points if only one of these broader interpretations is missing. Deduct 10-15 points if the answer claims that the neurons form clear, sharply separated functional clusters based on PC loadings."
+          }
+        ],
+        "Acceptable deviations": [
+          "Referring to principal components as PCs, shared dynamics modes, population activity modes, low-dimensional neural dynamics, or dominant modes of neural activity is acceptable if the meaning is preserved.",
+          "PC loadings may be described as weights, contributions, coefficients, or each neuron's participation in the principal components.",
+          "The exact number 'five' is preferred but not strictly required; saying 'top PCs', 'leading PCs', or 'several leading principal components' is acceptable if the multiple-PC logic is preserved.",
+          "Behavioral tuning may be paraphrased as behavior encoding, CePNEM tuning, encoding properties, or forward/head-curvature/feeding tuning summaries.",
+          "The answer does not need to describe the exact heatmap color scale, dendrogram shape, or the identity of the example animal.",
+          "Saying that PC loadings are 'related to', 'associated with', or 'partly predictive of' encoding type is acceptable instead of 'predictive but not deterministic'.",
+          "It is acceptable to say the panel illustrates or supports the multi-PC mixture conclusion; the answer does not need to claim that this panel alone proves the conclusion quantitatively."
+        ],
+        "Scoring instructions": "Assign points based on whether the answer preserves the main scientific content of the panel: PCA was performed on neural population activity; each neuron is shown by behavioral tuning and PC loadings; neurons are clustered by PC-loading profiles; and the resulting pattern illustrates diverse, mixed participation in multiple shared dynamics modes rather than clean assignment to single PCs or sharply separated clusters. Full credit requires both the plotting/analysis logic and the interpretation. Partial credit should be given for answers that correctly identify the PCA heatmap and clustering but understate the behavioral-encoding comparison or multi-PC mixture interpretation. Low scores should be assigned to answers that reduce the panel to a generic heatmap or clustering plot without explaining the relationship between PC loadings, behavioral encoding, and diverse population dynamics."
+      }
+    }
+  }
+}
