@@ -44,3 +44,4 @@ evaluate/score/
 
 # ── Root-level markdown docs (all excluded; subdirectory .md unaffected) ──────
 /*.md
+.pi/agent/sessions/
