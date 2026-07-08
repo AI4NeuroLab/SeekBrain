@@ -44,4 +44,5 @@ evaluate/score/
 
 # ── Root-level markdown docs (all excluded; subdirectory .md unaffected) ──────
 /*.md
+!/README.md
 .pi/agent/sessions/
