@@ -1,0 +1,440 @@
+# Source: R/fui.R
+# Summary: See repo_context.md
+
+#' Fast Univariate Inference for Longitudinal Functional Models
+#'
+#' Fit a function-on-scalar regression model for longitudinal
+#' functional outcomes and scalar predictors using the Fast Univariate
+#' Inference (FUI) approach (Cui et al. 2022).
+#'
+#' The FUI approach comprises of three steps:
+#' \enumerate{
+#' \item Fit a univariate mixed model at each location of the functional domain,
+#' and obtain raw estimates from massive models;
+#' \item Smooth the raw estimates along the functional domain;
+#' \item Obtain the pointwise and joint confidence bands using an analytic
+#' approach for Gaussian data or Bootstrap for general distributions.
+#' }
+#'
+#' For more information on each step, please refer to the FUI paper
+#' by Cui et al. (2022).
+#'
+#' @param formula Two-sided formula object in lme4 formula syntax.
+#' The difference is that the response need to be specified as a matrix
+#' instead of a vector. Each column of the matrix represents one location
+#' of the longitudinal functional observations on the domain.
+#' @param data A data frame containing all variables in formula
+#' @param family GLM family of the response. Defaults to \code{gaussian}.
+#' @param var Logical, indicating whether to calculate and return variance
+#' of the coefficient estimates. Defaults to `TRUE`.
+#' @param analytic Logical, indicating whether to use the analytic inferenc
+#' approach or bootstrap. Defaults to \code{TRUE}.
+#' @param parallel Logical, indicating whether to do parallel computing.
+#' Defaults to \code{FALSE}.
+#' @param silent Logical, indicating whether to show descriptions of each step.
+#' Defaults to \code{FALSE}.
+#' @param argvals A vector containing locations of observations on the
+#' functional domain. If not specified, a regular grid across the range of
+#' the domain is assumed. Currently only supported for bootstrap
+#' (\code{analytic=FALSE}).
+#' @param nknots_min Minimal number of knots in the penalized smoothing for the
+#' regression coefficients.
+#' Defaults to \code{NULL}, which then uses L/2 where L is the dimension of the
+#' functional domain.
+#' @param nknots_min_cov Minimal number of knots in the penalized smoothing for
+#' the covariance matrices.
+#' Defaults to \code{35}.
+#' @param smooth_method How to select smoothing parameter in step 2. Defaults to
+#'  \code{"GCV.Cp"}
+#' @param splines Spline type used for penalized splines smoothing. We use the
+#' same syntax as the mgcv package. Defaults to \code{"tp"}.
+#' @param design_mat Logical, indicating whether to return the design matrix.
+#' Defaults to \code{FALSE}
+#' @param residuals Logical, indicating whether to save residuals from
+#' unsmoothed LME. Defaults to \code{FALSE}.
+#' @param n_boots Number of samples when using bootstrap inference. Defaults
+#' to 500.
+#' @param boot_type Bootstrap type (character): "cluster", "case", "wild",
+#' "reb", "residual", "parametric", "semiparametric". \code{NULL} defaults to
+#' "cluster" for non-gaussian responses and "wild" for gaussian responses. For
+#' small cluster (n<=10) gaussian responses, defaults to "reb".
+#' @param seed Numeric value used to make sure bootstrap replicate (draws) are
+#' correlated across functional domains for certain bootstrap approach
+#' @param subj_id Name of the variable that contains subject ID.
+#' @param n_cores Number of cores for parallelization. If greater than the
+#' value from `parallel::detectCores()`, defaults to one fewer than that value.
+#' @param caic Logical, indicating whether to calculate cAIC. Defaults to
+#' \code{FALSE}.
+#' @param randeffs Logical, indicating whether to return random effect estimates.
+#' Defaults to \code{FALSE}.
+#' @param non_neg 0 - no non-negativity constrains, 1 - non-negativity
+#' constraints on every coefficient for variance, 2 - non-negativity on
+#' average of coefficents for 1 variance term. Defaults to 0.
+#' @param MoM Method of moments estimator. Defaults to 1.
+#' @param concurrent Logical, indicates whether to fit a concurrent model.
+#' Defaults to \code{FALSE}.
+#' @param impute_outcome Logical, indicates whether to impute missing outcome
+#' values with FPCA. Defaults to \code{FALSE}. Use with caution as the
+#' downstream effects are not tested.
+#' @param override_zero_var Logical, indicates whether to proceed with model
+#' fitting if columns have zero variance. Suggested for cases where individual
+#' columns have zero variance but interactions have non-zero variance. Defaults
+#' to `FALSE`.
+#' @param unsmooth Logical, indicates whether to return the raw estimates of
+#' coefficients and variances without smoothing. Defaults to `FALSE`.
+#'
+#' @return A list containing:
+#' \item{betaHat}{Estimated functional fixed effects}
+#' \item{argvals}{Location of the observations}
+#' \item{betaHat.var}{Variance estimates of the functional fixed effects
+#' (if specified)}
+#' \item{qn}{critical values used to construct joint CI}
+#' \item{...}{...}
+#'
+#' @author Erjia Cui \email{ecui@@umn.edu}, Gabriel Loewinger
+#' \email{gloewinger@@gmail.com}, Al W Xin \email{axin@@andrew.cmu.edu}
+#'
+#' @references Cui, E., Leroux, A., Smirnova, E., Crainiceanu, C. (2022). Fast
+#' Univariate Inference for Longitudinal Functional Models. \emph{Journal of
+#' Computational and Graphical Statistics}, 31(1), 219-230.
+#'
+#' @export
+#'
+#' @import lme4
+#' @import parallel
+#' @import magrittr
+#' @import mgcv
+#' @import refund
+#' @importFrom MASS ginv
+#' @import cAIC4
+#' @importFrom lsei pnnls lsei
+#' @import Matrix
+#' @importFrom mvtnorm rmvnorm
+#' @importFrom Rfast rowMaxs spdinv
+#' @import progress
+#'
+#' @examples
+#' library(refund)
+#'
+#' ## random intercept only
+#' set.seed(1)
+#' DTI_use <- DTI[DTI$ID %in% sample(DTI$ID, 10),]
+#' ## clean conflicting predictor
+#' DTI_use$visit.time <- NULL
+#' fit_dti <- fui(
+#'   cca ~ visit + sex + (1 | ID),
+#'   data = DTI_use
+#' )
+
+fui <- function(
+  formula,
+  data,
+  family = "gaussian",
+  var = TRUE,
+  analytic = TRUE,
+  parallel = FALSE,
+  silent = FALSE,
+  argvals = NULL,
+  nknots_min = NULL,
+  nknots_min_cov = 35,
+  smooth_method = "GCV.Cp",
+  splines = "tp",
+  design_mat = FALSE,
+  residuals = FALSE,
+  n_boots = 500,
+  boot_type = NULL,
+  seed = 1,
+  subj_id = NULL,
+  n_cores = NULL,
+  caic = FALSE,
+  randeffs = FALSE,
+  non_neg = 0,
+  MoM = 1,
+  concurrent = FALSE,
+  impute_outcome = FALSE,
+  override_zero_var = FALSE,
+  unsmooth = FALSE
+) {
+
+  # 0 Setup ###################################################################
+
+  # 0.0 Argument consistency checks ============================================
+
+  # If doing parallel computing, set up the number of cores
+  # If n_cores is not specified, pass warning and set as 1
+
+  parallel_checks <- check_parallel(parallel, n_cores, silent)
+  parallel <- parallel_checks$parallel
+  n_cores <- parallel_checks$n_cores
+
+  # For non-Gaussian family, manually set variance to bootstrap inference
+  if (family != "gaussian") {
+    if (analytic & !silent) { # Notify user of conflict
+      message("Analytic variance is not supported for non-Gaussian models. ",
+              "Variance calculation will be done through bootstrap.")}
+    analytic <- FALSE }
+
+  # Check for the MoM estimator and coerce to 1
+  if (concurrent & MoM == 2) {
+    warning("MoM = 2 is currently not supported for concurrent models. ",
+            "Calculation will proceed with MoM = 1.")
+    MoM <- 1 }
+
+  # 0.1 Identifiability checks ==================================================
+
+  all_vars <- all.vars(formula)
+  out_index <- grep(
+    paste0("^(", paste0(all_vars, collapse = "|"), ")"), names(data))
+  temp <- data[, out_index]
+  # Coerce characters, like IDs, to numerics
+  temp <- data.frame(
+    lapply(
+      temp,
+      function(col) {
+        if (is.numeric(col)) return(col)
+        as.numeric(as.factor(col))}))
+  col_var <- Rfast::colVars(as.matrix(temp))
+  col_var_zero <- which(col_var == 0)
+
+  if (length(col_var_zero) > 0) {
+    msg <- paste0("Columns with zero variance: ",
+      paste0(names(temp)[col_var_zero], collapse = ", "), "\n",
+      "Model-fitting cannot continue due to non-identifiability.")
+    ifelse(override_zero_var, warning(msg), stop(msg))}
+
+  # 0.2 Create the reference object ============================================
+
+  # shared parameters for concurrent and non-concurrent models
+  fmm_params <- list(
+    formula = formula,
+    data = data,
+    subj_id = subj_id,
+    argvals = argvals,
+    family = family,
+    residuals = residuals,
+    caic = caic,
+    randeffs = randeffs,
+    var = var,
+    analytic = analytic)
+
+  if (!concurrent) {
+    fmm <- do.call(new_fastFMM, fmm_params)
+  } else {
+    fun_covs <- get_functional_covariates(formula, data, silent)
+    fmm_params$fun_covariates <- fun_covs
+    fmm <- do.call(new_fastFMMconc, fmm_params)}
+
+  # 0.3 Impute missing values ==================================================
+
+  out_index <- fmm$out_index
+  missing_rows <- which(rowSums(is.na(data[, out_index])) != 0)
+
+  # Fill in missing values of functional outcome using FPCA
+  # rows with missing outcome values
+  missing_rows <- which(rowSums(is.na(data[, out_index])) != 0 )
+
+  # handle missing values with imputation or removal
+  if (length(missing_rows) != 0) {
+    if(analytic & impute_outcome) {
+      if (!silent)
+        message(paste(
+          "Imputing", sum(is.na(data[, out_index])),
+          "values in functional response with longitudinal functional PCA"))
+
+      # Detect multiple column or matrix column encoding
+      if (length(out_index) != 1) {
+        nknots_fpca <- min(round(length(out_index) / 2), 35)
+        if (is.null(argvals) | analytic)
+          argvals <- 1:length(out_index)
+        tmp <- as.matrix(data[, out_index])
+        tmp[which(is.na(tmp))] <- suppressWarnings(
+          refund::fpca.face(
+            tmp, argvals = argvals, knots = nknots_fpca
+          )$Yhat[which(is.na(tmp))])
+        data[,out_index] <- tmp
+      } else {
+        data[, out_index][which(is.na(data[, out_index]))] <- suppressWarnings(
+          refund::fpca.face(
+            as.matrix(data[, out_index]),
+            argvals = argvals,
+            knots = nknots_fpca
+          )$Yhat[which(is.na(data[, out_index]))])}
+    } else if (analytic & !impute_outcome) {
+      message(
+        paste(
+          "Removing", length(missing_rows),
+          "rows with missing functional outcome values.", "\n",
+          "To impute missing outcome values with FPCA, set fui() argument: \n",
+          "impute_outcome = TRUE"))
+      # remove data with missing rows
+      data <- data[-missing_rows, ]
+    }
+
+    fmm$data <- data
+
+  }
+
+  # 1 Massively univariate mixed models #######################################
+
+  if (!silent)
+    message("Step 1: Fit Massively Univariate Mixed Models")
+
+  # Create a list of univariate models ("massively univariate")
+  mum <- massmm(fmm, parallel, n_cores)
+
+  # 2 Smoothing ###############################################################
+
+  if (!silent) message("Step 2: Smoothing")
+
+  # Penalized splines smoothing and extract components (analytic)
+  # Number of knots for regression coefficients
+  L <- length(fmm$argvals)
+  nknots <- min(round(L / 2), nknots_min)
+  # Number of knots for covariance matrix
+  nknots_cov <- ifelse(is.null(nknots_min_cov), 35, nknots_min_cov)
+  nknots_fpca <- min(round(L / 2), 35)
+
+  # Reset argvals
+  argvals <- fmm$argvals
+
+  # Smoothing parameter, spline basis, penalty matrix (analytic)
+  # Setup variables
+  lambda <- S <- B <- NULL
+
+  # Smooth coefficient estimates
+  HHat <- t(
+    apply(
+      mum$sigmausqHat, 1,
+      function(b) stats::smooth.spline(x = argvals, y = b)$y))
+  ind_var <- which(grepl("var", rownames(HHat)) == TRUE)
+  HHat[ind_var, ][which(HHat[ind_var, ] < 0)] <- 0
+
+  betaTilde <- mum$betaTilde
+
+  if (analytic) {
+    p <- nrow(betaTilde) # Number of fixed effects parameters
+    betaHat <- matrix(NA, nrow = p, ncol = L)
+    lambda <- rep(NA, p)
+
+    # Although s() is loaded from mgcv, mgcv::s will break.
+    # Spacedman describes this here: stackoverflow.com/a/20694106
+    # Solution: Import mgcv in full and be careful of collisions in future
+
+    for (r in 1:p) {
+      fit_smooth <- mgcv::gam(
+        betaTilde[r,] ~ s(argvals, bs = splines, k = nknots + 1),
+        method = smooth_method)
+      betaHat[r,] <- fit_smooth$fitted.values
+      # smoothing parameter
+      lambda[r] <- fit_smooth$sp
+    }
+
+    sm <- mgcv::smoothCon(
+      s(argvals, bs = splines, k = nknots + 1),
+      data = data.frame(argvals = argvals),
+      absorb.cons = TRUE)
+    S <- sm[[1]]$S[[1]] # Penalty matrix
+    B <- sm[[1]]$X # Basis functions
+    rm(fit_smooth, sm)
+  } else {
+    betaHat <- t(
+      apply(
+        betaTilde, 1,
+        function(x) {
+          mgcv::gam(
+            x ~ s(argvals, bs = splines, k = nknots + 1),
+            method = smooth_method
+          )$fitted.values}))
+  }
+
+  rownames(betaHat) <- rownames(betaTilde)
+
+  # Discard the original estimates if not asked for
+  if (!unsmooth) rm(betaTilde)
+  colnames(betaHat) <- 1:L
+
+  # Save a list to pass to variance calculation
+  smoothed <- list(
+    betaHat = betaHat,
+    HHat = HHat,
+    S = S,
+    B = B,
+    lambda = lambda)
+
+  # 3 Variance estimation #####################################################
+
+  # 3.0 Early return ===========================================================
+
+  res <- list(
+    betaHat = smoothed$betaHat,
+    HHat = smoothed$HHat,
+    argvals = argvals,
+    aic = mum$AIC_mat)
+
+  if (unsmooth) res$betaTilde <- betaTilde
+
+  # End the function call if no variance calculation is required
+  if (!var) {
+    if (!silent) {
+      message(
+        paste0(
+          "Complete!", "\n",
+          " - Use plot_fui() function to plot estimates", "\n",
+          " - For more information, run the command:  ?plot_fui")) }
+    return(res)
+  }
+
+  # At this point, the function proceeds with analytic or bootstrap inference
+
+  if (analytic) {
+
+    # 3.1 Analytic inference ===================================================
+
+    var_res <- var_analytic(
+      fmm,
+      mum,
+      smoothed,
+      MoM,
+      non_neg,
+      nknots_cov,
+      seed,
+      parallel,
+      n_cores,
+      silent)
+  } else {
+
+    # 3.2 Bootstrap inference ==================================================
+
+    var_res <- var_bootstrap(
+      fmm,
+      mum,
+      nknots_min,
+      nknots_min_cov,
+      nknots_fpca,
+      betaHat,
+      data,
+      L,
+      n_boots,
+      boot_type,
+      seed,
+      parallel,
+      n_cores,
+      smooth_method,
+      splines,
+      silent)
+  }
+
+  # Unfortunately, setting design_mat to FALSE doesn't save memory during
+  # computation, but it will reduce the size of the outputted object
+  if (!design_mat) var_res$designmat <- NULL
+  if (unsmooth) var_res$betaTilde <- betaTilde
+
+  if (!silent)
+    message(
+      "Complete!", "\n",
+      " - Use plot_fui() function to plot estimates.", "\n",
+      " - For more information, run the command:  ?plot_fui"
+    )
+
+  return(var_res)
+}

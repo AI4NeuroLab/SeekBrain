@@ -1,0 +1,20 @@
+# Source: containers/stitching/maru.yaml
+# Summary: See repo_context.md
+
+maru_version: 0.1.1
+name: stitching
+version: 1.2.0
+remotes:
+- multifish
+- registry.int.janelia.org/multifish
+- public.ecr.aws/janeliascicomp/multifish
+build_args:
+  STITCHING_SPARK_GIT_TAG: master
+template_args:
+  flavor: java_maven
+  build:
+    repo_url: https://github.com/saalfeldlab/stitching-spark.git
+    command: mvn package
+  java_maven:
+    jdk_version: "8"
+    main_class: org.myapp.MyClass

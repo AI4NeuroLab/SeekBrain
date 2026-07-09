@@ -1,0 +1,11 @@
+# Source: examples/run_assign_spots.sh
+# Summary: See repo_context.md
+
+#!/bin/bash
+DIR=$(cd "$(dirname "$0")"; pwd)
+$DIR/../main-assign-spots.nf \
+    -with-tower "http://nextflow.int.janelia.org/api" \
+    --runtime_opts "-B /nrs/scicompsoft/goinac/multifish"  \
+    --labels "/nrs/scicompsoft/goinac/multifish/ex1/LHA3_R3_subset/segmentation/LHA3_R3_subset-c2.tif" \
+    --warped_spots "/nrs/scicompsoft/goinac/multifish/ex1/LHA3_R5_subset/spots/LHA3_R5_subset-to-LHA3_R3_subset" \
+    --outdir "/nrs/scicompsoft/goinac/multifish/ex1/LHA_R5_TO_R3_assignment" "$@"

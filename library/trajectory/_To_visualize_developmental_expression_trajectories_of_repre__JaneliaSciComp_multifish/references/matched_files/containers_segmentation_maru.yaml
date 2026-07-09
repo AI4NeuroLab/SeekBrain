@@ -1,0 +1,10 @@
+# Source: containers/segmentation/maru.yaml
+# Summary: See repo_context.md
+
+maru_version: 0.1.1
+name: segmentation
+version: 1.0.0
+remotes:
+- registry.int.janelia.org/janeliascicomp
+- multifish
+- public.ecr.aws/janeliascicomp/multifish

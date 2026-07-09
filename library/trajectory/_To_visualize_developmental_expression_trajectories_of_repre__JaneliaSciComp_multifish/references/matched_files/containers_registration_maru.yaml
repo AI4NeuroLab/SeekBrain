@@ -1,0 +1,20 @@
+# Source: containers/registration/maru.yaml
+# Summary: See repo_context.md
+
+maru_version: 0.1.1
+name: registration
+version: 1.2.3
+build_args:
+  GIT_TAG: prototype-$version
+template_args:
+  flavor: python_conda
+  build:
+    repo_url: https://github.com/JaneliaSciComp/bigstream.git
+  python_conda:
+    python_version: "3.6"
+    dependencies: numpy z5py json scipy scikit-image
+    script_path: bigstream/run_stream.sh
+remotes:
+- registry.int.janelia.org/multifish
+- multifish
+- public.ecr.aws/janeliascicomp/multifish

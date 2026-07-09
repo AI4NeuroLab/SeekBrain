@@ -1,0 +1,40 @@
+{
+  "tag": "Using_brain-wide_Neuropixels_recordings_from_mice_performing",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/Using_brain-wide_Neuropixels_recordings_from_mice_performing__Eden-Kramer-Lab_spectral_connectivity",
+  "yaml_metadata": {
+    "name": "IBL Brain-Wide Stimulus-Side Modulation Analysis and Swanson Mapping",
+    "description": "Generates a Swanson brain flatmap displaying regional stimulus-side modulation statistics by aggregating single-unit IBL BWM data through trial-stratified permutation testing.",
+    "triggers": [
+      "generate a Swanson map of stimulus-side modulation for IBL BWM data",
+      "calculate regional visual stimulus selectivity in mouse Neuropixels recordings",
+      "how to perform trial-stratified permutation tests for neural modulation in IBL sessions",
+      "map Beryl-level task modulation results onto a Swanson flatmap",
+      "compute fraction of significantly modulated neurons per brain region using IBL pipelines"
+    ],
+    "tags": [
+      "Neuropixels",
+      "IBL-BWM",
+      "Swanson-flatmap",
+      "electrophysiology",
+      "permutation-testing",
+      "neuroinformatics"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

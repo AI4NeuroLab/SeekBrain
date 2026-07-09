@@ -1,0 +1,42 @@
+{
+  "tag": "_Display_the_trial-averaged_firing_rate_curves__PSTHs__of_14",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_Display_the_trial-averaged_firing_rate_curves__PSTHs__of_14__maikstue_mlib-spike-data",
+  "yaml_metadata": {
+    "name": "PMd Population PSTH Visualization and Analysis",
+    "description": "Generates trial-averaged firing rate curves for 14 PMd neurons, segmented by choice direction and stimulus difficulty, including SEM shading and multi-panel visualization.",
+    "triggers": [
+      "Plot PSTHs for the 14 neurons in the PMd dataset",
+      "Generate trial-averaged firing rates for population.pkl",
+      "Show stimulus-aligned neural dynamics for different task conditions",
+      "Display firing rate curves categorized by choice and difficulty",
+      "Visualize heterogeneous temporal responses for PMd example neurons"
+    ],
+    "tags": [
+      "electrophysiology",
+      "PSTH",
+      "PMd",
+      "neural dynamics",
+      "trial-averaging"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/matched_files/README.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": [
+    "README.md"
+  ]
+}

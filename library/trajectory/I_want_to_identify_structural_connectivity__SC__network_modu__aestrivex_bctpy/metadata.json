@@ -1,0 +1,50 @@
+{
+  "tag": "I_want_to_identify_structural_connectivity__SC__network_modu",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/I_want_to_identify_structural_connectivity__SC__network_modu__aestrivex_bctpy",
+  "yaml_metadata": {
+    "name": "Hierarchical Consensus Structural Connectivity Modularization",
+    "description": "Performs iterative Louvain clustering and hierarchical consensus analysis on structural connectivity matrices to identify and visualize network modules.",
+    "triggers": [
+      "How do I identify SC network modules using hierarchical consensus?",
+      "Generate a co-assignment probability matrix for structural connectivity",
+      "Perform iterative Louvain modularity on zebrafish SC matrix",
+      "Cluster SC data using Ward's linkage and visualize with dendrogram",
+      "Extract 4 structural network modules from co-assignment probability matrix"
+    ],
+    "tags": [
+      "structural-connectivity",
+      "consensus-clustering",
+      "louvain-algorithm",
+      "network-neuroscience",
+      "zebrafish-connectomics"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/matched_files/bct_algorithms_clustering.py",
+    "references/matched_files/bct_algorithms_modularity.py",
+    "references/matched_files/bct_utils_miscellaneous_utilities.py",
+    "references/matched_files/bct_utils_other.py",
+    "references/matched_files/bct_utils_visualization.py",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": [
+    "bct/algorithms/clustering.py",
+    "bct/algorithms/modularity.py",
+    "bct/utils/miscellaneous_utilities.py",
+    "bct/utils/other.py",
+    "bct/utils/visualization.py"
+  ]
+}

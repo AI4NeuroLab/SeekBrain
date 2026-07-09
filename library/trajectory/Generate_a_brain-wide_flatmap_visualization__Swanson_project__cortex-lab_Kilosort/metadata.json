@@ -1,0 +1,53 @@
+{
+  "tag": "Generate_a_brain-wide_flatmap_visualization__Swanson_project",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/Generate_a_brain-wide_flatmap_visualization__Swanson_project__cortex-lab_Kilosort",
+  "yaml_metadata": {
+    "name": "Generate IBL Brain-Wide Swanson Flatmap Visualization",
+    "description": "Generates a Swanson projection flatmap for the right hemisphere, color-coding brain regions by the fraction of neurons significantly modulated by visual stimuli.",
+    "triggers": [
+      "generate a Swanson flatmap of neural stimulus modulation",
+      "create IBL brain-wide activity map for visual stimulus responses",
+      "visualize neuron modulation significance on an Allen CCF flatmap",
+      "plot regional sensory modulation fraction using iblatlas",
+      "map significant visual firing rate changes to a Swanson projection"
+    ],
+    "tags": [
+      "neuroscience",
+      "electrophysiology",
+      "iblatlas",
+      "Allen-CCF",
+      "data-visualization",
+      "statistical-analysis"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/matched_files/Docs_phy_installation_with_templates.txt",
+    "references/matched_files/Docs_readme_mac.txt",
+    "references/matched_files/Docs_readme_win_linux.txt",
+    "references/matched_files/eMouse_readme_eMouse.txt",
+    "references/matched_files/licence.txt",
+    "references/matched_files/readme.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": [
+    "Docs/phy_installation_with_templates.txt",
+    "Docs/readme_mac.txt",
+    "Docs/readme_win_linux.txt",
+    "eMouse/readme_eMouse.txt",
+    "licence.txt",
+    "readme.md"
+  ]
+}

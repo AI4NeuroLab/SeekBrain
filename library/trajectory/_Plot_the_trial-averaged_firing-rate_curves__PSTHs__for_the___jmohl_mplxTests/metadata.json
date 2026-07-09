@@ -1,0 +1,39 @@
+{
+  "tag": "_Plot_the_trial-averaged_firing-rate_curves__PSTHs__for_the_",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_Plot_the_trial-averaged_firing-rate_curves__PSTHs__for_the___jmohl_mplxTests",
+  "yaml_metadata": {
+    "name": "Plot Trial-Averaged PMd Population PSTHs",
+    "description": "Generates a 14-panel figure showing trial-averaged firing-rate curves for PMd neurons, split by choice direction and stimulus difficulty with SEM visualization.",
+    "triggers": [
+      "Plot the trial-averaged firing-rate curves for the PMd neurons",
+      "Visualize PSTHs for the example population dataset",
+      "How do I generate a multi-panel PSTH plot for PMd neurons split by condition?",
+      "Create a heterogeneity visualization for neuron_0 through neuron_13",
+      "Show population PSTHs with SEM for different choice and difficulty levels"
+    ],
+    "tags": [
+      "electrophysiology",
+      "PSTH",
+      "neural-dynamics",
+      "data-visualization",
+      "PMd-neurons"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

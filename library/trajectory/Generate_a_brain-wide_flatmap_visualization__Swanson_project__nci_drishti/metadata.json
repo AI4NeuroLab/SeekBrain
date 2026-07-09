@@ -1,0 +1,39 @@
+{
+  "tag": "Generate_a_brain-wide_flatmap_visualization__Swanson_project",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/Generate_a_brain-wide_flatmap_visualization__Swanson_project__nci_drishti",
+  "yaml_metadata": {
+    "name": "Generate Swanson Brain-Wide Functional Flatmap",
+    "description": "Computes regional neural modulation to visual stimuli from Neuropixels data and renders a Swanson flatmap projection using the IBL atlas framework.",
+    "triggers": [
+      "generate a Swanson projection flatmap for IBL decision-making data",
+      "visualize fraction of modulated neurons per brain region",
+      "create brain-wide flatmap of stimulus-side firing rate differences",
+      "plot significant brain regions on a Swanson map from IBL recordings",
+      "map neural modulation significance to Allen CCFv3 flatmap"
+    ],
+    "tags": [
+      "neuroscience",
+      "iblatlas",
+      "electrophysiology",
+      "data-visualization",
+      "swanson-projection"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

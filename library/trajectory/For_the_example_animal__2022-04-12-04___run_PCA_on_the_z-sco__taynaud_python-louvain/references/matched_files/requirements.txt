@@ -1,0 +1,6 @@
+# Source: requirements.txt
+# Summary: See repo_context.md
+
+networkx
+numpy
+numpydoc

@@ -1,0 +1,39 @@
+{
+  "tag": "_To_test_whether_cue-offset_remapping_is_related_to_the_conf",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_To_test_whether_cue-offset_remapping_is_related_to_the_conf__sharootonian_HeadingDirection",
+  "yaml_metadata": {
+    "name": "Analyze Cue-Offset Remapping and Conflict in Drosophila",
+    "description": "Performs circular-linear Bayesian analysis on fly cue integration data to correlate conflict during combined-cue phases with final offset remapping.",
+    "triggers": [
+      "calculate cue-offset remapping for flies",
+      "how does cue conflict relate to offset change in drosophila",
+      "analyze relationship between initial and both-cues offsets",
+      "perform circular regression on cue integration data",
+      "process NWB files to test if cue-offset remapping is related to conflict"
+    ],
+    "tags": [
+      "circular statistics",
+      "bayesian modeling",
+      "drosophila neuroscience",
+      "sensorimotor integration",
+      "NWB processing"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

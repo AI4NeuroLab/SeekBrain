@@ -1,0 +1,40 @@
+{
+  "tag": "_Do_movement-related_responses_of_granule_cells_change_betwe",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_Do_movement-related_responses_of_granule_cells_change_betwe__salkoffd_PreProcessWfRecording",
+  "yaml_metadata": {
+    "name": "Cerebellar Granule Cell Movement Modulation Analysis",
+    "description": "Analyzes and compares movement-related neural responses of cerebellar granule cells between active task and passive viewing conditions using calcium imaging and motion energy data.",
+    "triggers": [
+      "Do granule cell responses change between task and passive conditions?",
+      "Analyze movement-related activity in cerebellar granule cells",
+      "Compare neural gain in active versus passive behavior",
+      "Calculate modulation index for granule cell firing relative to movement",
+      "Process motion energy and neural activity heatmap for task engagement"
+    ],
+    "tags": [
+      "neuroscience",
+      "cerebellum",
+      "calcium-imaging",
+      "neural-modulation",
+      "sensorimotor-integration",
+      "data-analysis"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

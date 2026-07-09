@@ -1,0 +1,51 @@
+{
+  "tag": "_For_granule_cell_odor_pair_response_masks_under_task_and_pa",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_For_granule_cell_odor_pair_response_masks_under_task_and_pa__greddy992_Odor-mixtures",
+  "yaml_metadata": {
+    "name": "Granule Cell Odor Response Distribution Analysis",
+    "description": "Calculates and visualizes the percentage of excited, suppressed, and non-responsive granule cell-odor pairs by pooling task and passive condition datasets.",
+    "triggers": [
+      "calculate odor response percentages for task vs passive conditions",
+      "generate pie charts for granule cell odor pair responses",
+      "how do excited and suppressed odor responses compare in task and passive states?",
+      "compute response mask statistics from joint cell odor pair npy files",
+      "analyze granule cell response distributions under different behavioral conditions"
+    ],
+    "tags": [
+      "neuroscience",
+      "odor-response-analysis",
+      "granule-cells",
+      "data-visualization",
+      "response-masking",
+      "behavioral-states"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/matched_files/Coding_model.ipynb",
+    "references/matched_files/Concentration_coding.ipynb",
+    "references/matched_files/Masking.ipynb",
+    "references/matched_files/Quality_coding.ipynb",
+    "references/matched_files/Temporal_dynamics_of_ORN.ipynb",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": [
+    "Quality coding.ipynb",
+    "Coding model.ipynb",
+    "Concentration coding.ipynb",
+    "Masking.ipynb",
+    "Temporal dynamics of ORN.ipynb"
+  ]
+}

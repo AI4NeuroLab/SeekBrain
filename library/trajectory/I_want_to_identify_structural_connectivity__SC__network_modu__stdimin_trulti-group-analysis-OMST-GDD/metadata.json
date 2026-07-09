@@ -1,0 +1,39 @@
+{
+  "tag": "I_want_to_identify_structural_connectivity__SC__network_modu",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/I_want_to_identify_structural_connectivity__SC__network_modu__stdimin_trulti-group-analysis-OMST-GDD",
+  "yaml_metadata": {
+    "name": "Hierarchical Consensus Structural Connectivity Network Modularization",
+    "description": "Performs iterative Louvain modularity maximization to generate a co-assignment probability matrix and applies Ward's linkage for hierarchical structural network partitioning.",
+    "triggers": [
+      "Identify structural connectivity network modules using hierarchical consensus",
+      "How do I generate a co-assignment probability matrix from SC data?",
+      "Apply Ward's linkage to zebrafish structural connectivity matrices",
+      "Visualize structural connectivity modules with dendrogram and thick-edge partition boxes",
+      "Extract 4-module partition from SC co-assignment matrix using consensus clustering"
+    ],
+    "tags": [
+      "Structural Connectivity",
+      "Consensus Clustering",
+      "Louvain Algorithm",
+      "Hierarchical Clustering",
+      "Zebrafish Connectomics"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": []
+}

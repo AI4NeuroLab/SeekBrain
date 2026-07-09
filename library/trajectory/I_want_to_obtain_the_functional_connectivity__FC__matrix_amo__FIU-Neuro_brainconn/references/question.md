@@ -1,0 +1,3 @@
+# Original Question: I_want_to_obtain_the_functional_connectivity__FC__matrix_amo
+
+I want to obtain the functional connectivity (FC) matrix among brain regions in each fish larva and visualize the average FC matrix across all larvae. Use the spontaneous period (only the first 600 time points) in region_series_dff.npy file of each fish for analysis. Remove those excluded regions from the FC matrices of all larvae and the group-average FC matrix, whose IDs are listed in PROCESS_DATA_DIR/Figure1_excluded_regions.npy. Save these generated FC matrices and the group-averaged FC matrix.

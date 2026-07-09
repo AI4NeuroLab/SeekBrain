@@ -1,0 +1,42 @@
+{
+  "tag": "_Plot_the_trial-averaged_firing-rate_curves__PSTHs__for_the_",
+  "question_path": "",
+  "skill_dir": "library/skills/from_rag/_Plot_the_trial-averaged_firing-rate_curves__PSTHs__for_the___maikstue_mlib-spike-data",
+  "yaml_metadata": {
+    "name": "PMd Population Trial-Averaged PSTH Analysis",
+    "description": "Computes and visualizes stimulus-aligned, trial-averaged firing rate curves for PMd neurons, split by choice direction and difficulty with SEM uncertainty visualization.",
+    "triggers": [
+      "Plot the PSTHs for the 14 PMd neurons",
+      "Calculate trial-averaged firing rates for the example population dataset",
+      "Generate a 14-panel plot of firing rates aligned to stimulus onset",
+      "How to visualize temporal response heterogeneity in PMd neurons",
+      "Compute PSTHs split by choice and difficulty from population.pkl"
+    ],
+    "tags": [
+      "electrophysiology",
+      "PSTH",
+      "neuroscience",
+      "firing-rate-analysis",
+      "population-dynamics"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/connection_analysis.md",
+    "references/matched_files/README.md",
+    "references/paper_context.md",
+    "references/paper_figure_methods.md",
+    "references/paper_structured_summary.md",
+    "references/question.md",
+    "references/repo_context.md",
+    "references/repo_file_summaries.md",
+    "references/repo_overview.md",
+    "references/reproduction_plan.md"
+  ],
+  "matched_repo_files": [
+    "README.md"
+  ]
+}

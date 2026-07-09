@@ -1,0 +1,41 @@
+# Source: pyproject.toml
+# Summary: See repo_context.md
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+
+[project]
+name = "waven"
+version = "0.0.4"
+authors = [
+  { name="Sophie Skriabine", email="sophie.skriabine@gmail.com" },
+]
+description = "wavelet based analysis of neural spikes"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "opencv_python",
+    "pandas",
+    "scikit_image",
+    "scikit_learn",
+    "scipy",
+    "seaborn",
+    "tifffile",
+    "torch",
+    "tensorly",
+    "zarr"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["Waven*", "waven*"]
