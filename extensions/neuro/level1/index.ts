@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { appendFile, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { availableParallelism, cpus, freemem, platform as osPlatform, totalmem } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 type Json = Record<string, any>;
@@ -507,6 +508,7 @@ function level1WorkflowConfig(config: Json) {
     targeted_skill_generate: boolValue("targeted_skill_generate"),
     image_refine: boolValue("image_refine"),
     image_analysis: boolValue("image_analysis"),
+    resource_sensing: boolValue("resource_sensing"),
     human_review: {
       enabled: humanReviewEnabled,
       gates: {
@@ -970,6 +972,156 @@ async function updateState(run: RunContext, patch: Json) {
   await writeJson(run.statePath, next);
   run.state = next;
   return next;
+}
+
+// Resource-sensing layer
+const RESOURCE_SENSING_DEFAULTS = {
+  core_fraction: 0.9,
+  max_cores: null as number | null,
+  reserve_cores: 1,
+  blas_threads: "auto" as number | "auto",
+};
+
+function resourceSensingConfig(config: Json) {
+  const raw = (config.modules && config.modules.resource_sensing) || {};
+  const num = (v: any, d: number | null) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  return {
+    core_fraction: num(raw.core_fraction, RESOURCE_SENSING_DEFAULTS.core_fraction) as number,
+    max_cores: num(raw.max_cores, RESOURCE_SENSING_DEFAULTS.max_cores),
+    reserve_cores: num(raw.reserve_cores, RESOURCE_SENSING_DEFAULTS.reserve_cores) as number,
+    blas_threads:
+      typeof raw.blas_threads === "number" || raw.blas_threads === "auto"
+        ? raw.blas_threads
+        : RESOURCE_SENSING_DEFAULTS.blas_threads,
+  };
+}
+
+function detectSchedulerCores(): { cores: number | null; scheduler: string | null } {
+  const env = process.env;
+  const parse = (v?: string) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const slurm = parse(env.SLURM_CPUS_PER_TASK) || parse(env.SLURM_CPUS_ON_NODE);
+  if (slurm) return { cores: slurm, scheduler: "slurm" };
+  const pbs = parse(env.PBS_NP) || parse(env.NCPUS);
+  if (pbs) return { cores: pbs, scheduler: "pbs" };
+  if (env.PJM_PROC_BY_NODE || env.PJMCMD_AVAILABLE || env.PJM_MPI_PROC) {
+    return { cores: parse(env.PJM_PROC_BY_NODE), scheduler: "pjm" };
+  }
+  return { cores: null, scheduler: null };
+}
+
+// Best-effort GPU probe
+async function detectGpuCount(): Promise<number> {
+  return await new Promise((resolvePromise) => {
+    try {
+      const child = spawn("nvidia-smi", ["-L"], { stdio: ["ignore", "pipe", "ignore"] });
+      let out = "";
+      const timer = setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {}
+        resolvePromise(0);
+      }, 2000);
+      child.stdout.on("data", (c) => {
+        out += String(c);
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        resolvePromise(0);
+      });
+      child.on("close", () => {
+        clearTimeout(timer);
+        resolvePromise(out.split(/\r?\n/).filter((l) => /^GPU \d+:/.test(l.trim())).length);
+      });
+    } catch {
+      resolvePromise(0);
+    }
+  });
+}
+
+const clampInt = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.floor(v)));
+
+async function detectResources(config: Json): Promise<Json> {
+  const opts = resourceSensingConfig(config);
+  let affinityCores = 1;
+  try {
+    // availableParallelism() honors Linux CPU affinity / cgroup pinning.
+    affinityCores = availableParallelism();
+  } catch {
+    affinityCores = cpus().length || 1;
+  }
+  const totalCores = cpus().length || affinityCores;
+  const sched = detectSchedulerCores();
+  const availCores = sched.cores && sched.cores > 0 ? Math.min(affinityCores, sched.cores) : affinityCores;
+
+  const budget =
+    opts.max_cores != null
+      ? Math.min(opts.max_cores, availCores)
+      : Math.floor(availCores * opts.core_fraction) - opts.reserve_cores;
+  const recommended = clampInt(budget, 1, availCores);
+  const blasThreads = opts.blas_threads === "auto" ? 1 : clampInt(opts.blas_threads, 1, availCores);
+  const gpuCount = await detectGpuCount();
+
+  return {
+    platform: osPlatform(),
+    n_cores_total: totalCores,
+    n_cores_available: availCores,
+    recommended_n_jobs: recommended,
+    blas_threads: blasThreads,
+    mem_total_gb: Math.round((totalmem() / 1e9) * 10) / 10,
+    mem_available_gb: Math.round((freemem() / 1e9) * 10) / 10,
+    gpu_count: gpuCount,
+    scheduler: sched.scheduler,
+    detected_at: new Date().toISOString(),
+  };
+}
+
+// Set thread-env defaults on the extension host process
+function applyThreadEnvDefaults(profile: Json) {
+  const blas = String(profile.blas_threads ?? 1);
+  const setIfUnset = (k: string, v: string) => {
+    if (!process.env[k]) process.env[k] = v;
+  };
+  setIfUnset("OMP_NUM_THREADS", blas);
+  setIfUnset("OPENBLAS_NUM_THREADS", blas);
+  setIfUnset("MKL_NUM_THREADS", blas);
+  setIfUnset("NUMEXPR_NUM_THREADS", blas);
+  setIfUnset("VECLIB_MAXIMUM_THREADS", blas);
+  process.env.NEURO_N_CORES = String(profile.recommended_n_jobs ?? 1);
+}
+
+function formatResourceProfile(profile: Json): string {
+  if (!profile || typeof profile !== "object") return "";
+  const gpu = Number(profile.gpu_count || 0);
+  return [
+    `- available_cpu_cores: ${profile.n_cores_available} (machine total ${profile.n_cores_total})`,
+    `- recommended_parallel_workers: ${profile.recommended_n_jobs} (also exported as env NEURO_N_CORES)`,
+    `- per_worker_blas_threads: ${profile.blas_threads} (OMP/MKL/OPENBLAS/NUMEXPR already set to this)`,
+    `- memory_available_gb: ${profile.mem_available_gb} (machine total ${profile.mem_total_gb})`,
+    `- gpu_count: ${gpu}${gpu > 0 ? " (GPU libs like torch/cupy may accelerate this)" : " (CPU-only node)"}`,
+    profile.scheduler ? `- scheduler: ${profile.scheduler}` : "",
+    `Parallelize the dominant embarrassingly-parallel axis across ${profile.recommended_n_jobs} worker processes; keep per-worker BLAS threads at 1 to avoid oversubscription (workers x BLAS threads must stay <= available cores).`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+// Ensure thread-env is set in the current process from a persisted or freshly
+// detected profile.
+async function ensureResourceEnv(run: RunContext, config: Json) {
+  if (!level1WorkflowConfig(config).resource_sensing) return;
+  try {
+    let profile = run.state.resource_profile;
+    if (!profile || typeof profile !== "object") {
+      profile = await detectResources(config);
+      await updateState(run, { resource_profile: profile });
+    }
+    applyThreadEnvDefaults(profile);
+  } catch {
+    // resource sensing is best-effort; never block the run
+  }
 }
 
 async function snapshotRunArtifacts(run: RunContext, label: string) {
@@ -1549,6 +1701,7 @@ export default function (pi: ExtensionAPI) {
           targeted_skill: status(targetedSkillEnabled),
           image_refine: status(workflow.image_refine),
           image_analysis: status(workflow.image_analysis),
+          resource_sensing: status(workflow.resource_sensing),
         },
         human_review: workflow.human_review,
         note: "Disabled optional tools are disabled by user configuration, not because the tool is broken. Continue the required spine without placeholder context for disabled tools.",
@@ -1575,6 +1728,16 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const run = await startRun(ctx.cwd, params.work_dir, params.deliverables, params.question);
       activeRunDir = run.runDir;
+      try {
+        const config = await loadConfig(ctx.cwd);
+        if (level1WorkflowConfig(config).resource_sensing) {
+          const profile = await detectResources(config);
+          applyThreadEnvDefaults(profile);
+          await updateState(run, { resource_profile: profile });
+        }
+      } catch {
+        // resource sensing is best-effort; never block run creation
+      }
       return content({
         ok: true,
         extension: "neuroscientist-level1",
@@ -1582,6 +1745,7 @@ export default function (pi: ExtensionAPI) {
         run_dir: run.runDir,
         deliverables: run.state.deliverables,
         question: run.state.question,
+        resource_profile: run.state.resource_profile,
       });
     },
   });
@@ -1597,6 +1761,11 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const run = await resumeRun(ctx.cwd, params.work_dir, params.question);
       activeRunDir = run.runDir;
+      try {
+        await ensureResourceEnv(run, await loadConfig(ctx.cwd));
+      } catch {
+        // best-effort
+      }
       return content({
         ok: true,
         extension: "neuroscientist-level1",
@@ -1604,6 +1773,7 @@ export default function (pi: ExtensionAPI) {
         run_dir: run.runDir,
         question: run.state.question,
         state_path: run.statePath,
+        resource_profile: run.state.resource_profile,
       });
     },
   });
@@ -1894,6 +2064,7 @@ export default function (pi: ExtensionAPI) {
         `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${params.deep_research_context || run.state.deep_research_context || ""}`,
+        run.state.resource_profile ? `Resource profile:\n${formatResourceProfile(run.state.resource_profile)}` : "",
         planHumanFeedback ? `Human review feedback for the plan:\n${planHumanFeedback}` : "",
         additionalContextBlock(params.additional_context),
         "Finalize with: { plan_markdown, summary, confidence, warnings }.",
@@ -2002,6 +2173,7 @@ export default function (pi: ExtensionAPI) {
         `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${run.state.deep_research_context || ""}`,
+        run.state.resource_profile ? `Resource profile:\n${formatResourceProfile(run.state.resource_profile)}` : "",
         `Validation feedback:\n${params.validation_feedback || ""}`,
         `Deliverables (read-only contract; produce every file listed):\n${deliverablesToPromptText(deliverables)}`,
         additionalContextBlock(params.additional_context),

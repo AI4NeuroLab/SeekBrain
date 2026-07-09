@@ -31,12 +31,20 @@ methodological guidance. Do not force-fit an irrelevant skill to the task.
 - Plan only Native Python implementations in the maintained `brain`
   conda/Python environment. Julia/`juliacall`, R, MATLAB, shell pipelines, or other
   non-Python runtimes are not recommended.
-- Deliverables 是只读约束（在 user message 中以 "Deliverables:" 开头给出）。
-  引用每个 artifact 说明它展示什么/算什么。不要增删改 deliverables 清单。
-  如果认为清单有问题（缺图、多图、缺统计），在 warnings 里说明，由上层决定。
-  用户显式指定的 path 是硬约束，不可改写。
+- Plan for parallel execution. When a `Resource profile:` block is present, identify
+  the dominant embarrassingly-parallel axis (neurons / trials / ROIs / permutations /
+  bootstraps / CV folds) and state how the analysis scales across the available
+  workers (vectorize first; otherwise stdlib multiprocessing sized to `NEURO_N_CORES`).
+  Do not hardcode core counts.
+- Deliverables are a read-only constraint (given in the user message under a line
+  starting with "Deliverables:"). Reference each artifact and state what it shows
+  or computes. Do not add, remove, or modify the deliverables list. If you think
+  the list is wrong (missing figure, extra figure, missing statistics), note it in
+  warnings and let the upper layer decide. Paths the user specified explicitly are
+  a hard constraint and must not be rewritten.
 - Explicitly state required deliverables: generated_code.py, figure.png,
-  figure.pdf, and statistics.json.（当 deliverables 清单存在时，以此清单为准。）
+  figure.pdf, and statistics.json. (When a deliverables list is provided, that
+  list takes precedence.)
 
 ## Response format
 When ready, call finalize_plan with the complete Markdown plan using these sections:
@@ -50,5 +58,7 @@ When ready, call finalize_plan with the complete Markdown plan using these secti
 ## Data Loading
 ## Preprocessing
 ## Visualisations
-（按 deliverables 里每个 figure artifact 组织，明确每个 path 展示什么）
+(Organize by each figure artifact in deliverables; state clearly what each path shows.)
 ## Statistics
+## Compute Plan
+(If a Resource profile is given: name the dominant parallel axis and the parallelization approach, scaling by NEURO_N_CORES; otherwise write "N/A".)

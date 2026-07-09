@@ -21,6 +21,12 @@ modules:
         temperature: 1.0
         rag_top_k: 2
 
+    resource_sensing:
+        core_fraction: 0.9
+        max_cores: null
+        reserve_cores: 1
+        blas_threads: auto
+
 workflow:
     # Overrides internagent/workflow/agent_config.py WORKFLOW_DEFAULTS.
     # true = persist session logs, events, usage/, snapshots (debug); false = runtime deliverables only.
@@ -31,6 +37,7 @@ workflow:
         targeted_skill_generate: true
         image_refine: true
         image_analysis: true
+        resource_sensing: true
         # Interactive runs pause after enabled gates and wait for explicit human approval.
         # Non-interactive ./pi_run_level1.sh --non-interactive disables these gates at runtime.
         human_review:
