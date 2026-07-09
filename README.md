@@ -57,4 +57,10 @@ To route through a third-party relay you must add a provider override in `~/.pi/
 
 `run_neuro.sh` puts the bundled Node on `PATH`, loads `.env`, then launches `pi -e extensions/neuro.ts`.
 
+Select NeuroScientist workflow.
+
+```bash
+/neuro
+```
+
 ---
