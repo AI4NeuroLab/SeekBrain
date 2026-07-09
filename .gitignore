@@ -1,8 +1,7 @@
 # ── Dependencies / local toolchains (large, machine-specific) ──────────────
-# .tools/ = project-local Node v24 + pi install (~2.4G); library/ ~6.4G
+# .tools/ = project-local Node v24 + pi install
 node_modules/
 .tools/
-library/
 vendor/
 
 # ── Python ─────────────────────────────────────────────────────────────────
