@@ -88,8 +88,8 @@ Saved skills land in `library/skills/from_expert/` and are **dual-registered**:
 
 - **Auto-retrieved** by future Level-1 runs — the matcher scans this library, so a related
   question pulls the skill in automatically.
-- **Invocable** in pi as `/skill:<name>` — the directory is registered under
-  `skills` in `.pi/settings.json`.
+- **Invocable** in pi as `/skill:<name>` — each saved skill's own directory is
+  added to `skills` in `.pi/settings.json` on save (active on the next pi launch).
 
 
 ---

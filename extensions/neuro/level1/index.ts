@@ -1469,6 +1469,33 @@ function parseRunIdArg(args?: string): string | undefined {
   return token || undefined;
 }
 
+// Register a saved skill's OWN directory with pi (in .pi/settings.json) so it is
+// discoverable as /skill:<name> on the next pi launch. We point pi at the specific
+// skill dir (which contains SKILL.md), NOT the parent library — otherwise pi scans
+// the parent's loose files (INDEX.md, .gitkeep) as skills and reports conflicts.
+async function registerSkillPathWithPi(skillDirAbs: string): Promise<string | undefined> {
+  try {
+    const piDir = join(WORKFLOW_ROOT, ".pi");
+    const settingsPath = join(piDir, "settings.json");
+    let settings: Json = {};
+    try {
+      settings = JSON.parse(await readFile(settingsPath, "utf8"));
+    } catch {
+      settings = {};
+    }
+    const rel = relative(piDir, skillDirAbs);
+    const arr: string[] = Array.isArray(settings.skills) ? settings.skills : [];
+    if (!arr.includes(rel)) {
+      arr.push(rel);
+      settings.skills = arr;
+      await writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf8");
+    }
+    return rel;
+  } catch {
+    return undefined;
+  }
+}
+
 async function snapshotSubagentFiles(agentDir: string) {
   if (!debugDiskWritesEnabled()) return undefined;
   const files = ["input.json", "output.json", "prompt.md", "events.jsonl"];
@@ -1829,11 +1856,12 @@ export default function (pi: ExtensionAPI) {
         },
       });
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_save_skill", ok: true, folder_name: result.folder_name });
+      const piRel = result.skill_dir ? await registerSkillPathWithPi(String(result.skill_dir)) : undefined;
       const vs = result.validate_skills?.status || "unknown";
       ctx.ui?.notify?.(`Saved skill: ${result.folder_name} (validate_skills: ${vs})`, "info");
       pi.sendMessage({
         customType: "neuro-save-skill", display: true,
-        content: `Saved skill '${result.folder_name}'\n  dir: ${result.skill_dir}\n  pi: /skill:${result.pi_name}\n  validate_skills: ${vs}\n  warnings: ${(result.warnings || []).join("; ") || "none"}`,
+        content: `Saved skill '${result.folder_name}'\n  dir: ${result.skill_dir}\n  pi: /skill:${result.pi_name}${piRel ? " (registered in .pi/settings.json; active next pi launch)" : ""}\n  validate_skills: ${vs}\n  warnings: ${(result.warnings || []).join("; ") || "none"}`,
       });
     },
   });
