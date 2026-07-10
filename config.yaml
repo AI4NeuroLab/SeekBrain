@@ -21,23 +21,16 @@ modules:
         temperature: 1.0
         rag_top_k: 2
 
-    resource_sensing:
-        core_fraction: 0.9
-        max_cores: null
-        reserve_cores: 1
-        blas_threads: auto
-
 workflow:
     # Overrides internagent/workflow/agent_config.py WORKFLOW_DEFAULTS.
     # true = persist session logs, events, usage/, snapshots (debug); false = runtime deliverables only.
     debug_disk_writes: true
     level1:
-        deep_research: true
+        deep_research: false
         targeted_skill_match: true
         targeted_skill_generate: true
         image_refine: true
         image_analysis: true
-        resource_sensing: true
         # Interactive runs pause after enabled gates and wait for explicit human approval.
         # Non-interactive ./pi_run_level1.sh --non-interactive disables these gates at runtime.
         human_review:
@@ -49,33 +42,42 @@ workflow:
                 conclude: false
 
 agents:
-    # Main Pi orchestrator (override only here; agent_config.py defaults unchanged)
+    # Main Pi orchestrators.
+    # Use the proxy provider for both Opus and Gemini so requests go through the shared relay.
     level1:
-        provider: anthropic
+        provider: neuro-proxy
         model: claude-opus-4-7
         thinking: high
         timeout_seconds: 5400
 
     level2:
-        provider: anthropic
+        provider: neuro-proxy
         model: claude-opus-4-7
         thinking: high
         timeout_seconds: 3600
 
-    # Subagent baseline per level (level1_*, level2_* inherit missing LLM fields).
+    # Defaults for subagents. Most review/synthesis/helper agents follow the
+    # reference config's default Gemini setting unless overridden below.
     level1_default:
-        provider: anthropic
-        model: claude-opus-4-7
+        provider: neuro-proxy
+        model: gemini-3.1-pro-preview
         thinking: high
         timeout_seconds: 300
 
     level2_default:
-        provider: anthropic
-        model: claude-opus-4-7
+        provider: neuro-proxy
+        model: gemini-3.1-pro-preview
         thinking: high
         timeout_seconds: 300
 
+    # Level-1 pipeline agents, mapped from the reference config:
+    # deep_research / plan_tool / code_tool / semantics_validate -> Opus 4.7;
+    # image and conclusion helpers -> Gemini.
     level1_deep_research:
+        provider: neuro-proxy
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 600
         rag:
             enable: true
             top_k: 4
@@ -83,24 +85,48 @@ agents:
             timeout: 600
             source_char_limit: 5000
 
-    level1_plan: {}
+    level1_plan:
+        provider: neuro-proxy
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 300
 
     level1_code:
-        vision: true
+        provider: neuro-proxy
+        model: claude-opus-4-7
+        thinking: high
         timeout_seconds: 1800
+        vision: true
 
     level1_validate:
+        provider: neuro-proxy
+        model: claude-opus-4-7
+        thinking: high
+        timeout_seconds: 300
         vision: true
 
     level1_refine_image:
-        vision: true
+        provider: neuro-proxy
+        model: gemini-3.1-pro-preview
+        thinking: high
         timeout_seconds: 1200
+        vision: true
 
     level1_analyze_image:
+        provider: neuro-proxy
+        model: gemini-3.1-pro-preview
+        thinking: high
+        timeout_seconds: 300
         vision: true
 
-    level1_conclude: {}
+    level1_conclude:
+        provider: neuro-proxy
+        model: gemini-3.1-pro-preview
+        thinking: high
+        timeout_seconds: 300
 
+    # Level-2 decomposition/review/synthesis agents follow the reference config's
+    # Gemini setting for subquestion/method/conclusion/report agents.
     level2_subquestion: {}
     level2_subquestion_review: {}
     level2_method_development: {}

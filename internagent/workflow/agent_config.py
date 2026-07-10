@@ -26,7 +26,6 @@ WORKFLOW_DEFAULTS: Dict[str, Any] = {
         "targeted_skill_generate": True,
         "image_refine": True,
         "image_analysis": True,
-        "resource_sensing": True,
         "human_review": {
             "enabled": False,
             "gates": {

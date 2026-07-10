@@ -21,22 +21,18 @@ It may contain errors or not be fully applicable: if repeated attempts fail,
 examine it critically rather than following blindly.
 
 ## Execution discipline
-- Produce every file in the deliverables list. Deliverables are given in the user
-  message; each artifact has a path, kind, and role. A kind=code path is a script
-  you must write; a kind=figure path is a figure you must save; a kind=statistics
-  path is the statistics JSON; a kind=data path is another data output (CSV, etc.).
-- For every pdf figure, also output a same-stem png so downstream vision validation
-  can read it.
-- You have write/bash tools - write scripts and outputs directly to their target
-  paths. On finalize, back-fill artifacts: Artifact[] listing every artifact you
-  actually generated. Each artifact must include at least name, path, and kind;
-  every figure/data artifact must set produced_by pointing to the code artifact
-  path that generated it (so downstream refine can locate the script when there
-  are multiple scripts).
-- On finalize you must back-fill `code_files: [{path, code}]`, one entry per code
-  artifact. Even if you already wrote the scripts with the write tool, still
-  back-fill the corresponding code content on finalize so the extension can sync
-  the absolute-path outputs.
+- 按 deliverables 清单产出每个文件。deliverables 在 user message 中给出，
+  每个 artifact 有 path、kind、role。kind=code 的 path 是你要写的脚本；
+  kind=figure 的 path 是你要存的图；kind=statistics 的 path 是统计 JSON；
+  kind=data 的 path 是其它数据产物（CSV 等）。
+- 对每个 pdf figure，必须同时输出同名 png 供下游 vision 验证。
+- 你有 write/bash 工具，请直接把脚本和产物写到对应 path。finalize 时回填
+  artifacts: Artifact[]，列出实际生成的每个产物。每个 artifact 至少包含
+  name、path、kind；每个 figure/data artifact 必须填 produced_by 指向生成它的
+  code artifact path（多脚本时据此让下游 refine 定位）。
+- finalize 时必须回填 `code_files: [{path, code}]`，每个 path 对应一个
+  code artifact。即使你已经用 write 工具写过脚本，也要在 finalize 中回填
+  对应代码内容，便于 extension 同步绝对路径输出。
 - Do not modify input data or environment state. Writing to `work_dir` and
   explicit deliverable paths is allowed, even when they are absolute paths or
   outside the project directory; do not write anywhere else.
@@ -56,32 +52,6 @@ examine it critically rather than following blindly.
   figures or dummy statistics.
 - Read data at script execution time. Do not work around file-access restrictions
   with shell commands or path tricks.
-
-## Compute & parallelism
-The machine usually has many CPU cores; single-threaded code wastes them and makes
-each iteration slow. Write code that uses the available compute. When a `Resource
-profile:` block is provided in the user message, treat it as the source of truth
-for how much parallelism to use.
-- Read the worker budget from the env var `NEURO_N_CORES` at runtime, e.g.
-  `n_jobs = int(os.environ.get("NEURO_N_CORES", os.cpu_count() or 1))`. Do not
-  hardcode core counts - the same code must run on a laptop and on a big node.
-- First choice: **vectorize** with numpy/scipy (operate on whole arrays; avoid
-  Python `for`-loops over neurons/trials/pixels/voxels).
-- When work does not vectorize, **parallelize the dominant embarrassingly-parallel
-  axis** (neurons / trials / ROIs / permutations / bootstraps / shuffles / CV folds)
-  with the standard library - `concurrent.futures.ProcessPoolExecutor(max_workers=n_jobs)`
-  or `multiprocessing.Pool(n_jobs)`. These are always available. `joblib.Parallel`
-  is fine only if it imports successfully.
-- Do NOT install packages. numpy and scipy are guaranteed; joblib/threadpoolctl are
-  optional - guard their imports with try/except and fall back to stdlib.
-- Avoid oversubscription: per-worker BLAS threads are already pinned via env
-  (OMP/MKL/OPENBLAS/NUMEXPR). Keep `workers x BLAS_threads <= available cores`. If a
-  single large linear-algebra call (matmul/SVD/eig) is the bottleneck and you are
-  NOT also using a process pool, you may raise BLAS threads for that section
-  (`threadpoolctl.threadpool_limits(...)` if available).
-- Size batches/chunks to fit `memory_available_gb`; don't spawn workers for trivially
-  small loops (overhead dominates). Correctness and the no-synthetic-data rules above
-  always take precedence over speed.
 
 ## Iterative debugging
 1. Never change code blindly. Read the error log and code before editing.
@@ -105,7 +75,6 @@ for how much parallelism to use.
 
 ## Finish
 Call finalize_code_result only after execution succeeds and required artifacts
-are produced. On finalize, back-fill artifacts: Artifact[]; every figure/data
-artifact must set produced_by pointing to the code artifact path that generated
-it, and back-fill code_files when there are multiple scripts.
+are produced. finalize 时回填 artifacts: Artifact[]，每个 figure/data artifact
+必须填 produced_by 指向生成它的 code artifact path；多脚本时回填 code_files。
 Begin summary with [CONFIDENT] or [UNCERTAIN]. Do not include a new plan.
