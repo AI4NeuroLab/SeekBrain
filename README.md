@@ -64,3 +64,32 @@ Select NeuroScientist workflow.
 ```
 
 ---
+
+## 4. Distill skills
+
+When a Level-1 run produces a processing method / preprocessing flow / whole pipeline worth reusing, distill it into a reusable **skill** .
+
+In the interactive session, after a run finishes:
+
+```bash
+/neuro-save-skill
+```
+
+It reads the finished run, then an LLM proposes a name under the taxonomy
+`Stage-Species-Modality-Method-Target`, drafts the skill, and asks you to confirm before writing. The controlled vocabulary lives in : [`library/skills/Neuroscience_Analysis_Skill_Taxonomy.md`](library/skills/Neuroscience_Analysis_Skill_Taxonomy.md).
+
+Pass a `run_id` to target a specific run, and `--yes` to skip the prompt:
+
+```bash
+/neuro-save-skill <run_id> --yes
+```
+
+Saved skills land in `library/skills/from_expert/` and are **dual-registered**:
+
+- **Auto-retrieved** by future Level-1 runs — the matcher scans this library, so a related
+  question pulls the skill in automatically.
+- **Invocable** in pi as `/skill:<name>` — the directory is registered under
+  `skills` in `.pi/settings.json`.
+
+
+---
