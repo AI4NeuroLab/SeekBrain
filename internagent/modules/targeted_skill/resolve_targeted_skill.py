@@ -214,48 +214,70 @@ def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
     resource_filter = payload.get("resource_filter") or DEFAULT_RESOURCE_FILTER
 
     matched_skill_paths: List[str] = []
+    targeted_skill = ""
     if not match_skill_enable:
         warnings.append("existing targeted skill matching disabled by workflow.level1.targeted_skill_match")
-        targeted_skill = ""
-    elif not (verified_skills_dir / "INDEX.md").exists():
-        warnings.append(f"INDEX.md not found in {verified_skills_dir}; skipping existing targeted skills")
-        targeted_skill = ""
     else:
-        try:
-            from targeted_skill.skill_loader import SkillLoader
-        except Exception as exc:  # pragma: no cover - runtime environment dependent
-            return _result(
-                ok=False,
-                matched=False,
-                source="none",
-                warnings=[f"failed to import SkillLoader from {project_dir}"],
-                trace_id=trace_id,
-                error=str(exc),
-                details={"traceback": traceback.format_exc()},
-            )
+        # Scan the primary skill_dir plus any extra dirs (e.g. expert-saved skills
+        # under library/skills/from_expert). Each dir has its own INDEX.md; the
+        # dir whose best match scores highest wins.
+        extra_dirs = payload.get("extra_skill_dirs") or []
+        candidate_dirs: List[Path] = []
+        for d in [skill_dir, *extra_dirs]:
+            rd = Path(d).resolve() if Path(d).is_absolute() else (root_dir / d).resolve()
+            if rd not in candidate_dirs:
+                candidate_dirs.append(rd)
+        indexed_dirs = [d for d in candidate_dirs if (d / "INDEX.md").exists()]
+        if not indexed_dirs:
+            warnings.append(f"no INDEX.md found in any skills dir: {[str(d) for d in candidate_dirs]}")
+        else:
+            try:
+                from targeted_skill.skill_loader import SkillLoader
+            except Exception as exc:  # pragma: no cover - runtime environment dependent
+                return _result(
+                    ok=False,
+                    matched=False,
+                    source="none",
+                    warnings=[f"failed to import SkillLoader from {project_dir}"],
+                    trace_id=trace_id,
+                    error=str(exc),
+                    details={"traceback": traceback.format_exc()},
+                )
 
-        model = payload.get("model") or "claude-opus-4-7"
-        top_k = int(payload.get("top_k", 1))
-        relevance_threshold = float(payload.get("relevance_threshold", 0.3))
-        temperature = float(payload.get("temperature", 1.0))
-        stdout_buffer = io.StringIO()
-        with contextlib.redirect_stdout(stdout_buffer):
-            loader = SkillLoader(
-                skills_dir=str(verified_skills_dir),
-                top_k=top_k,
-                relevance_threshold=relevance_threshold,
-                model=model,
-                temperature=temperature,
-            )
-            targeted_skill = loader.load(
-                question=question,
-                resource_load_mode="all",
-                resource_filter=resource_filter,
-            )
-            matched_skill_paths = [str(skill.path.resolve()) for skill in getattr(loader, "last_matched_skills", [])]
-        loader_stdout = stdout_buffer.getvalue()
-        if loader_stdout.strip():
-            warnings.append("SkillLoader wrote diagnostic stdout; see details.log_path")
+            model = payload.get("model") or "claude-opus-4-7"
+            top_k = int(payload.get("top_k", 1))
+            relevance_threshold = float(payload.get("relevance_threshold", 0.3))
+            temperature = float(payload.get("temperature", 1.0))
+            best_score = -1.0
+            stdout_buffer = io.StringIO()
+            with contextlib.redirect_stdout(stdout_buffer):
+                for d in indexed_dirs:
+                    try:
+                        loader = SkillLoader(
+                            skills_dir=str(d),
+                            top_k=top_k,
+                            relevance_threshold=relevance_threshold,
+                            model=model,
+                            temperature=temperature,
+                        )
+                        text = loader.load(
+                            question=question,
+                            resource_load_mode="all",
+                            resource_filter=resource_filter,
+                        )
+                        matches = getattr(loader, "last_matched_skills", [])
+                    except Exception as exc:
+                        warnings.append(f"SkillLoader failed for {d}: {exc}")
+                        continue
+                    if text and matches:
+                        dir_best = max((getattr(s, "score", 0.0) or 0.0) for s in matches)
+                        if dir_best > best_score:
+                            best_score = dir_best
+                            targeted_skill = text
+                            matched_skill_paths = [str(s.path.resolve()) for s in matches]
+            loader_stdout = stdout_buffer.getvalue()
+            if loader_stdout.strip():
+                warnings.append("SkillLoader wrote diagnostic stdout; see details.log_path")
 
     if targeted_skill:
         skill_paths = matched_skill_paths or [str(verified_skills_dir)]

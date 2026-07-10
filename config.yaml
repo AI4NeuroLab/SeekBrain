@@ -20,6 +20,10 @@ modules:
         relevance_threshold: 0.3
         temperature: 1.0
         rag_top_k: 2
+        # Extra skill libraries scanned by the matcher in addition to skill_dir
+        # (e.g. expert-saved skills). Best-scoring dir wins.
+        extra_skill_dirs:
+            - library/skills/from_expert
 
     resource_sensing:
         core_fraction: 0.9
@@ -38,6 +42,8 @@ workflow:
         image_refine: true
         image_analysis: true
         resource_sensing: true
+        # Enable the /neuro-save-skill command (save a finished run as a reusable skill).
+        save_skill: true
         # Interactive runs pause after enabled gates and wait for explicit human approval.
         # Non-interactive ./pi_run_level1.sh --non-interactive disables these gates at runtime.
         human_review:
@@ -100,6 +106,7 @@ agents:
         vision: true
 
     level1_conclude: {}
+    level1_save_skill: {}
 
     level2_subquestion: {}
     level2_subquestion_review: {}

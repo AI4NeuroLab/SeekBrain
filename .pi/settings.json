@@ -2,5 +2,8 @@
   "theme": "synthwave",
   "prompts": [
     "../.claude/commands"
+  ],
+  "skills": [
+    "../library/skills/from_expert"
   ]
 }

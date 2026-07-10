@@ -10,7 +10,8 @@
       "top_k": 1,
       "relevance_threshold": 0.3,
       "temperature": 1.0,
-      "rag_top_k": 2
+      "rag_top_k": 2,
+      "extra_skill_dirs": ["library/skills/from_expert"]
     },
     "resource_sensing": {
       "core_fraction": 0.9,
@@ -28,6 +29,7 @@
       "image_refine": true,
       "image_analysis": true,
       "resource_sensing": true,
+      "save_skill": true,
       "human_review": {
         "enabled": true,
         "gates": {
@@ -89,6 +91,7 @@
       "vision": true
     },
     "level1_conclude": {},
+    "level1_save_skill": {},
     "level2_subquestion": {},
     "level2_subquestion_review": {},
     "level2_method_development": {},

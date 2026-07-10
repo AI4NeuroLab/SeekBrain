@@ -509,6 +509,7 @@ function level1WorkflowConfig(config: Json) {
     image_refine: boolValue("image_refine"),
     image_analysis: boolValue("image_analysis"),
     resource_sensing: boolValue("resource_sensing"),
+    save_skill: boolValue("save_skill"),
     human_review: {
       enabled: humanReviewEnabled,
       gates: {
@@ -1413,6 +1414,61 @@ function additionalContextBlock(additionalContext?: string) {
   return text ? `Additional context from the main agent:\n${text}` : "";
 }
 
+// --- save-skill helpers ---------------------------------------------------
+// snake_case slug mirroring internagent/modules/targeted_skill/taxonomy.py._slug.
+function smmtSlug(raw: any): string {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^a-z0-9_]+/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function extractMessageText(msg: any): string {
+  if (!msg) return "";
+  if (typeof msg.content === "string") return msg.content;
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .map((c: any) => (typeof c === "string" ? c : c?.text || ""))
+      .filter(Boolean)
+      .join(" ");
+  }
+  return String(msg.text || "");
+}
+
+// Build a bounded digest of the dialogue: user turns + their corrections + the
+// ordered neuro_* tool-call sequence. Reads the persisted session on demand.
+function buildTranscriptDigest(sessionManager: any, maxChars = 4000): string {
+  const entries = sessionManager?.getBranch?.() || sessionManager?.getEntries?.() || [];
+  const lines: string[] = [];
+  for (const entry of entries) {
+    if (entry?.type !== "message") continue;
+    const msg = entry.message || {};
+    if (msg.role === "user") {
+      const text = extractMessageText(msg).trim();
+      if (text) lines.push(`USER: ${text.slice(0, 400)}`);
+    } else if (msg.role === "assistant") {
+      const names: string[] = [];
+      if (msg.toolName) names.push(String(msg.toolName));
+      if (Array.isArray(msg.toolCalls)) {
+        for (const t of msg.toolCalls) if (t?.name) names.push(String(t.name));
+      }
+      const neuro = names.filter((n) => n.startsWith("neuro"));
+      if (neuro.length) lines.push(`TOOL: ${neuro.join(", ")}`);
+    }
+  }
+  let digest = lines.join("\n");
+  if (digest.length > maxChars) digest = "...\n" + digest.slice(-maxChars);
+  return digest;
+}
+
+function parseRunIdArg(args?: string): string | undefined {
+  const token = String(args || "").trim().split(/\s+/).find((t) => t && !t.startsWith("-"));
+  return token || undefined;
+}
+
 async function snapshotSubagentFiles(agentDir: string) {
   if (!debugDiskWritesEnabled()) return undefined;
   const files = ["input.json", "output.json", "prompt.md", "events.jsonl"];
@@ -1599,6 +1655,189 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
+  pi.registerCommand("neuro-save-skill", {
+    description: "Save the finished Level-1 run as a reusable neuroscience skill (Stage-Species-Modality-Method-Target). Optional args: <run_id> [--yes].",
+    async handler(args: string, ctx: any) {
+      const config = await loadConfig(ctx.cwd);
+      if (!level1WorkflowConfig(config).save_skill) {
+        ctx.ui?.notify?.("save_skill is disabled by config (workflow.level1.save_skill).", "info");
+        return;
+      }
+
+      // 1. Locate the run.
+      let run: RunContext | undefined;
+      try {
+        const runId = parseRunIdArg(args);
+        if (runId) {
+          run = await resolveRun(ctx.cwd, runId);
+        } else if (activeRunDir) {
+          const st = await readJson(join(activeRunDir, "state.json"), {});
+          if (st.run_id) run = await loadRunState(st.run_id, activeRunDir);
+        }
+        if (!run) {
+          const index = await readJson(resolve(ctx.cwd, RUN_INDEX_FILE), { runs: {} });
+          const ids = Object.keys(index.runs || {});
+          if (!ids.length) {
+            ctx.ui?.notify?.("No runs found. Finish a Level-1 run first.", "error");
+            return;
+          }
+          let chosen = ids[ids.length - 1];
+          if (ctx.hasUI && ids.length > 1) {
+            const sel = await ctx.ui.select("Save which run as a skill?", ids);
+            if (!sel) return;
+            chosen = sel;
+          }
+          run = await resolveRun(ctx.cwd, chosen);
+        }
+      } catch (error) {
+        ctx.ui?.notify?.(`Could not locate run: ${error}`, "error");
+        return;
+      }
+
+      // 2. Guard: require generated analysis code.
+      const genCode = join(run.runDir, "generated_code.py");
+      const hasCode = existsSync(genCode) || (run.state.code?.code_files?.length || 0) > 0;
+      if (!hasCode) {
+        ctx.ui?.notify?.("This run has no generated analysis code yet; nothing to save.", "error");
+        return;
+      }
+
+      // 3. Gather run material (structured state + on-disk code + dialogue digest).
+      const question = String(run.state.question || "").trim();
+      const digest = buildTranscriptDigest(ctx.sessionManager);
+      const codeText = existsSync(genCode) ? await readFile(genCode, "utf8").catch(() => "") : "";
+      const stats = run.state.code?.statistics && typeof run.state.code.statistics === "object"
+        ? run.state.code.statistics : {};
+
+      // 4. Derive the SMMT name via an LLM subagent (not a fixed template).
+      const rolePrompt = await readPrompt("save_skill");
+      const namerBody = [
+        `Question:\n${question}`,
+        `Data info (metadata):\n${String(run.state.data_info || "").slice(0, 3000)}`,
+        `Plan summary:\n${String(run.state.plan?.summary || run.state.plan?.plan_markdown || "").slice(0, 2000)}`,
+        "Analysis code that actually ran:\n```python\n" + codeText.slice(0, 6000) + "\n```",
+        `Statistics keys: ${Object.keys(stats).join(", ") || "(none)"}`,
+        `Conclusions:\n${JSON.stringify(run.state.conclusions || {}).slice(0, 1500)}`,
+        `Dialogue digest (intent & corrections):\n${digest}`,
+        "Finalize with { stage, species, modality, method, target, rationale, proposed_description, triggers[5], tags[4-6] }.",
+      ].join("\n\n");
+      ctx.ui?.notify?.("Analyzing the run to propose a skill name...", "info");
+      const sub = await runSubagent({
+        runDir: run.runDir,
+        agentName: "save_skill_namer",
+        finalizeTool: "finalize_smmt",
+        finalizeSchema: Type.Object({
+          stage: Type.String(),
+          species: Type.String(),
+          modality: Type.String(),
+          method: Type.String(),
+          target: Type.String(),
+          rationale: Type.String(),
+          proposed_description: Type.String(),
+          triggers: Type.Array(Type.String()),
+          tags: Type.Array(Type.String()),
+        }),
+        prompt: finalizationPrompt("save_skill_namer", "finalize_smmt", rolePrompt, namerBody),
+        agentConfig: pickAgentConfig(config, "level1_save_skill"),
+        tools: [],
+      });
+      if (!sub.ok || !sub.result) {
+        ctx.ui?.notify?.(`Skill naming failed: ${sub.error || "no result"}`, "error");
+        return;
+      }
+      const r = sub.result;
+      const smmt = {
+        stage: smmtSlug(r.stage), species: smmtSlug(r.species), modality: smmtSlug(r.modality),
+        method: smmtSlug(r.method), target: smmtSlug(r.target),
+      };
+      if (Object.values(smmt).some((v) => !v)) {
+        ctx.ui?.notify?.("Namer returned an empty axis; aborting.", "error");
+        return;
+      }
+      const folder_name = [smmt.stage, smmt.species, smmt.modality, smmt.method, smmt.target].join("-");
+      const pi_name = folder_name.replace(/_/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+      const warnBits: string[] = [];
+      if (!["ns_pre", "ns_seg", "ns_reg", "ns_feat", "ns_ana", "ns_multi"].includes(smmt.stage)) warnBits.push(`stage '${smmt.stage}' is new`);
+      if (!["zebrafish", "mouse", "marmoset", "human", "global"].includes(smmt.species)) warnBits.push(`species '${smmt.species}' is unusual`);
+
+      // 5. Expert confirmation.
+      const summary = [
+        `Skill name : ${folder_name}`,
+        `pi name    : /skill:${pi_name}`,
+        `description: ${String(r.proposed_description || "").slice(0, 220)}`,
+        `rationale  : ${String(r.rationale || "").slice(0, 220)}`,
+        warnBits.length ? `warnings   : ${warnBits.join("; ")}` : "",
+        `target dir : library/skills/from_expert/`,
+      ].filter(Boolean).join("\n");
+      const autoYes = /(^|\s)(--yes|-y|yes)(\s|$)/.test(String(args || ""));
+      let approved: boolean;
+      if (ctx.hasUI) {
+        approved = await ctx.ui.confirm("Save this run as a skill?", summary);
+      } else {
+        approved = autoYes;
+        if (!approved) {
+          await writeJson(join(run.runDir, "save_skill_proposal.json"), { folder_name, pi_name, smmt, ...r });
+          pi.sendMessage({
+            customType: "neuro-save-skill", display: true,
+            content: `Proposed skill:\n${summary}\n\nHeadless mode: re-run '/neuro-save-skill ${run.runId} --yes' to write it, or inspect save_skill_proposal.json.`,
+          });
+          return;
+        }
+      }
+      if (!approved) {
+        ctx.ui?.notify?.("Skill save cancelled.", "info");
+        return;
+      }
+
+      // 6. Author + validate + register via the Python backend.
+      const targeted = config.modules?.targeted_skill || {};
+      const payload = {
+        run_dir: run.runDir,
+        run_id: run.state.run_id,
+        root_dir: WORKFLOW_ROOT,
+        output_dir: (Array.isArray(targeted.extra_skill_dirs) && targeted.extra_skill_dirs[0]) || "library/skills/from_expert",
+        smmt, folder_name, pi_name,
+        description: r.proposed_description,
+        triggers: r.triggers,
+        tags: r.tags,
+        question,
+        question_history: run.state.question_history || [],
+        data_info: run.state.data_info || "",
+        plan_markdown: run.state.plan?.plan_markdown || "",
+        statistics: stats,
+        conclusions: run.state.conclusions || {},
+        deep_research_context: run.state.deep_research_context || "",
+        targeted_skill: run.state.targeted_skill || "",
+        resource_profile: run.state.resource_profile || {},
+        image_analyses: run.state.image_analyses || run.state.image_analysis || [],
+        deliverables: run.state.deliverables || [],
+        transcript_digest: digest,
+        generated_code_path: existsSync(genCode) ? genCode : "",
+        use_llm_body: true,
+      };
+      ctx.ui?.notify?.("Authoring the skill...", "info");
+      const scriptPath = join(WORKFLOW_ROOT, "internagent", "modules", "targeted_skill", "save_skill.py");
+      const result = await runPythonScript(scriptPath, payload, WORKFLOW_ROOT);
+      if (!result.ok) {
+        ctx.ui?.notify?.(`Skill save failed: ${result.error || JSON.stringify(result.errors || result.warnings || result)}`, "error");
+        return;
+      }
+      await updateState(run, {
+        saved_skill: {
+          skill_dir: result.skill_dir, folder_name: result.folder_name,
+          pi_name: result.pi_name, at: new Date().toISOString(),
+        },
+      });
+      await appendStateEntry(pi, { run_id: run.runId, event: "neuro_save_skill", ok: true, folder_name: result.folder_name });
+      const vs = result.validate_skills?.status || "unknown";
+      ctx.ui?.notify?.(`Saved skill: ${result.folder_name} (validate_skills: ${vs})`, "info");
+      pi.sendMessage({
+        customType: "neuro-save-skill", display: true,
+        content: `Saved skill '${result.folder_name}'\n  dir: ${result.skill_dir}\n  pi: /skill:${result.pi_name}\n  validate_skills: ${vs}\n  warnings: ${(result.warnings || []).join("; ") || "none"}`,
+      });
+    },
+  });
+
   pi.on("before_agent_start", async (_event, ctx) => {
     await syncWorkflowWritePolicy(ctx.cwd);
   });
@@ -1702,6 +1941,7 @@ export default function (pi: ExtensionAPI) {
           image_refine: status(workflow.image_refine),
           image_analysis: status(workflow.image_analysis),
           resource_sensing: status(workflow.resource_sensing),
+          save_skill: status(workflow.save_skill),
         },
         human_review: workflow.human_review,
         note: "Disabled optional tools are disabled by user configuration, not because the tool is broken. Continue the required spine without placeholder context for disabled tools.",

@@ -12,7 +12,10 @@ import sys
 import re
 from pathlib import Path
 
-from utils import setup_logger, read_text_file
+try:  # importable as a package module (targeted_skill.single_skill.validate_skills)
+    from .utils import setup_logger, read_text_file
+except ImportError:  # run directly from the single_skill/ directory
+    from utils import setup_logger, read_text_file  # type: ignore
 
 logger = setup_logger("validate")
 
@@ -354,7 +357,10 @@ def main():
 
     # Filter by tags if specified
     if args.tags:
-        from utils import safe_filename
+        try:
+            from .utils import safe_filename
+        except ImportError:
+            from utils import safe_filename  # type: ignore
         tag_set = {safe_filename(t) for t in args.tags}
         skill_dirs = [d for d in skill_dirs if d.name in tag_set]
 

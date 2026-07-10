@@ -27,6 +27,7 @@ WORKFLOW_DEFAULTS: Dict[str, Any] = {
         "image_refine": True,
         "image_analysis": True,
         "resource_sensing": True,
+        "save_skill": True,
         "human_review": {
             "enabled": False,
             "gates": {
@@ -84,7 +85,10 @@ def parse_inline_yaml(value: str) -> Any:
 
 def parse_simple_yaml(text: str) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
-    stack: list[tuple[int, Any]] = [(-1, config)]
+    # Stack entries: (indent, container, grandparent, key_in_grandparent). The
+    # grandparent/key let us convert an empty-dict placeholder into a list the
+    # first time we see a "- " child (block-scalar or mapping list).
+    stack: list[tuple[int, Any, Any, Any]] = [(-1, config, None, None)]
     for raw_line in text.splitlines():
         line = strip_yaml_comment(raw_line).rstrip()
         if not line.strip():
@@ -93,18 +97,30 @@ def parse_simple_yaml(text: str) -> Dict[str, Any]:
         stripped = line.strip()
         while indent <= stack[-1][0]:
             stack.pop()
-        parent = stack[-1][1]
+        entry = stack[-1]
+        parent = entry[1]
 
         if stripped.startswith("- "):
             if not isinstance(parent, list):
-                continue
-            item: Dict[str, Any] = {}
-            parent.append(item)
+                # Convert the empty-dict placeholder created for this key to a list.
+                if isinstance(parent, dict) and not parent and entry[2] is not None:
+                    parent = []
+                    entry[2][entry[3]] = parent
+                    stack[-1] = (entry[0], parent, entry[2], entry[3])
+                else:
+                    continue
             rest = stripped[2:].strip()
             if rest and ":" in rest:
                 key, value = rest.split(":", 1)
-                item[key.strip()] = parse_inline_yaml(value)
-            stack.append((indent, item))
+                item: Dict[str, Any] = {key.strip(): parse_inline_yaml(value)}
+                parent.append(item)
+                stack.append((indent, item, parent, len(parent) - 1))
+            elif rest:
+                parent.append(parse_inline_yaml(rest))  # plain scalar list item
+            else:
+                item = {}
+                parent.append(item)
+                stack.append((indent, item, parent, len(parent) - 1))
             continue
 
         if ":" not in stripped or not isinstance(parent, dict):
@@ -117,7 +133,7 @@ def parse_simple_yaml(text: str) -> Dict[str, Any]:
         else:
             child: Any = [] if key == "models" else {}
             parent[key] = child
-            stack.append((indent, child))
+            stack.append((indent, child, parent, key))
     return config
 
 
