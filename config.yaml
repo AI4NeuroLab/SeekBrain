@@ -44,6 +44,8 @@ workflow:
         resource_sensing: true
         # Enable the /neuro-save-skill command (save a finished run as a reusable skill).
         save_skill: true
+        # Show deep-research and targeted-skill content in the CLI (compact cards + /neuro-show).
+        transparency: true
         # Interactive runs pause after enabled gates and wait for explicit human approval.
         # Non-interactive ./pi_run_level1.sh --non-interactive disables these gates at runtime.
         human_review:

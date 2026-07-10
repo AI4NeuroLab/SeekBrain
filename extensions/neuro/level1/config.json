@@ -30,6 +30,7 @@
       "image_analysis": true,
       "resource_sensing": true,
       "save_skill": true,
+      "transparency": true,
       "human_review": {
         "enabled": true,
         "gates": {

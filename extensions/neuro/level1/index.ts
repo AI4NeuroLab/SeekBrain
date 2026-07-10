@@ -510,6 +510,7 @@ function level1WorkflowConfig(config: Json) {
     image_analysis: boolValue("image_analysis"),
     resource_sensing: boolValue("resource_sensing"),
     save_skill: boolValue("save_skill"),
+    transparency: boolValue("transparency"),
     human_review: {
       enabled: humanReviewEnabled,
       gates: {
@@ -1496,6 +1497,161 @@ async function registerSkillPathWithPi(skillDirAbs: string): Promise<string | un
   }
 }
 
+// --- transparency cards ---------------------------------------------------
+// Pure markdown builders for the compact research/skill panels. `pi.sendMessage`
+// renders the returned string as themed markdown.
+function _firstMeaningfulLine(text: string): string {
+  for (const raw of String(text || "").split("\n")) {
+    const line = raw.trim();
+    if (!line || line === "[Deep Research Background]") continue;
+    if (/^#{1,6}\s/.test(line)) return line.replace(/^#{1,6}\s*/, "").trim();
+    return line;
+  }
+  return "";
+}
+
+function _year(pubTime: any): string {
+  const m = String(pubTime || "").match(/\d{4}/);
+  return m ? m[0] : "";
+}
+
+function researchCardMarkdown(state: Json): string {
+  const ctxText = String(state.deep_research_context || "");
+  const sources: Json[] = Array.isArray(state.deep_research_sources) ? state.deep_research_sources : [];
+  const summary = String(state.deep_research?.summary || "").trim() || _firstMeaningfulLine(ctxText);
+  const lines = ["## 🔬 Deep Research"];
+  if (summary) lines.push(summary.slice(0, 300));
+  if (sources.length) {
+    lines.push("", `**Sources (${sources.length}):**`);
+    for (const s of sources.slice(0, 3)) {
+      const title = String(s.title || "(untitled paper)").trim();
+      const meta = [String(s.magazine || "").trim(), _year(s.pub_time)].filter(Boolean).join(" ");
+      const gh = Array.isArray(s.github_links) && s.github_links[0] ? ` · [repo](${s.github_links[0]})` : "";
+      lines.push(`- **${title}**${meta ? ` — ${meta}` : ""}${gh}`);
+    }
+    if (sources.length > 3) lines.push(`- …and ${sources.length - 3} more`);
+  } else if (ctxText.trim()) {
+    lines.push("", "_Background synthesized without external sources._");
+  } else {
+    lines.push("", "_Research ran but produced no usable background._");
+  }
+  lines.push("", "→ `/neuro-show research` for the full report");
+  return lines.join("\n");
+}
+
+function _parseSkillHeaders(targeted: string): { name: string; relevance?: string }[] {
+  const out: { name: string; relevance?: string }[] = [];
+  let m: RegExpExecArray | null;
+  // Match only the SkillLoader header `  SKILL : <name>  (relevance: X)` (uppercase,
+  // line-start) — NOT the markdown `# Skill: <name>` title inside the body.
+  const re = /^\s*SKILL\s*:\s*(.+?)\s*(?:\(relevance:\s*([\d.]+)\))?\s*$/gm;
+  while ((m = re.exec(targeted))) out.push({ name: m[1].trim(), relevance: m[2] });
+  if (!out.length) {
+    const re2 = /^###\s+Skill from:\s*(.+)$/gim;
+    while ((m = re2.exec(targeted))) out.push({ name: m[1].trim() });
+  }
+  return out;
+}
+
+function _skillOverview(targeted: string): string {
+  const desc = targeted.match(/^\s*description:\s*["']?(.+?)["']?\s*$/im);
+  if (desc && desc[1].trim()) return desc[1].trim();
+  const ov = targeted.match(/##\s*Overview\s*\n+([^\n#].*)/i);
+  if (ov && ov[1].trim()) return ov[1].trim();
+  return "";
+}
+
+function skillCardMarkdown(state: Json): string {
+  const targeted = String(state.targeted_skill || "");
+  const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
+  const label = source === "generated_from_rag" ? "generated" : source === "existing_skill" ? "matched" : "no match";
+  const lines = [`## 🧩 Targeted Skill — ${label}`];
+  if (!targeted.trim() || source === "none") {
+    lines.push("", "_No matching skill was used for this question._");
+    return lines.join("\n");
+  }
+  for (const s of _parseSkillHeaders(targeted).slice(0, 4)) {
+    lines.push(`- **${s.name}**${s.relevance ? ` (relevance ${s.relevance})` : ""}`);
+  }
+  const overview = _skillOverview(targeted);
+  if (overview) lines.push("", overview.slice(0, 300));
+  lines.push("", "→ `/neuro-show skill` for the full SKILL.md");
+  return lines.join("\n");
+}
+
+// Full-content markdown for the /neuro-show overlay.
+function researchFullMarkdown(state: Json): string {
+  const ctxText = String(state.deep_research_context || "").replace(/^\[Deep Research Background\]\s*/, "").trim();
+  const sources: Json[] = Array.isArray(state.deep_research_sources) ? state.deep_research_sources : [];
+  const parts = ["# 🔬 Deep Research", "", ctxText || "_No synthesized background was produced._"];
+  if (sources.length) {
+    parts.push("", `## Sources (${sources.length})`);
+    for (const s of sources) {
+      const meta = [String(s.magazine || "").trim(), _year(s.pub_time)].filter(Boolean).join(" · ");
+      parts.push("", `### ${String(s.title || "(untitled paper)").trim()}`);
+      if (meta) parts.push(`*${meta}*`);
+      if (Array.isArray(s.github_links) && s.github_links.length) {
+        parts.push(s.github_links.map((g: string) => `[repo](${g})`).join(" · "));
+      }
+      const text = String(s.text || "").trim();
+      if (text) parts.push("", text);
+    }
+  }
+  return parts.join("\n");
+}
+
+function skillFullMarkdown(state: Json): string {
+  const targeted = String(state.targeted_skill || "").trim();
+  const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
+  const label = source === "generated_from_rag" ? "generated" : source === "existing_skill" ? "matched" : "no match";
+  if (!targeted) return `# 🧩 Targeted Skill — ${label}\n\n_No matching skill was used for this question._`;
+  return `# 🧩 Targeted Skill — ${label}\n\n${targeted}`;
+}
+
+// Scrollable full-screen reader overlay (TUI only). Mirrors extensions/session-replay.ts.
+async function openShowOverlay(ctx: any, title: string, fullMarkdown: string): Promise<void> {
+  const tui: any = await import("@mariozechner/pi-tui");
+  const core: any = await import("@mariozechner/pi-coding-agent");
+  const { Markdown, truncateToWidth, matchesKey, Key } = tui;
+  const mdTheme = core.getMarkdownTheme();
+  const VIEW_H = 26;
+  let scroll = 0;
+  await ctx.ui.custom((tuiCtx: any, theme: any, _kb: any, done: (v: any) => void) => ({
+    render(width: number): string[] {
+      const inner = Math.max(10, width - 4);
+      let body: string[];
+      try {
+        body = new Markdown(fullMarkdown, 0, 0, mdTheme).render(inner);
+      } catch {
+        body = fullMarkdown.split("\n");
+      }
+      const maxScroll = Math.max(0, body.length - VIEW_H);
+      scroll = Math.min(Math.max(0, scroll), maxScroll);
+      const win = body.slice(scroll, scroll + VIEW_H);
+      const rule = theme.fg("accent", "─".repeat(width));
+      const pos = `${scroll + 1}-${Math.min(scroll + VIEW_H, body.length)}/${body.length}`;
+      const out: string[] = [
+        rule,
+        truncateToWidth(` ${theme.fg("accent", theme.bold(title))}  ${theme.fg("dim", pos)}`, width),
+        "",
+      ];
+      for (const ln of win) out.push(truncateToWidth("  " + ln, width));
+      for (let i = win.length; i < VIEW_H; i++) out.push("");
+      out.push("", truncateToWidth(theme.fg("dim", " ↑/↓ scroll · space/b page · Esc close"), width), rule);
+      return out;
+    },
+    handleInput(data: string): void {
+      if (matchesKey(data, Key.up)) scroll -= 1;
+      else if (matchesKey(data, Key.down)) scroll += 1;
+      else if (data === " " || data === "f") scroll += VIEW_H;
+      else if (data === "b") scroll -= VIEW_H;
+      else if (matchesKey(data, Key.escape)) { done(undefined); return; }
+      tuiCtx.requestRender();
+    },
+    invalidate() {},
+  }), { overlay: true, overlayOptions: { width: "85%", anchor: "center" } });
+}
+
 async function snapshotSubagentFiles(agentDir: string) {
   if (!debugDiskWritesEnabled()) return undefined;
   const files = ["input.json", "output.json", "prompt.md", "events.jsonl"];
@@ -1861,8 +2017,70 @@ export default function (pi: ExtensionAPI) {
       ctx.ui?.notify?.(`Saved skill: ${result.folder_name} (validate_skills: ${vs})`, "info");
       pi.sendMessage({
         customType: "neuro-save-skill", display: true,
-        content: `Saved skill '${result.folder_name}'\n  dir: ${result.skill_dir}\n  pi: /skill:${result.pi_name}${piRel ? " (registered in .pi/settings.json; active next pi launch)" : ""}\n  validate_skills: ${vs}\n  warnings: ${(result.warnings || []).join("; ") || "none"}`,
+        content: [
+          `## 🧩 Skill saved — \`${result.folder_name}\``,
+          String(r.proposed_description || "").trim(),
+          "",
+          `- pi: \`/skill:${result.pi_name}\`${piRel ? " _(active next pi launch)_" : ""}`,
+          `- dir: \`${result.skill_dir}\``,
+          `- validate_skills: **${vs}**`,
+          (result.warnings || []).length ? `- warnings: ${(result.warnings || []).join("; ")}` : "",
+          "",
+          "→ `/neuro-show skill` for the full SKILL.md",
+        ].filter(Boolean).join("\n"),
       });
+    },
+  });
+
+  pi.registerCommand("neuro-show", {
+    description: "Show the deep-research report or targeted-skill content for a run (scrollable). Usage: /neuro-show research|skill [run_id]",
+    getArgumentCompletions: (prefix: string) => {
+      const items = [
+        { value: "research", label: "research — the deep-research report" },
+        { value: "skill", label: "skill — the targeted-skill content" },
+      ];
+      const f = items.filter((i) => i.value.startsWith(prefix));
+      return f.length ? f : null;
+    },
+    async handler(args: string, ctx: any) {
+      const tokens = String(args || "").trim().split(/\s+/).filter(Boolean);
+      let which = tokens.find((t) => t === "research" || t === "skill");
+      if (!which && ctx.hasUI) {
+        which = await ctx.ui.select("Show which?", ["research", "skill"]);
+        if (!which) return;
+      }
+      if (!which) which = "research";
+
+      let run: RunContext | undefined;
+      try {
+        const runId = tokens.find((t) => t !== "research" && t !== "skill" && !t.startsWith("-"));
+        if (runId) {
+          run = await resolveRun(ctx.cwd, runId);
+        } else if (activeRunDir) {
+          const st = await readJson(join(activeRunDir, "state.json"), {});
+          if (st.run_id) run = await loadRunState(st.run_id, activeRunDir);
+        }
+        if (!run) {
+          const index = await readJson(resolve(ctx.cwd, RUN_INDEX_FILE), { runs: {} });
+          const ids = Object.keys(index.runs || {});
+          if (!ids.length) { ctx.ui?.notify?.("No runs found.", "error"); return; }
+          run = await resolveRun(ctx.cwd, ids[ids.length - 1]);
+        }
+      } catch (error) {
+        ctx.ui?.notify?.(`Could not locate run: ${error}`, "error");
+        return;
+      }
+
+      const full = which === "skill" ? skillFullMarkdown(run.state) : researchFullMarkdown(run.state);
+      const title = which === "skill" ? "🧩 Targeted Skill" : "🔬 Deep Research";
+      if (ctx.mode === "tui") {
+        await openShowOverlay(ctx, title, full);
+      } else {
+        pi.sendMessage({
+          customType: which === "skill" ? "neuro-skill" : "neuro-research",
+          content: full, display: true,
+        });
+      }
     },
   });
 
@@ -1892,6 +2110,28 @@ export default function (pi: ExtensionAPI) {
     if (!activeRunDir) return;
     for (const entry of readableLogEntriesFromEvent(event, "main", "level1")) {
       await appendReadableLog(activeRunDir, entry);
+    }
+  });
+
+  // Transparency: after deep-research / targeted-skill run, surface a compact
+  // themed card in the transcript (full content is available via /neuro-show).
+  pi.on("tool_execution_end", async (event: Json) => {
+    const tool = event.toolName;
+    if (tool !== "neuro_deep_research" && tool !== "resolve_targeted_skill") return;
+    if (!activeRunDir) return;
+    try {
+      if (!level1WorkflowConfig(await loadConfig(WORKFLOW_ROOT)).transparency) return;
+      const state = await readJson(join(activeRunDir, "state.json"), {});
+      const content = tool === "neuro_deep_research" ? researchCardMarkdown(state) : skillCardMarkdown(state);
+      if (!content) return;
+      pi.sendMessage({
+        customType: tool === "neuro_deep_research" ? "neuro-research" : "neuro-skill",
+        content,
+        display: true,
+        details: { run_id: state.run_id, tool },
+      });
+    } catch {
+      // transparency is best-effort; never disrupt the run
     }
   });
 
@@ -1970,6 +2210,7 @@ export default function (pi: ExtensionAPI) {
           image_analysis: status(workflow.image_analysis),
           resource_sensing: status(workflow.resource_sensing),
           save_skill: status(workflow.save_skill),
+          transparency: status(workflow.transparency),
         },
         human_review: workflow.human_review,
         note: "Disabled optional tools are disabled by user configuration, not because the tool is broken. Continue the required spine without placeholder context for disabled tools.",

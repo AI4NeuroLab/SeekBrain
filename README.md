@@ -93,3 +93,30 @@ Saved skills land in `library/skills/from_expert/` and are **dual-registered**:
 
 
 ---
+
+## 5. Transparency: research & skills
+
+Whenever a run does **deep research** or resolves a **targeted skill**, a compact card appears in the transcript so you can see what happened:
+
+```
+Deep Research
+Decoded prior probability from ORBvl during ITI.
+Sources (4): Findling & Pouget 2025 (Nature) · IBL 2025 · …
+→ /neuro-show research   for the full report
+
+Targeted Skill — matched
+ns_ana-mouse-spike-pca-population_trajectory  (relevance 0.85)
+Extract low-dimensional population trajectories via PCA.
+→ /neuro-show skill      for the full SKILL.md
+```
+
+Cards stay compact so they don't flood the session. To read the **full content** — the complete synthesized report with all cited sources, or the full `SKILL.md` — open the scrollable viewer:
+
+```bash
+/neuro-show research     # full deep-research report + sources
+/neuro-show skill        # full targeted-skill content
+```
+
+`↑/↓` scroll · `space`/`b` page · `Esc` close.
+
+---

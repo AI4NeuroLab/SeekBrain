@@ -28,6 +28,7 @@ WORKFLOW_DEFAULTS: Dict[str, Any] = {
         "image_analysis": True,
         "resource_sensing": True,
         "save_skill": True,
+        "transparency": True,
         "human_review": {
             "enabled": False,
             "gates": {
