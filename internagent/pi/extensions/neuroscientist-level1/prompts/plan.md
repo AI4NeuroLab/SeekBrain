@@ -39,7 +39,13 @@ methodological guidance. Do not force-fit an irrelevant skill to the task.
   figure.pdf, and statistics.json.（当 deliverables 清单存在时，以此清单为准。）
 
 ## Response format
-When ready, call finalize_plan with the complete Markdown plan using these sections:
+When ready, call finalize_plan with:
+- plan_markdown: the complete Markdown plan using the sections below.
+- summary: one short internal summary.
+- confidence: numeric confidence.
+- warnings: any risks or caveats.
+
+The plan_markdown must use these sections:
 
 ## Skill Relevance
 - Targeted skill relevance: HIGH / MEDIUM / LOW

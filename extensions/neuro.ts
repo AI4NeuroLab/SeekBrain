@@ -7,7 +7,7 @@
  * Usage: pi -e extensions/neuro.ts
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
@@ -53,26 +53,22 @@ const LEVEL1: WorkflowDef = {
 	label: "Level 1",
 	description: "Fixed NeuroScientist visualization and analysis workflow",
 	promptPath: join(EXT_DIR, "neuro", "level1", "prompts", "entry.md"),
-	stages: ["skill", "Research", "Plan", "Code", "validate", "analysis", "conclude"],
+	stages: ["skill", "Plan", "Code", "Validate", "Analysis", "Conclude"],
 	toolStages: {
-		neuro_capabilities: "Research",
-		neuro_start_run: "Research",
-		neuro_resume_run: "Research",
-		neuro_deep_research: "Research",
 		resolve_targeted_skill: "skill",
 		neuro_plan: "Plan",
 		neuro_code: "Code",
-		neuro_validate: "validate",
-		neuro_refine_image: "validate",
-		neuro_analyze_image: "analysis",
-		neuro_conclude: "conclude",
+		neuro_validate: "Validate",
+		neuro_refine_image: "Validate",
+		neuro_analyze_image: "Analysis",
+		neuro_conclude: "Conclude",
 	},
 };
 
 const LEVEL2: WorkflowDef = {
 	level: "level2",
 	label: "Level 2",
-	description: "Subquestion planning, headless Level 1 execution, and evidence synthesis",
+	description: "Subquestion planning, SQ Level 1 execution, and evidence synthesis",
 	promptPath: join(EXT_DIR, "neuro", "level2", "prompts", "entry.md"),
 	stages: ["Input", "SubQ", "Methods", "Level1", "Evidence", "Report"],
 	toolStages: {
@@ -193,6 +189,21 @@ function renderPipeline(stages: StageState[], width: number, theme: any): string
 	return truncateToWidth(parts.join(theme.fg("dim", "  →  ")), width);
 }
 
+function renderCompactPipeline(stages: StageState[], width: number, theme: any): string[] {
+	const parts = stages.map((stage) => {
+		const icon = stage.status === "pending" ? "○"
+			: stage.status === "running" ? "●"
+			: stage.status === "done" ? "✓" : "✗";
+		const color = stage.status === "pending" ? "dim"
+			: stage.status === "running" ? "accent"
+			: stage.status === "done" ? "success" : "error";
+		const elapsed = stage.status !== "pending" ? `${Math.round(stage.elapsed / 1000)}s` : "";
+		const label = `${stage.name} ${icon}${elapsed}`;
+		return theme.fg(color, label);
+	});
+	return [truncateToWidth(parts.join(theme.fg("dim", "  ")), width)];
+}
+
 function renderWorkflowGraph(stages: StageState[], width: number, theme: any): string[] {
 	const gapWidth = 5;
 	const colWidth = Math.max(14, Math.floor((width - gapWidth * 2) / 3));
@@ -249,7 +260,6 @@ function renderLevel2Board(stages: StageState[], cards: SubquestionCardState[], 
 		"",
 	];
 	if (!cards.length) {
-		lines.push(theme.fg("dim", "Subquestion cards will appear after neuro_l2_subquestion."));
 		return lines.map((row) => truncateToWidth(row, width));
 	}
 
@@ -308,7 +318,7 @@ export default function (pi: ExtensionAPI) {
 
 					const lines = activeWorkflow.level === "level2"
 						? renderLevel2Board(stages, subquestionCards, width, theme)
-						: renderWorkflowGraph(stages, width, theme);
+						: renderCompactPipeline(stages, width, theme);
 					text.setText(lines.join("\n"));
 					return text.render(width);
 				},
@@ -326,10 +336,7 @@ export default function (pi: ExtensionAPI) {
 		widgetCtx = ctx;
 		updateWidget();
 		ctx.ui.setStatus("neuro", `NeuroScientist: ${workflow.level}`);
-		ctx.ui.notify(
-			`NeuroScientist ${workflow.label}\n${workflow.description}\n${workflow.stages.join(" -> ")}`,
-			"info",
-		);
+		ctx.ui.notify(`NeuroScientist ${workflow.label}`, "info");
 	}
 
 	function setStageFromTool(toolName: string, status: StageStatus, detail = "") {

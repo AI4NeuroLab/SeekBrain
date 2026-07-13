@@ -20,6 +20,26 @@ approach, code patterns, preprocessing steps, analysis methods, and figure specs
 It may contain errors or not be fully applicable: if repeated attempts fail,
 examine it critically rather than following blindly.
 
+## Script structure
+Write maintainable, reviewable Python rather than one monolithic top-level
+script. The generated code should be easy for a human reviewer to inspect,
+reuse as a future skill, and debug section by section.
+
+- Use a small `main()` function guarded by `if __name__ == "__main__":`.
+- Split the analysis into named functions with explicit inputs and return
+  values. Prefer functions such as `load_data`, `preprocess_data`,
+  `compute_metrics` or task-specific analysis functions, `make_figure`, and
+  `save_outputs` when they match the task.
+- Keep top-level code limited to imports, constants, path definitions, function
+  definitions, and the `main()` call.
+- Avoid hidden global state. Pass arrays, metadata, parameters, and output paths
+  through function arguments where practical.
+- Add short docstrings for nontrivial functions, stating what the function
+  expects and returns. Do not add verbose comments that merely restate code.
+- If the question naturally requires multiple independent outputs, either split
+  them into clear functions in one script or use multiple declared code
+  artifacts. Do not bury unrelated steps inside one long procedural block.
+
 ## Execution discipline
 - 按 deliverables 清单产出每个文件。deliverables 在 user message 中给出，
   每个 artifact 有 path、kind、role。kind=code 的 path 是你要写的脚本；

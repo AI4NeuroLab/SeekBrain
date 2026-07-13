@@ -1,3 +1,6 @@
 {
+  "defaultProvider": "llm-proxy",
+  "defaultModel": "deepseek-v4-pro",
+  "defaultThinkingLevel": "high",
   "lastChangelogVersion": "0.80.3"
 }

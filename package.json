@@ -4,6 +4,8 @@
   "type": "module",
   "description": "Pi Coding Agent extension playground",
   "dependencies": {
+    "@pi-archimedes/diff": "^1.7.1",
+    "diff": "^8.0.0",
     "yaml": "^2.8.0"
   }
 }

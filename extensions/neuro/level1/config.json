@@ -16,7 +16,7 @@
   "workflow": {
     "debug_disk_writes": true,
     "level1": {
-      "deep_research": true,
+      "deep_research": false,
       "targeted_skill_match": true,
       "targeted_skill_generate": true,
       "image_refine": true,
