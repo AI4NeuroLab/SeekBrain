@@ -41,7 +41,6 @@ methodological guidance. Do not force-fit an irrelevant skill to the task.
 ## Response format
 When ready, call finalize_plan with:
 - plan_markdown: the complete Markdown plan using the sections below.
-- review_summary: a concise human-review summary for the approval UI. It must be written during planning, not summarized afterward. Use 5-8 short bullets covering objective, data inputs, key preprocessing, analysis/statistics, expected outputs, and main risk.
 - summary: one short internal summary.
 - confidence: numeric confidence.
 - warnings: any risks or caveats.

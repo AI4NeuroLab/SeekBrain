@@ -3,16 +3,43 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-export PATH="$ROOT/.tools/node/bin:$PATH"
+if [[ ! -f "$ROOT/.env" ]]; then
+  echo "Error: .env not found. Copy .env.example to .env, then run ./scripts/setup_api.sh." >&2
+  exit 1
+fi
 
 set -a
+# shellcheck disable=SC1091
 source "$ROOT/.env"
 set +a
 
-# pi reads its provider/model config (models.json, auth.json) from here. Subagents
-# resolve models via PI_CODING_AGENT_DIR too, so it MUST point at the same dir the
-# main pi session uses (default ~/.pi/agent, where setup_api.sh writes). Without
-# this, subagents load an empty registry and fall back to an unavailable model.
-export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-${HOME}/.pi/agent}"
 
-exec pi -e extensions/neuro.ts -e extensions/theme-cycler.ts "$@"
+if [[ ! -f "$PI_CODING_AGENT_DIR/models.json" || ! -f "$PI_CODING_AGENT_DIR/auth.json" ]]; then
+  echo "Error: Pi API config missing under $PI_CODING_AGENT_DIR." >&2
+  echo "Run ./scripts/setup_api.sh first." >&2
+  exit 1
+fi
+
+PROJECT_NODE_BIN="$ROOT/.tools/node/bin"
+if [[ ! -x "$PROJECT_NODE_BIN/node" ]]; then
+  for candidate in "$ROOT"/.tools/node-v*/bin; do
+    if [[ -x "$candidate/node" ]]; then
+      PROJECT_NODE_BIN="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -x "$PROJECT_NODE_BIN/node" ]]; then
+  export PATH="$PROJECT_NODE_BIN:$PATH"
+fi
+if [[ -x "$PROJECT_NODE_BIN/pi" ]]; then
+  PI_CMD="$PROJECT_NODE_BIN/pi"
+elif command -v pi >/dev/null 2>&1; then
+  PI_CMD="$(command -v pi)"
+else
+  echo "Error: pi command not found. Run ./pi_install.sh or install @earendil-works/pi-coding-agent globally." >&2
+  exit 1
+fi
+
+exec "$PI_CMD" -e extensions/neuro.ts -e extensions/theme-cycler.ts "$@"

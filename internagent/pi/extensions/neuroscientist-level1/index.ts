@@ -1,5 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Box, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { createTwoFilesPatch, structuredPatch } from "diff";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -24,6 +26,51 @@ let sharedCodingSdk: any;
 let sharedAuthStorage: any;
 let sharedModelRegistry: any;
 let sharedAiSdk: any;
+let diffComponentConstructor: any;
+let diffComponentImport: Promise<any> | undefined;
+
+class LazyDiffComponent implements Component {
+  private inner: Component | undefined;
+  private error: string | undefined;
+
+  constructor(
+    private readonly diff: Json,
+    private readonly language: any,
+    private readonly theme: any,
+    private readonly requestRender: () => void,
+  ) {}
+
+  render(width: number): string[] {
+    if (!this.inner && diffComponentConstructor) {
+      this.inner = new diffComponentConstructor(this.diff, this.language, this.theme);
+    }
+    if (this.inner) return this.inner.render(width);
+    if (this.error) return [this.theme.fg("error", `  ${this.error}`)];
+
+    if (!diffComponentImport) {
+      diffComponentImport = import("@pi-archimedes/diff")
+        .then((module) => {
+          diffComponentConstructor = module.DiffComponent;
+          return diffComponentConstructor;
+        })
+        .catch((error) => {
+          diffComponentImport = undefined;
+          throw error;
+        });
+    }
+    diffComponentImport
+      .then(() => this.requestRender())
+      .catch((error) => {
+        this.error = `Diff renderer failed to load: ${String(error)}`;
+        this.requestRender();
+      });
+    return [this.theme.fg("dim", "  Loading diff renderer...")];
+  }
+
+  invalidate(): void {
+    this.inner?.invalidate();
+  }
+}
 
 
 function debugDiskWritesEnabled(): boolean {
@@ -866,6 +913,72 @@ async function writeJson(path: string, value: Json) {
 async function writeText(path: string, value: string) {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, value, "utf8");
+}
+
+function unifiedDiff(oldText: string, newText: string, fromPath: string, toPath: string) {
+  if (oldText === newText) return [`--- ${fromPath}`, `+++ ${toPath}`, "No changes."].join("\n");
+  return createTwoFilesPatch(fromPath, toPath, oldText, newText, "", "", { context: 3 });
+}
+
+function parsedDiff(oldText: string, newText: string) {
+  const patch = structuredPatch("", "", oldText, newText, "", "", { context: 3 });
+  const lines: Array<{ type: "add" | "del" | "ctx" | "sep"; oldNum: number | null; newNum: number | null; content: string }> = [];
+  let added = 0;
+  let removed = 0;
+  patch.hunks.forEach((hunk, index) => {
+    if (index > 0) {
+      const previous = patch.hunks[index - 1]!;
+      const gap = hunk.oldStart - (previous.oldStart + previous.oldLines);
+      lines.push({ type: "sep", oldNum: null, newNum: gap > 0 ? gap : null, content: "" });
+    }
+    let oldNum = hunk.oldStart;
+    let newNum = hunk.newStart;
+    for (const rawLine of hunk.lines) {
+      if (rawLine === "\\ No newline at end of file") continue;
+      const marker = rawLine[0];
+      const content = rawLine.slice(1);
+      if (marker === "+") {
+        lines.push({ type: "add", oldNum: null, newNum: newNum++, content });
+        added++;
+      } else if (marker === "-") {
+        lines.push({ type: "del", oldNum: oldNum++, newNum: null, content });
+        removed++;
+      } else {
+        lines.push({ type: "ctx", oldNum: oldNum++, newNum: newNum++, content });
+      }
+    }
+  });
+  return { lines, added, removed, chars: oldText.length + newText.length };
+}
+
+function diffLanguage(path: string) {
+  const languages: Record<string, string> = {
+    ".c": "c", ".cpp": "cpp", ".css": "css", ".go": "go", ".html": "html",
+    ".java": "java", ".js": "javascript", ".json": "json", ".jsx": "jsx",
+    ".md": "markdown", ".py": "python", ".r": "r", ".rb": "ruby", ".rs": "rust",
+    ".sh": "bash", ".sql": "sql", ".ts": "typescript", ".tsx": "tsx",
+    ".xml": "xml", ".yaml": "yaml", ".yml": "yaml",
+  };
+  return languages[extname(path).toLowerCase()];
+}
+
+function codeArtifactsFromRun(run: RunContext) {
+  return stateArtifacts(run).filter(a => a.kind === "code");
+}
+
+function resolveEditableCodePath(run: RunContext, requestedPath?: string) {
+  const codeArtifacts = codeArtifactsFromRun(run);
+  if (requestedPath) {
+    const resolved = resolveArtifactPath(run.runDir, requestedPath);
+    const known = codeArtifacts.find(a => a.path === resolved || a.path === requestedPath);
+    if (known) return known.path;
+    const relativeToRun = relative(run.runDir, resolved);
+    if (relativeToRun && !relativeToRun.startsWith("..") && !relativeToRun.startsWith("/")) return resolved;
+    return "";
+  }
+  if (codeArtifacts.length === 1) return codeArtifacts[0].path;
+  const defaultPath = resolveArtifactPath(run.runDir, "generated_code.py");
+  return existsSync(defaultPath) ? defaultPath : "";
 }
 
 type RunContext = {
@@ -1797,8 +1910,416 @@ export default function (pi: ExtensionAPI) {
         run_id: run.runId,
         stage,
         review: nextEntry,
-        message: `Recorded human feedback for '${stage}'. Rerun the relevant stage with this feedback before requesting approval again.`,
+        message: stage === "plan"
+          ? "Recorded human feedback for 'plan'. For local plan edits, update the persisted plan with neuro_update_plan before requesting approval again; rerun neuro_plan only for broad redesigns."
+          : `Recorded human feedback for '${stage}'. Rerun or revise the relevant stage with this feedback before requesting approval again.`,
       });
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_review_plan",
+    label: "Neuro Review Plan",
+    description: "Show the native two-option plan review selector after the main agent has summarized the current plan in chat.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      summary: Type.Optional(Type.String({ description: "Short main-agent summary already shown to the user. Used only as compact selector context." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const planPath = join(run.runDir, "plan.md");
+      if (!(ctx as any)?.ui?.select || process.env.NEURO_LEVEL1_NON_INTERACTIVE === "1") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          plan_path: planPath,
+          needs_text_review: true,
+          message: "Interactive selector is unavailable. Ask the user to approve, reject, or provide feedback in chat.",
+        });
+      }
+      try {
+        const title = [
+          "Review the plan?",
+          `Plan: ${planPath}`,
+          params.summary ? `Summary: ${String(params.summary).slice(0, 360)}` : "",
+        ].filter(Boolean).join("\n");
+        const choice = await (ctx as any).ui.select(title, [
+          "Yes, code",
+          "No, and tell NeuroScientist what to do differently",
+        ]);
+        if (choice?.startsWith("Yes")) {
+          const review = await recordApproval(run, "plan", "approved via plan review selector");
+          await appendStateEntry(pi, {
+            run_id: run.runId,
+            event: "neuro_approve_stage",
+            stage: "plan",
+            ok: true,
+            source: "plan_selector",
+          });
+          return content({
+            ok: true,
+            run_id: run.runId,
+            plan_path: planPath,
+            decision: "approve",
+            review,
+            guidance: "Proceed to neuro_code.",
+          });
+        }
+        if (choice?.startsWith("No")) {
+          const feedback = await (ctx as any).ui.input(
+            "Feedback for plan",
+            "Describe what should change before code generation",
+          );
+          const feedbackText = String(feedback || "").trim();
+          if (!feedbackText) {
+            return content({
+              ok: false,
+              run_id: run.runId,
+              plan_path: planPath,
+              decision: "cancel",
+              message: "No feedback was entered. Summarize the plan again or call neuro_review_plan again.",
+            });
+          }
+          const review = await recordFeedback(run, "plan", feedbackText, { source: "plan_selector" });
+          await appendStateEntry(pi, {
+            run_id: run.runId,
+            event: "neuro_record_feedback",
+            stage: "plan",
+            ok: true,
+            source: "plan_selector",
+            action: "revise",
+          });
+          return content({
+            ok: true,
+            run_id: run.runId,
+            plan_path: planPath,
+            decision: "feedback",
+            feedback: feedbackText,
+            review,
+            guidance: "Revise plan_markdown yourself for local changes, call neuro_update_plan with the complete updated plan, then summarize the revised plan and call neuro_review_plan again. Rerun neuro_plan only for broad redesigns.",
+          });
+        }
+        return content({
+          ok: false,
+          run_id: run.runId,
+          plan_path: planPath,
+          decision: "cancel",
+          message: "Plan review was cancelled. Call neuro_review_plan again when ready.",
+        });
+      } catch (error) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          plan_path: planPath,
+          error: String(error),
+          message: "Plan review selector failed. Ask the user to approve, reject, or provide feedback in chat.",
+        });
+      }
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_update_plan",
+    label: "Neuro Update Plan",
+    description: "Persist a human-feedback revision to the current Level-1 plan without rerunning the planning subagent.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      plan_markdown: Type.String({ description: "Complete updated Markdown plan to write to plan.md and state.json." }),
+      summary: Type.Optional(Type.String({ description: "Short summary of what changed or what the updated plan does." })),
+      confidence: Type.Optional(Type.Number({ description: "Optional updated confidence score. Defaults to the prior confidence if omitted." })),
+      warnings: Type.Optional(Type.Array(Type.String({ description: "Optional updated warning list. Defaults to the prior warnings if omitted." }))),
+      revision_note: Type.Optional(Type.String({ description: "Optional short note describing the user-requested edit." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const planMarkdown = String(params.plan_markdown || "").trim();
+      if (!planMarkdown) {
+        return content({ ok: false, run_id: run.runId, error: "plan_markdown is required" });
+      }
+      const previousPlan = run.state.plan || {};
+      const previousRevision = Number(previousPlan.revision || 1);
+      const revision = Number.isFinite(previousRevision) ? previousRevision + 1 : 2;
+      const planPath = join(run.runDir, "plan.md");
+      const nextPlan: Json = {
+        ...previousPlan,
+        plan_markdown: planMarkdown,
+        summary: params.summary || previousPlan.summary || "Plan updated from human feedback.",
+        confidence: params.confidence ?? previousPlan.confidence,
+        warnings: params.warnings || previousPlan.warnings || [],
+        revision,
+        revision_note: params.revision_note || "",
+        updated_by: "main_agent",
+        updated_at: new Date().toISOString(),
+      };
+      await writeText(planPath, planMarkdown);
+      await updateState(run, { plan: nextPlan });
+      await appendStateEntry(pi, {
+        run_id: run.runId,
+        event: "neuro_update_plan",
+        ok: true,
+        plan_path: planPath,
+        revision,
+      });
+      return content({
+        ok: true,
+        run_id: run.runId,
+        plan_path: planPath,
+        revision,
+        result: {
+          summary: nextPlan.summary,
+          confidence: nextPlan.confidence,
+          warnings: nextPlan.warnings,
+        },
+        human_review: {
+          required: true,
+          approved: humanStageApproved(run, "plan"),
+          feedback: humanFeedbackText(run, "plan"),
+          needs_user_review: true,
+        },
+        message: "Updated plan.md and state.json. Summarize the revised plan in chat and ask the user to approve before calling neuro_code.",
+      });
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_propose_code_update",
+    label: "Neuro Propose Code Update",
+    description: "Create a pending code edit and diff for post-run user feedback. Does not modify the active code artifact.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      code_path: Type.Optional(Type.String({ description: "Code artifact to update. Defaults to the single known code artifact or generated_code.py." })),
+      updated_code: Type.String({ description: "Complete updated code content proposed by the main agent." }),
+      summary: Type.Optional(Type.String({ description: "Short explanation of the intended code change." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const targetPath = resolveEditableCodePath(run, params.code_path);
+      if (!targetPath) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          error: "No editable code artifact found. Pass code_path for a code file inside the run directory.",
+          code_artifacts: codeArtifactsFromRun(run),
+        });
+      }
+      const updatedCode = String(params.updated_code || "");
+      if (!updatedCode.trim()) {
+        return content({ ok: false, run_id: run.runId, code_path: targetPath, error: "updated_code is required" });
+      }
+      const oldCode = await readFile(targetPath, "utf8").catch(() => "");
+      const editId = `edit_${shortTimestamp()}_${randomUUID().slice(0, 8)}`;
+      const pendingDir = join(run.runDir, "pending_code_edits", editId);
+      const proposedPath = join(pendingDir, basename(targetPath));
+      const diffPath = join(pendingDir, "diff.patch");
+      const summaryPath = join(pendingDir, "summary.md");
+      const diffText = unifiedDiff(oldCode, updatedCode, targetPath, proposedPath);
+      const summary = String(params.summary || "Pending code update proposed by the main agent.").trim();
+      await writeText(proposedPath, updatedCode);
+      await writeText(diffPath, diffText);
+      await writeText(summaryPath, summary);
+      const pendingEntry = {
+        edit_id: editId,
+        status: "proposed",
+        code_path: targetPath,
+        proposed_path: proposedPath,
+        diff_path: diffPath,
+        summary_path: summaryPath,
+        summary,
+        created_at: new Date().toISOString(),
+      };
+      await updateState(run, {
+        pending_code_edits: [
+          ...(Array.isArray(run.state.pending_code_edits) ? run.state.pending_code_edits : []),
+          pendingEntry,
+        ],
+      });
+      await appendStateEntry(pi, {
+        run_id: run.runId,
+        event: "neuro_propose_code_update",
+        ok: true,
+        edit_id: editId,
+        code_path: targetPath,
+      });
+      return content({
+        ok: true,
+        run_id: run.runId,
+        edit_id: editId,
+        code_path: targetPath,
+        proposed_path: proposedPath,
+        diff_path: diffPath,
+        summary_path: summaryPath,
+        summary,
+        guidance: "Show the user the summary, then call neuro_review_code_update. Do not apply or execute the proposed code before approval.",
+      });
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_review_code_update",
+    label: "Neuro Review Code Update",
+    description: "Display a pending code diff and ask for approval before applying post-run code changes.",
+    renderShell: "self",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      edit_id: Type.Optional(Type.String({ description: "Pending code edit id. Defaults to the latest proposed edit." })),
+    }),
+    async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const pending = Array.isArray(run.state.pending_code_edits) ? run.state.pending_code_edits : [];
+      const entry = [...pending].reverse().find((item: any) =>
+        (!params.edit_id || item.edit_id === params.edit_id) && item.status !== "applied"
+      );
+      if (!entry) {
+        return content({ ok: false, run_id: run.runId, error: "No pending code edit found." });
+      }
+      const oldCode = await readFile(entry.code_path, "utf8").catch(() => "");
+      const proposedCode = await readFile(entry.proposed_path, "utf8").catch(() => "");
+      const summaryText = await readFile(entry.summary_path, "utf8").catch(() => entry.summary || "");
+      const reviewDetails = {
+        _type: "neuroCodeUpdateReview",
+        codePath: entry.code_path,
+        diffPath: entry.diff_path,
+        summary: summaryText,
+        diff: parsedDiff(oldCode, proposedCode),
+        language: diffLanguage(entry.code_path),
+      };
+      onUpdate?.({
+        content: [{
+          type: "text",
+          text: `Review pending code update for ${entry.code_path}. Full patch: ${entry.diff_path}`,
+        }],
+        details: reviewDetails,
+      });
+      if (!(ctx as any)?.ui?.select || process.env.NEURO_LEVEL1_NON_INTERACTIVE === "1") {
+        const result = {
+          ok: false,
+          run_id: run.runId,
+          edit_id: entry.edit_id,
+          diff_path: entry.diff_path,
+          needs_text_review: true,
+          message: "Interactive selector is unavailable. Ask the user to approve or provide feedback in chat.",
+        };
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          details: { ...reviewDetails, ...result },
+        };
+      }
+      const choice = await (ctx as any).ui.select("Apply this code update?", [
+        "Yes, apply and run",
+        "No, and tell NeuroScientist what to do differently",
+      ]);
+      if (choice?.startsWith("Yes")) {
+        const updatedCode = await readFile(entry.proposed_path, "utf8");
+        await writeText(entry.code_path, updatedCode);
+        const nextPending = pending.map((item: any) =>
+          item.edit_id === entry.edit_id
+            ? { ...item, status: "applied", applied_at: new Date().toISOString() }
+            : item
+        );
+        const appliedEntry = {
+          ...entry,
+          status: "applied",
+          applied_at: new Date().toISOString(),
+        };
+        await updateState(run, {
+          pending_code_edits: nextPending,
+          applied_code_edits: [
+            ...(Array.isArray(run.state.applied_code_edits) ? run.state.applied_code_edits : []),
+            appliedEntry,
+          ],
+        });
+        await appendStateEntry(pi, {
+          run_id: run.runId,
+          event: "neuro_apply_code_update",
+          ok: true,
+          edit_id: entry.edit_id,
+          code_path: entry.code_path,
+        });
+        return content({
+          ok: true,
+          run_id: run.runId,
+          edit_id: entry.edit_id,
+          decision: "approve",
+          code_path: entry.code_path,
+          diff_path: entry.diff_path,
+          approved_for_execution: true,
+          guidance: "The code update has been applied. Run the updated script in the run directory, then rerun validation/conclusion as needed.",
+        });
+      }
+      if (choice?.startsWith("No")) {
+        const feedback = await (ctx as any).ui.input(
+          "Feedback for code update",
+          "Describe what should change before applying and running",
+        );
+        const feedbackText = String(feedback || "").trim();
+        if (!feedbackText) {
+          return content({
+            ok: false,
+            run_id: run.runId,
+            edit_id: entry.edit_id,
+            decision: "cancel",
+            message: "No feedback was entered. Revise the proposal or call neuro_review_code_update again.",
+          });
+        }
+        const nextPending = pending.map((item: any) =>
+          item.edit_id === entry.edit_id
+            ? {
+                ...item,
+                status: "changes_requested",
+                feedback: [
+                  ...(Array.isArray(item.feedback) ? item.feedback : []),
+                  { at: new Date().toISOString(), text: feedbackText, source: "code_update_selector" },
+                ],
+                updated_at: new Date().toISOString(),
+              }
+            : item
+        );
+        await updateState(run, { pending_code_edits: nextPending });
+        await appendStateEntry(pi, {
+          run_id: run.runId,
+          event: "neuro_code_update_feedback",
+          ok: true,
+          edit_id: entry.edit_id,
+        });
+        return content({
+          ok: true,
+          run_id: run.runId,
+          edit_id: entry.edit_id,
+          decision: "feedback",
+          feedback: feedbackText,
+          guidance: "Revise the proposed code, call neuro_propose_code_update again, then call neuro_review_code_update again. Do not apply or execute code until approved.",
+        });
+      }
+      return content({
+        ok: false,
+        run_id: run.runId,
+        edit_id: entry.edit_id,
+        decision: "cancel",
+        message: "Code update review was cancelled. Call neuro_review_code_update again when ready.",
+      });
+    },
+    renderCall(args, theme) {
+      const edit = args.edit_id ? ` ${theme.fg("muted", args.edit_id)}` : "";
+      return new Text(`${theme.fg("toolTitle", theme.bold("review code update"))}${edit}`, 0, 0);
+    },
+    renderResult(result, { isPartial }, theme, context) {
+      const details = result.details as Json | undefined;
+      if (details?._type === "neuroCodeUpdateReview") {
+        const shell = new Box(1, 1, (text: string) => theme.bg(isPartial ? "toolPendingBg" : "toolSuccessBg", text));
+        shell.addChild(new Text(theme.fg("toolTitle", theme.bold("NeuroScientist Code Update Review")), 0, 0));
+        shell.addChild(new Text(theme.fg("accent", details.codePath), 0, 0));
+        if (details.summary) {
+          shell.addChild(new Spacer(1));
+          shell.addChild(new Text(theme.fg("toolOutput", details.summary), 0, 0));
+        }
+        shell.addChild(new Spacer(1));
+        shell.addChild(new LazyDiffComponent(details.diff, details.language, theme, context.invalidate));
+        shell.addChild(new Spacer(1));
+        shell.addChild(new Text(theme.fg("muted", `Full patch: ${details.diffPath}`), 0, 0));
+        return shell;
+      }
+      const text = result.content.find((item: any) => item.type === "text")?.text || "";
+      return new Text(theme.fg("toolOutput", text), 0, 0);
     },
   });
 
@@ -2002,7 +2523,7 @@ export default function (pi: ExtensionAPI) {
         `Deep research context:\n${params.deep_research_context || run.state.deep_research_context || ""}`,
         planHumanFeedback ? `Human review feedback for the plan:\n${planHumanFeedback}` : "",
         additionalContextBlock(params.additional_context),
-        "Finalize with: { plan_markdown, review_summary, summary, confidence, warnings }. review_summary is the concise text shown to the human approval UI; do not make it a copy of the full plan.",
+        "Finalize with: { plan_markdown, summary, confidence, warnings }.",
       ].join("\n\n"));
       const sub = await runSubagent({
         runDir: run.runDir,
@@ -2010,7 +2531,6 @@ export default function (pi: ExtensionAPI) {
         finalizeTool: "finalize_plan",
         finalizeSchema: Type.Object({
           plan_markdown: Type.String(),
-          review_summary: Type.String(),
           summary: Type.String(),
           confidence: Type.Number(),
           warnings: Type.Array(Type.String()),
@@ -2035,9 +2555,9 @@ export default function (pi: ExtensionAPI) {
         ok: sub.ok,
         error: sub.error,
         plan_path: sub.ok ? join(run.runDir, "plan.md") : undefined,
+        plan_markdown: sub.ok ? sub.result.plan_markdown : undefined,
         output_path: sub.output_path,
         result: sub.result ? {
-          review_summary: sub.result.review_summary,
           summary: sub.result.summary,
           confidence: sub.result.confidence,
           warnings: sub.result.warnings,
@@ -2046,7 +2566,12 @@ export default function (pi: ExtensionAPI) {
           required: humanGateEnabled(config, "plan"),
           approved: humanStageApproved(run, "plan"),
           feedback: planHumanFeedback,
+          needs_user_review: Boolean(sub.ok && humanGateEnabled(config, "plan") && !humanStageApproved(run, "plan")),
+          review_owner: "main_agent",
         },
+        guidance: sub.ok && humanGateEnabled(config, "plan") && !humanStageApproved(run, "plan")
+          ? "Summarize plan_markdown yourself in chat, show plan_path, then call neuro_review_plan to present the native two-option selector. Do not replace the selector with a plain chat approval request. If feedback is returned, revise locally with neuro_update_plan when appropriate; rerun neuro_plan only for broad redesigns. Do not call neuro_code until plan approval is recorded."
+          : undefined,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
       });
     },

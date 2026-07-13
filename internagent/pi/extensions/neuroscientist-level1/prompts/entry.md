@@ -111,17 +111,22 @@ First implementation scope:
 
 After `neuro_plan` when the plan gate is enabled:
 
-1. Report `plan_path`, the plan summary, confidence, warnings, and any important
-   assumptions or risky choices.
-2. Ask the user to approve or provide revision feedback.
-3. If the user clearly approves with text such as `yes`, `approve`, `go ahead`,
-   or equivalent, call `neuro_approve_stage` with `stage="plan"`, then continue
-   to `neuro_code`.
-4. If the user rejects, says `no`, or provides requested changes, call
-   `neuro_record_feedback` with `stage="plan"` and the user's feedback. Then
-   rerun `neuro_plan`, passing a concise summary of the requested changes in
-   `additional_context`. Do not call `neuro_code` until a later user approval
-   has been recorded with `neuro_approve_stage`.
+1. Read the returned `plan_markdown` and summarize it yourself in the chat.
+   Do not rely on a planner-authored review summary. Include `plan_path`,
+   objective, inputs, preprocessing, analysis/statistics, outputs, confidence,
+   warnings, and any important assumptions or risky choices.
+2. Immediately call `neuro_review_plan` to show the native two-option selector
+   (`Yes, code`, `No, and tell NeuroScientist what to do differently`). Do not
+   replace this selector with a plain chat sentence asking the user to approve.
+3. If `neuro_review_plan` returns `decision="approve"`, continue to
+   `neuro_code`.
+4. If it returns `decision="feedback"`, use the returned feedback. For local
+   edits that preserve the plan's overall method, revise the plan yourself and
+   call `neuro_update_plan` with the complete updated Markdown. Then summarize
+   the updated plan in chat and call `neuro_review_plan` again. Only rerun
+   `neuro_plan` when the feedback requires a broad methodological redesign or
+   invalidates the previous plan. Do not call `neuro_code` until plan approval
+   is recorded.
 
 If a downstream tool returns `blocked_by_human_review=true`, do not retry that
 tool immediately. Show the user the required stage and ask for approval or
@@ -209,10 +214,10 @@ decision-relevant point.
    - Outputs to keep: `plan_path`, result summary/confidence/warnings.
    - Use: pass the plan text into `neuro_code`.
    - Human review: if the plan gate is enabled, stop after this stage and wait
-     for explicit user approval. Use `neuro_approve_stage(stage="plan")` for
-     approval or `neuro_record_feedback(stage="plan", feedback=...)` for
-     requested changes. Do not call `neuro_code` until plan approval is
-     recorded.
+     for explicit user approval. Summarize the plan yourself from
+     `plan_markdown`, then call `neuro_review_plan` to show the native
+     two-option selector. Use `neuro_update_plan` to persist any direct plan
+     edits. Do not call `neuro_code` until plan approval is recorded.
 
 5. **Code**
    - Tool: `neuro_code`
@@ -265,6 +270,30 @@ decision-relevant point.
      limitations/confidence.
    - Use: final claims must be grounded in validation, statistics, data
      artifacts, and image analyses when available.
+
+### Post-Run Code Feedback
+
+After a workflow has produced code/artifacts/conclusions, users may ask for
+code changes. In that case, the main agent may inspect the generated code and
+prepare a revision, but it must not directly overwrite code or execute the
+revision.
+
+Use this gated flow:
+
+1. Read the relevant generated code artifact from `state.artifacts`.
+2. Prepare the full updated code content in memory.
+3. Call `neuro_propose_code_update` with the target `code_path`,
+   `updated_code`, and a short summary. This writes a pending proposal and a
+   diff under `pending_code_edits/`; it does not modify the active code.
+4. Call `neuro_review_code_update` to show the diff and the native two-option
+   selector:
+   - `Yes, apply and run`
+   - `No, and tell NeuroScientist what to do differently`
+5. If the user approves, `neuro_review_code_update` applies the code and returns
+   `approved_for_execution=true`. Only then may you run the updated script and
+   rerun validation/conclusion as needed.
+6. If the user gives feedback, revise the proposal and repeat the same gated
+   diff review. Do not execute unapproved pending code.
 
 ### Repair Policy
 
