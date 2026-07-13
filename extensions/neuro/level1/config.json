@@ -11,7 +11,9 @@
       "relevance_threshold": 0.3,
       "temperature": 1.0,
       "rag_top_k": 2,
-      "extra_skill_dirs": ["library/skills/from_expert"]
+      "extra_skill_dirs": [
+        "library/skills/from_expert"
+      ]
     }
   },
   "workflow": {
@@ -37,30 +39,34 @@
   },
   "agents": {
     "level1": {
-      "provider": "anthropic",
+      "provider": "neuro-proxy",
       "model": "claude-opus-4-7",
       "thinking": "high",
       "timeout_seconds": 5400
     },
     "level2": {
-      "provider": "anthropic",
+      "provider": "neuro-proxy",
       "model": "claude-opus-4-7",
       "thinking": "high",
       "timeout_seconds": 3600
     },
     "level1_default": {
-      "provider": "anthropic",
-      "model": "claude-opus-4-7",
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
       "thinking": "high",
       "timeout_seconds": 300
     },
     "level2_default": {
-      "provider": "anthropic",
-      "model": "claude-opus-4-7",
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
       "thinking": "high",
       "timeout_seconds": 300
     },
     "level1_deep_research": {
+      "provider": "neuro-proxy",
+      "model": "claude-opus-4-7",
+      "thinking": "high",
+      "timeout_seconds": 600,
       "rag": {
         "enable": true,
         "top_k": 4,
@@ -69,22 +75,46 @@
         "source_char_limit": 5000
       }
     },
-    "level1_plan": {},
+    "level1_plan": {
+      "provider": "neuro-proxy",
+      "model": "claude-opus-4-7",
+      "thinking": "high",
+      "timeout_seconds": 300
+    },
     "level1_code": {
-      "vision": true,
-      "timeout_seconds": 1800
+      "provider": "neuro-proxy",
+      "model": "claude-opus-4-7",
+      "thinking": "high",
+      "timeout_seconds": 1800,
+      "vision": true
     },
     "level1_validate": {
+      "provider": "neuro-proxy",
+      "model": "claude-opus-4-7",
+      "thinking": "high",
+      "timeout_seconds": 300,
       "vision": true
     },
     "level1_refine_image": {
-      "vision": true,
-      "timeout_seconds": 1200
-    },
-    "level1_analyze_image": {
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
+      "thinking": "high",
+      "timeout_seconds": 1200,
       "vision": true
     },
-    "level1_conclude": {},
+    "level1_analyze_image": {
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
+      "thinking": "high",
+      "timeout_seconds": 300,
+      "vision": true
+    },
+    "level1_conclude": {
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
+      "thinking": "high",
+      "timeout_seconds": 300
+    },
     "level1_save_skill": {},
     "level2_subquestion": {},
     "level2_subquestion_review": {},
