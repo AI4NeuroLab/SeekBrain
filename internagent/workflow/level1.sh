@@ -22,7 +22,12 @@ if [[ -f "${ROOT_DIR}/.env" ]]; then
   source "${ROOT_DIR}/.env"
   set +a
 fi
-export PI_CODING_AGENT_DIR="${ROOT_DIR}/.pi/agent"
+# Respect an inherited PI_CODING_AGENT_DIR (set by run_neuro.sh / the spawning
+# level-2 process, pointing at where setup_api.sh registered the providers).
+# Only default to project-local .pi/agent when unset — unconditionally forcing
+# it here loaded a models.json without neuro-proxy and level-1 spawns failed
+# with 'Unknown provider "neuro-proxy"'.
+export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-${ROOT_DIR}/.pi/agent}"
 MAIN_AGENT="level1"
 AGENT_CONFIG_PY="${ROOT_DIR}/internagent/workflow/agent_config.py"
 LEVEL1_EXTENSION_DIR="${ROOT_DIR}/extensions/neuro/level1"

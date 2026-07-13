@@ -1076,7 +1076,7 @@ function spawnLevel1(args: {
 
     const child = spawn(scriptPath, cmdArgs, {
       cwd: args.rootDir,
-      env: { ...process.env, PI_CODING_AGENT_DIR: join(args.rootDir, ".pi", "agent") },
+      env: { ...process.env, PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR || join(args.rootDir, ".pi", "agent") },
       stdio: ["ignore", "pipe", "pipe"],
     });
 

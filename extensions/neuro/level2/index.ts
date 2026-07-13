@@ -1120,7 +1120,11 @@ function spawnLevel1(args: {
 
     const child = spawn(scriptPath, cmdArgs, {
       cwd: args.rootDir,
-      env: { ...process.env, PI_CODING_AGENT_DIR: join(args.rootDir, ".pi", "agent") },
+      // Inherit the parent session's agent dir (where setup_api.sh registered the
+      // providers, e.g. neuro-proxy). Only fall back to project-local .pi/agent
+      // when unset — hardcoding it here loaded a models.json without the provider
+      // and the spawned level-1 died with 'Unknown provider "neuro-proxy"'.
+      env: { ...process.env, PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR || join(args.rootDir, ".pi", "agent") },
       stdio: ["ignore", "pipe", "pipe"],
     });
 
