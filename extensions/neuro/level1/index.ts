@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, watch, type FSWatcher } from "node:fs";
 import { appendFile, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 type Json = Record<string, any>;
@@ -1181,7 +1182,10 @@ async function getSharedCodingSdk() {
   const cwd = WORKFLOW_ROOT || process.cwd();
   await ensureProcessEnvFromDotenv(cwd);
   sharedCodingSdk = await import("@earendil-works/pi-coding-agent");
-  const agentDir = process.env.PI_CODING_AGENT_DIR || resolve(cwd, ".pi", "agent");
+  // Default to pi's real global agent dir (~/.pi/agent), NOT <project>/.pi/agent —
+  // otherwise the subagent model registry is empty and resolveModel falls back to
+  // an unavailable default model. PI_CODING_AGENT_DIR overrides when set.
+  const agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
   sharedAuthStorage = sharedCodingSdk.AuthStorage?.create?.(join(agentDir, "auth.json"));
   sharedModelRegistry = sharedCodingSdk.ModelRegistry?.create?.(sharedAuthStorage, join(agentDir, "models.json"));
   return { sdk: sharedCodingSdk, authStorage: sharedAuthStorage, modelRegistry: sharedModelRegistry };
@@ -1786,7 +1790,7 @@ async function runSubagent(options: {
     const modelOptions = await resolveModel(options.agentConfig || {});
     const activeTools = [...new Set([...(options.tools || []), options.finalizeTool])];
     const timeoutSeconds = agentTimeoutSeconds(options.agentConfig || {});
-    const piAgentDir = process.env.PI_CODING_AGENT_DIR || resolve(WORKFLOW_ROOT || process.cwd(), ".pi", "agent");
+    const piAgentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
     const { session } = await createAgentSession({
       cwd: options.runDir,
       agentDir: piAgentDir,
