@@ -1,0 +1,68 @@
+{
+  "paths": {},
+  "modules": {
+    "targeted_skill": {
+      "skill_dir": "library/skills/trajectory",
+      "generated_skill_output_dir": "library/skills/from_rag",
+      "skill_enable": true,
+      "generate_skill_enable": true,
+      "model": "claude-opus-4-7",
+      "top_k": 1,
+      "relevance_threshold": 0.3,
+      "temperature": 1.0,
+      "rag_top_k": 2,
+      "extra_skill_dirs": [
+        "library/skills/from_expert"
+      ]
+    }
+  },
+  "workflow": {
+    "debug_disk_writes": true,
+    "level2": {
+      "paper_report_vision": true,
+      "report_lint": true,
+      "report_review": false,
+      "export_docx": true,
+      "export_pdf": true
+    }
+  },
+  "agents": {
+    "level2": {
+      "provider": "neuro-proxy",
+      "model": "claude-opus-4-7",
+      "thinking": "high",
+      "timeout_seconds": 3600
+    },
+    "level2_default": {
+      "provider": "neuro-proxy",
+      "model": "gemini-3.1-pro-preview",
+      "thinking": "high",
+      "timeout_seconds": 300
+    },
+    "level2_subquestion": {},
+    "level2_subquestion_review": {},
+    "level2_method_development": {},
+    "level2_method_review": {},
+    "level2_subagent_conclusion": {},
+    "level2_subagent_conclusion_review": {},
+    "level2_question_conclusion": {},
+    "level2_paper_report": {
+      "vision": true
+    }
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "id": "gemini-3.1-pro-preview",
+      "name": "Gemini 3.1 Pro Preview",
+      "reasoning": true,
+      "vision": true,
+      "context_window": 1000000,
+      "max_tokens": 8192,
+      "cost_input": 2.0,
+      "cost_output": 12.0,
+      "cost_cache_read": 0,
+      "cost_cache_write": 0
+    }
+  ]
+}

@@ -48,6 +48,18 @@ workflow:
                 code: false
                 validate: false
                 conclude: false
+    level2:
+        # Show the paper-report subagent the referenced figure images so it writes
+        # accurate panel-level legends (requires agents.level2_paper_report.vision: true).
+        paper_report_vision: true
+        # Deterministic lint: every key claim must cite a valid Figure/panel.
+        report_lint: true
+        # Optional LLM report reviewer (off by default).
+        report_review: false
+        # Export the final report to DOCX/PDF (best-effort; skipped with a warning
+        # when no converter engine is available — paper_report.md is always written).
+        export_docx: true
+        export_pdf: true
 
 agents:
     # Main Pi orchestrators.
@@ -143,7 +155,9 @@ agents:
     level2_subagent_conclusion: {}
     level2_subagent_conclusion_review: {}
     level2_question_conclusion: {}
-    level2_paper_report: {}
+    # Vision on: the report agent is shown the figures to write panel legends.
+    level2_paper_report:
+        vision: true
 
 # Extra or override models for built-in Anthropic/OpenAI-compatible providers.
 # Provider base URLs and API keys come from .env.

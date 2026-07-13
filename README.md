@@ -11,6 +11,13 @@ All tooling is installed **locally inside the project** . Run the installer once
 This downloads **Node.js v24** and the `@earendil-works/pi-coding-agent` package into `.tools/`.
 
 
+Export report as `pdf` or `docx`:
+
+```bash
+sudo apt update
+sudo apt install -y pandoc
+```
+
 ---
 
 ## 2. Configure the third-party base URL

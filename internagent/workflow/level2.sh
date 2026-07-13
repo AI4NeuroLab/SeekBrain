@@ -58,7 +58,7 @@ PI_RESOURCE_ARGS=(
   --extension "${LEVEL2_EXTENSION_DIR}/index.ts"
   --no-prompt-templates
   --prompt-template "${PROMPT_DIR}/entry.md"
-  --tools "read,bash,edit,write,neuro_l2_ping,neuro_l2_start_run,neuro_l2_subquestion,neuro_l2_subquestion_review,neuro_l2_method_development,neuro_l2_method_review,neuro_l2_run_level1,neuro_l2_subagent_conclusion,neuro_l2_subagent_conclusion_review,neuro_l2_question_conclusion,neuro_l2_paper_report"
+  --tools "read,bash,edit,write,neuro_l2_ping,neuro_l2_start_run,neuro_l2_subquestion,neuro_l2_subquestion_review,neuro_l2_method_development,neuro_l2_method_review,neuro_l2_run_level1,neuro_l2_subagent_conclusion,neuro_l2_subagent_conclusion_review,neuro_l2_question_conclusion,neuro_l2_paper_report,neuro_l2_export_report"
 )
 
 QUESTION=""

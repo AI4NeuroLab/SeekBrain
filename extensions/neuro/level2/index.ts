@@ -18,7 +18,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { appendFile, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 type Json = Record<string, any>;
 
@@ -44,6 +44,31 @@ function debugDiskWritesEnabled(): boolean {
   return mergedConfig.workflow?.debug_disk_writes === true;
 }
 
+// Level-2 workflow flags. Mirrors level1WorkflowConfig (extensions/neuro/level1
+// /index.ts): default-ON via `!== false`, except report_review which is opt-in.
+function level2WorkflowConfig(config: Json) {
+  const c = config.workflow?.level2 || {};
+  return {
+    paper_report_vision: c.paper_report_vision !== false,
+    report_lint: c.report_lint !== false,
+    report_review: c.report_review === true,
+    export_docx: c.export_docx !== false,
+    export_pdf: c.export_pdf !== false,
+  };
+}
+
+function skippedByConfigL2(runId: string | undefined, tool: string, key: string) {
+  return content({
+    ok: true,
+    skipped: true,
+    skipped_by_config: true,
+    reason: "disabled_by_user_config",
+    message: `${tool} is disabled by user configuration workflow.level2.${key}; this is not a tool failure.`,
+    run_id: runId,
+    config_key: `workflow.level2.${key}`,
+  });
+}
+
 async function syncWorkflowWritePolicy(cwd: string) {
   mergedConfig = await loadConfig(cwd);
 }
@@ -57,6 +82,58 @@ function content(details: Json, text?: string) {
     content: [{ type: "text", text: text ?? JSON.stringify(details, null, 2) }],
     details,
   };
+}
+
+// Vision image helpers — mirror of extensions/neuro/level1/index.ts so the
+// paper-report subagent can be shown the figures it references.
+function imageMediaType(path: string) {
+  const suffix = extname(path).toLowerCase();
+  if (suffix === ".jpg" || suffix === ".jpeg") return "image/jpeg";
+  if (suffix === ".webp") return "image/webp";
+  return "image/png";
+}
+
+async function loadImageForPrompt(path: string) {
+  const data = await readFile(path);
+  return {
+    type: "image",
+    mimeType: imageMediaType(path),
+    data: data.toString("base64"),
+  };
+}
+
+async function loadVisionImages(paths: string[]) {
+  const images: Json[] = [];
+  const warnings: string[] = [];
+  for (const path of paths.filter(Boolean)) {
+    try {
+      images.push(await loadImageForPrompt(path));
+    } catch (error) {
+      warnings.push(`failed to load image '${path}': ${String(error)}`);
+    }
+  }
+  return { images, warnings };
+}
+
+// Bounded selection of figure images to attach to the report subagent. Keeps the
+// catalog order (sq -> plan -> F) so the attached-image index maps to Figure N.
+const MAX_REPORT_VISION_IMAGES = 12;
+
+function selectReportVisionFigures(figureCatalog: any[], cap = MAX_REPORT_VISION_IMAGES) {
+  const seen = new Set<string>();
+  const selected: { figure_id: string; figure_number: number; absolute_path: string }[] = [];
+  for (const entry of figureCatalog || []) {
+    const abs = entry?.absolute_path;
+    if (!abs || seen.has(abs) || !existsSync(abs)) continue;
+    seen.add(abs);
+    selected.push({
+      figure_id: entry.figure_id,
+      figure_number: entry.figure_number,
+      absolute_path: abs,
+    });
+    if (selected.length >= cap) break;
+  }
+  return selected;
 }
 
 const LOG_TEXT_LIMIT = 4000;
@@ -612,6 +689,62 @@ async function loadConfig(cwd: string) {
   }
 }
 
+// Spawn a python3 helper that prints one JSON object to stdout. Mirrors the
+// spawnLevel1 lifecycle (stderr tail, timeout -> SIGTERM -> SIGKILL, AbortSignal)
+// and the loadMergedConfigFromPython stdout-capture pattern.
+async function spawnPythonJson(
+  rootDir: string,
+  scriptRel: string,
+  scriptArgs: string[],
+  opts: { cwd?: string; timeoutSeconds?: number; signal?: AbortSignal } = {},
+): Promise<{ ok: boolean; json?: Json; stderr: string; exitCode: number | null; error?: string }> {
+  const scriptPath = resolve(rootDir, scriptRel);
+  return await new Promise((resolvePromise) => {
+    const child = spawn("python3", [scriptPath, ...scriptArgs], {
+      cwd: opts.cwd || rootDir,
+      env: { ...process.env, PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR || join(rootDir, ".pi", "agent") },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let done = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    let killHandle: ReturnType<typeof setTimeout> | undefined;
+    const finish = (result: { ok: boolean; json?: Json; stderr: string; exitCode: number | null; error?: string }) => {
+      if (done) return;
+      done = true;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (killHandle) clearTimeout(killHandle);
+      if (opts.signal) opts.signal.removeEventListener("abort", onAbort);
+      resolvePromise(result);
+    };
+    const onAbort = () => {
+      try { child.kill("SIGTERM"); } catch { /* ignore */ }
+      finish({ ok: false, stderr, exitCode: null, error: "aborted by caller" });
+    };
+    child.stdout.on("data", (chunk) => { stdout += String(chunk); });
+    child.stderr.on("data", (chunk) => { stderr = (stderr + String(chunk)).slice(-12000); });
+    child.on("error", (error) => finish({ ok: false, stderr, exitCode: null, error: String(error) }));
+    child.on("close", (code) => {
+      if (code !== 0) { finish({ ok: false, stderr, exitCode: code, error: `python3 ${scriptRel} exited ${code}` }); return; }
+      try { finish({ ok: true, json: JSON.parse(stdout), stderr, exitCode: code }); }
+      catch (error) { finish({ ok: false, stderr, exitCode: code, error: `could not parse helper JSON: ${String(error)}` }); }
+    });
+    const timeoutSeconds = Number(opts.timeoutSeconds || 0);
+    if (timeoutSeconds > 0) {
+      timeoutHandle = setTimeout(() => {
+        try { child.kill("SIGTERM"); } catch { /* ignore */ }
+        killHandle = setTimeout(() => { try { child.kill("SIGKILL"); } catch { /* ignore */ } }, 10000);
+        finish({ ok: false, stderr, exitCode: null, error: `python3 ${scriptRel} timed out after ${timeoutSeconds}s` });
+      }, timeoutSeconds * 1000);
+    }
+    if (opts.signal) {
+      if (opts.signal.aborted) onAbort();
+      else opts.signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+}
+
 function subDefaultKey(agentName: string) {
   return agentName.startsWith("level2_") ? "level2_default" : "level1_default";
 }
@@ -946,6 +1079,7 @@ async function runSubagent(options: {
   prompt: string;
   agentConfig?: Json;
   tools?: string[];
+  images?: Json[];
   signal?: AbortSignal;
 }): Promise<any> {
   const agentDir = join(options.runDir, "subagents", options.agentName);
@@ -1019,7 +1153,9 @@ async function runSubagent(options: {
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
     let signalAbort: (() => void) | undefined;
     try {
-      const promptPromise = session.prompt(options.prompt);
+      const promptPromise = options.images?.length
+        ? session.prompt(options.prompt, { images: options.images })
+        : session.prompt(options.prompt);
       const guards: Promise<never>[] = [];
       if (timeoutSeconds > 0) {
         guards.push(new Promise((_, reject) => {
@@ -1332,7 +1468,87 @@ function buildEvidenceBundle(runDir: string, subquestionConclusions: any[], plan
     };
   });
   const evidenceNotes = Array.from(new Set(evidenceCatalog.flatMap((item) => item.evidence_notes || [])));
-  return { figure_catalog: figureCatalog, evidence_catalog: evidenceCatalog, subquestion_items: subquestionItems, evidence_notes: evidenceNotes };
+  // Deterministic human numbering (Figure 1..N) in catalog order, plus an optional
+  // per-figure excerpt from any upstream Level-1 image analysis matched by basename.
+  const allImageAnalyses = evidenceCatalog.flatMap((item) => item.image_analyses || []);
+  figureCatalog.forEach((entry, index) => {
+    entry.figure_number = index + 1;
+    entry.human_label = `Figure ${index + 1}`;
+    const match = allImageAnalyses.find((ia) => {
+      const p = ia?.path || ia?.figure_path || "";
+      return p && basename(String(p)) === basename(entry.absolute_path);
+    });
+    const excerpt = match?.image_analysis_text || match?.summary || match?.analysis_text || "";
+    if (excerpt) entry.image_analysis_excerpt = truncateText(String(excerpt), 800);
+  });
+  const figureIndex = figureCatalog.map((entry) => ({
+    figure_id: entry.figure_id,
+    figure_number: entry.figure_number,
+    human_label: entry.human_label,
+    relative_path: entry.relative_path,
+  }));
+  return {
+    figure_catalog: figureCatalog,
+    evidence_catalog: evidenceCatalog,
+    subquestion_items: subquestionItems,
+    evidence_notes: evidenceNotes,
+    figure_index: figureIndex,
+  };
+}
+
+// Deterministic, warn-only traceability lint for the paper report. Never throws;
+// returns { ok, warnings } so the report tool can surface issues without failing.
+function lintPaperReport(markdown: string, figureCatalog: any[], figureLegends: any[], keyClaims: any[] = []) {
+  const warnings: string[] = [];
+  const md = String(markdown || "");
+  const numbers = new Set((figureCatalog || []).map((e) => Number(e.figure_number)).filter((n) => Number.isFinite(n)));
+  const ids = new Set((figureCatalog || []).map((e) => e.figure_id).filter(Boolean));
+
+  // Cited "Figure N" that do not exist in the catalog.
+  for (const m of md.matchAll(/\bFig(?:ure)?\s+(\d+)/gi)) {
+    const n = Number(m[1]);
+    if (!numbers.has(n)) warnings.push(`cites "Figure ${n}" which is not in the figure catalog`);
+  }
+  // Cited machine ids that do not exist.
+  for (const m of md.matchAll(/Fig S\d+-P\d+-F\d+/g)) {
+    if (!ids.has(m[0])) warnings.push(`cites figure_id "${m[0]}" which is not in the figure catalog`);
+  }
+  // Every catalog figure should be referenced at least once (by number, id, or embed path).
+  const embedPaths = new Set(Array.from(md.matchAll(/\]\(([^)]+)\)/g)).map((m) => m[1]));
+  for (const e of figureCatalog || []) {
+    const byNumber = new RegExp(`\\bFig(?:ure)?\\s+${e.figure_number}\\b`).test(md);
+    const byId = e.figure_id && md.includes(e.figure_id);
+    const byEmbed = e.relative_path && (embedPaths.has(e.relative_path) || md.includes(e.relative_path));
+    if (!byNumber && !byId && !byEmbed) warnings.push(`figure ${e.human_label || e.figure_id} is never referenced in the report body`);
+  }
+  // Legends map to a real figure and carry ≥1 panel.
+  const legendPanels = new Map<number, Set<string>>();
+  for (const lg of figureLegends || []) {
+    if (lg?.figure_id && !ids.has(lg.figure_id)) warnings.push(`figure_legend references unknown figure_id "${lg.figure_id}"`);
+    if (!Array.isArray(lg?.panels) || lg.panels.length === 0) warnings.push(`figure_legend for "${lg?.figure_id || lg?.figure_number}" has no panels`);
+    if (Number.isFinite(Number(lg?.figure_number))) {
+      legendPanels.set(Number(lg.figure_number), new Set((lg.panels || []).map((p: any) => String(p?.label || "").toUpperCase())));
+    }
+  }
+  // In-body "(Figure N, panel X)" whose panel is not declared in that figure's legend.
+  for (const m of md.matchAll(/\(Figure\s+(\d+),\s*panel\s+([A-Za-z0-9]+)\)/gi)) {
+    const n = Number(m[1]);
+    const label = String(m[2]).toUpperCase();
+    const panels = legendPanels.get(n);
+    if (panels && panels.size && !panels.has(label)) warnings.push(`cites (Figure ${n}, panel ${m[2]}) but that panel is not in the figure's legend`);
+  }
+  // Domain convention: entities should be 1-based, not 0-based.
+  const zeroBased = md.match(/\b(fish|trial|neuron|session|subject|mouse|cell)\s+0\b/i);
+  if (zeroBased) warnings.push(`0-based entity numbering detected ("${zeroBased[0]}"); use 1-based (e.g. fish 1)`);
+  // Structured claims must be traceable.
+  (keyClaims || []).forEach((c, i) => {
+    if (c && typeof c === "object") {
+      if (!c.figure_id) warnings.push(`key_claims[${i}] is missing figure_id`);
+      if (!c.data_source) warnings.push(`key_claims[${i}] is missing data_source`);
+    }
+  });
+
+  return { ok: warnings.length === 0, warnings };
 }
 
 // ---------------------------------------------------------------------------
@@ -2249,10 +2465,25 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfig(ctx.cwd);
+      const wf = level2WorkflowConfig(config);
+      const agentConfig = pickAgentConfig(config, "level2_paper_report");
       const run = await resolveRun(ctx.cwd, params.run_id);
       const rolePrompt = await readPrompt("paper_report");
       const evidenceBundle = buildEvidenceBundle(run.runDir, params.subquestion_conclusions, params.plan_results || []);
       const questionConclusion = params.question_conclusion || run.state.question_conclusion || {};
+
+      // Vision: show the report agent the referenced figures so it can identify
+      // panels (A/B/C) and author accurate legends. Bounded + degrades gracefully.
+      const visionOn = wf.paper_report_vision && agentConfig.vision === true;
+      const selected = visionOn ? selectReportVisionFigures(evidenceBundle.figure_catalog) : [];
+      const vision = selected.length ? await loadVisionImages(selected.map((s) => s.absolute_path)) : { images: [], warnings: [] };
+      const imageOrderBlock = vision.images.length
+        ? `Attached figure images (in order):\n${selected
+            .slice(0, vision.images.length)
+            .map((s, i) => `[${i + 1}] Figure ${s.figure_number} = ${s.figure_id}`)
+            .join("\n")}\nRead each attached image, identify its panels, and write the legend from what you see.`
+        : "No figure images are attached; author legends from the text evidence and image_analysis_excerpt only.";
+
       const prompt = finalizationPrompt("paper report", "finalize_paper_report", rolePrompt, [
         `Scientific goal:\n${params.scientific_goal}`,
         `Main question:\n${params.question}`,
@@ -2261,11 +2492,14 @@ export default function (pi: ExtensionAPI) {
         `Subquestion conclusions:\n${JSON.stringify(params.subquestion_conclusions, null, 2)}`,
         `Subquestion items with evidence:\n${JSON.stringify(evidenceBundle.subquestion_items, null, 2)}`,
         `Figure catalog:\n${JSON.stringify(evidenceBundle.figure_catalog, null, 2)}`,
+        `Figure index (human numbering — cite figures in prose as "Figure N"):\n${JSON.stringify(evidenceBundle.figure_index, null, 2)}`,
         `Evidence catalog:\n${JSON.stringify(evidenceBundle.evidence_catalog, null, 2)}`,
         `Evidence notes:\n${JSON.stringify(evidenceBundle.evidence_notes, null, 2)}`,
+        imageOrderBlock,
         additionalContextBlock(params.additional_context),
-        "Finalize with: { paper_report_markdown: string, title: string, abstract: string, sections: [{heading, body}], key_claims?: string[], limitations?: string[] }.",
+        "Finalize with: { paper_report_markdown: string, title: string, abstract: string, sections: [{heading, body}], figure_legends: [{figure_id, figure_number, title, caption, panels: [{label, description}]}], key_claims: [{claim, figure_id, panel?, data_source, reasoning}], limitations?: string[] }.",
       ].join("\n\n"));
+
       const sub = await runSubagent({
         runDir: run.runDir,
         agentName: "paper_report",
@@ -2278,20 +2512,39 @@ export default function (pi: ExtensionAPI) {
             heading: Type.String(),
             body: Type.String(),
           })),
-          key_claims: Type.Optional(Type.Array(Type.String())),
+          figure_legends: Type.Optional(Type.Array(Type.Object({
+            figure_id: Type.String(),
+            figure_number: Type.Optional(Type.Number()),
+            title: Type.String(),
+            caption: Type.String(),
+            panels: Type.Array(Type.Object({
+              label: Type.String(),
+              description: Type.String(),
+            })),
+          }))),
+          // Objects {claim, figure_id, panel?, data_source, reasoning}; Type.Any keeps
+          // backward compatibility with the previous string[] shape.
+          key_claims: Type.Optional(Type.Array(Type.Any())),
           limitations: Type.Optional(Type.Array(Type.String())),
         }),
         prompt,
-        agentConfig: pickAgentConfig(config, "level2_paper_report"),
+        agentConfig,
         tools: [],
+        images: vision.images,
         signal,
       });
+
+      let reportLint: Json | undefined;
       if (sub.ok) {
         const mdPath = join(run.runDir, "paper_report.md");
         await writeText(mdPath, sub.result.paper_report_markdown);
+        if (wf.report_lint) {
+          reportLint = lintPaperReport(sub.result.paper_report_markdown, evidenceBundle.figure_catalog, sub.result.figure_legends || [], sub.result.key_claims || []);
+        }
         await updateState(run, {
           paper_report: sub.result,
           evidence_bundle: evidenceBundle,
+          report_lint: reportLint,
         });
       }
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_l2_paper_report", ok: sub.ok });
@@ -2301,14 +2554,67 @@ export default function (pi: ExtensionAPI) {
         error: sub.error,
         paper_report_path: sub.ok ? join(run.runDir, "paper_report.md") : undefined,
         output_path: sub.output_path,
+        vision: { enabled: visionOn, images_attached: vision.images.length, warnings: vision.warnings },
+        report_lint: reportLint,
+        next_step: sub.ok ? "Call neuro_l2_export_report with this run_id to produce DOCX/PDF." : undefined,
         result: sub.result ? {
           title: sub.result.title,
           abstract: sub.result.abstract,
           sections: sub.result.sections,
+          figure_legends: sub.result.figure_legends,
           key_claims: sub.result.key_claims,
           limitations: sub.result.limitations,
         } : undefined,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
+      });
+    },
+  });
+
+  // -- Report export (DOCX / PDF) ------------------------------------------
+
+  pi.registerTool({
+    name: "neuro_l2_export_report",
+    label: "Neuro L2 Export Report",
+    description: "Export the final paper_report.md to DOCX and PDF. Best-effort and portable: a format is skipped with a warning when no converter engine is available on the host. The markdown stays the canonical output; a skip is never a failure.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      formats: Type.Optional(Type.Array(Type.String())),
+    }),
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      const config = await loadConfig(ctx.cwd);
+      const wf = level2WorkflowConfig(config);
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const requested = (params.formats && params.formats.length ? params.formats : ["docx", "pdf"])
+        .map((f) => String(f).toLowerCase())
+        .filter((f) => (f === "docx" && wf.export_docx) || (f === "pdf" && wf.export_pdf));
+      if (!requested.length) {
+        return skippedByConfigL2(run.runId, "neuro_l2_export_report", "export_docx/export_pdf");
+      }
+      const mdPath = join(run.runDir, "paper_report.md");
+      if (!existsSync(mdPath)) {
+        return content({ ok: false, run_id: run.runId, error: "paper_report.md not found; run neuro_l2_paper_report first.", md_path: mdPath });
+      }
+      const result = await spawnPythonJson(
+        ctx.cwd,
+        "internagent/workflow/export_report.py",
+        ["--md", mdPath, "--outdir", run.runDir, "--basename", "paper_report", "--formats", requested.join(",")],
+        { cwd: run.runDir, timeoutSeconds: 600, signal },
+      );
+      const payload = result.json || {};
+      const outputs = payload.outputs || {};
+      await updateState(run, { report_exports: payload });
+      await appendStateEntry(pi, { run_id: run.runId, event: "neuro_l2_export_report", ok: result.ok });
+      return content({
+        run_id: run.runId,
+        ok: result.ok,
+        error: result.ok ? undefined : (payload.error || result.error),
+        md_path: outputs.md || mdPath,
+        docx_path: outputs.docx,
+        pdf_path: outputs.pdf,
+        engines: payload.engines,
+        skipped: payload.skipped,
+        warnings: payload.warnings,
+        stderr_tail: result.ok ? undefined : result.stderr,
       });
     },
   });

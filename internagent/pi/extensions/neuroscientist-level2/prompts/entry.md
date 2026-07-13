@@ -114,8 +114,14 @@ decision-relevant point.
 
 6. **Paper report** — call `neuro_l2_paper_report` with the subquestion
    conclusions, `question_conclusion`, and all plan results. The extension
-   builds the evidence/figure catalogs internally and writes
-   `{run_dir}/paper_report.md`.
+   builds the evidence/figure catalogs internally, shows the figures to the
+   report agent so it can write panel-level legends, and writes
+   `{run_dir}/paper_report.md`. Check the returned `report_lint.warnings`.
+
+7. **Export report** — call `neuro_l2_export_report` with the same `run_id` to
+   produce `{run_dir}/paper_report.docx` and `{run_dir}/paper_report.pdf`. This
+   is best-effort: a format is skipped with a warning when the host lacks a
+   converter engine — that is NOT a failure, the Markdown remains authoritative.
 
 ## Error handling
 
@@ -128,10 +134,12 @@ decision-relevant point.
 
 ## Final report
 
-After step 6, report to the user:
+After step 7, report to the user:
 - The `run_id` and run directory path.
 - Subquestion count and per-subquestion plan counts (success/failed).
 - Whether subquestion review and method reviews passed, and how many rounds.
 - The question conclusion.
-- The paper report path (`{run_dir}/paper_report.md`).
-- Any warnings (failed plans, review rejections, low confidence).
+- The report paths: `{run_dir}/paper_report.md`, and `paper_report.docx` /
+  `paper_report.pdf` when produced (note any export formats that were skipped).
+- Any warnings (failed plans, review rejections, low confidence, report_lint
+  warnings, export skips).

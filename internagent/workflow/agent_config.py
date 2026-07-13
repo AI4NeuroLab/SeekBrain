@@ -38,6 +38,19 @@ WORKFLOW_DEFAULTS: Dict[str, Any] = {
             },
         },
     },
+    "level2": {
+        # Give the paper-report subagent vision on the referenced figures so it can
+        # author accurate panel-level legends.
+        "paper_report_vision": True,
+        # Deterministic post-check that report claims cite valid figures/panels.
+        "report_lint": True,
+        # Optional LLM report reviewer (off by default; lint covers the must-haves).
+        "report_review": False,
+        # Best-effort DOCX/PDF export of the final report (degrades gracefully when
+        # no converter engine is available on the host).
+        "export_docx": True,
+        "export_pdf": True,
+    },
 }
 
 

@@ -83,6 +83,7 @@ const LEVEL2: WorkflowDef = {
 		neuro_l2_subagent_conclusion_review: "Evidence",
 		neuro_l2_question_conclusion: "Evidence",
 		neuro_l2_paper_report: "Report",
+		neuro_l2_export_report: "Report",
 	},
 };
 
