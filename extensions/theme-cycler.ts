@@ -2,7 +2,7 @@
  * Theme Cycler — Keyboard shortcuts to cycle through available themes
  *
  * Shortcuts:
- *   Ctrl+X          — Cycle theme forward
+ *   Ctrl+Shift+X    — Cycle theme forward
  *   Ctrl+Q          — Cycle theme backward
  *
  * Commands:
@@ -106,7 +106,7 @@ export default function (pi: ExtensionAPI) {
 
 	// --- Shortcuts ---
 
-	pi.registerShortcut("ctrl+x", {
+	pi.registerShortcut("ctrl+shift+x", {
 		description: "Cycle theme forward",
 		handler: async (ctx) => {
 			currentCtx = ctx;

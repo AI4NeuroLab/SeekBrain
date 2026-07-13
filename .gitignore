@@ -1,7 +1,8 @@
 # ── Dependencies / local toolchains (large, machine-specific) ──────────────
-# .tools/ = project-local Node v24 + pi install
+# .tools/ = project-local Node v24 + pi install (~2.4G); library/ ~6.4G
 node_modules/
 .tools/
+library/
 vendor/
 
 # ── Python ─────────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ __pycache__/
 .agents/
 
 # ── pi runtime state (keep shared config, ignore ephemeral) ──────────────────
+.pi/agent/
 .pi/agent-sessions/
 .pi/agent/auth.json
 .pi/neuroscientist-level1/tmp/

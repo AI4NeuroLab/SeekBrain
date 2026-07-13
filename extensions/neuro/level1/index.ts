@@ -1,10 +1,9 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, watch, type FSWatcher } from "node:fs";
 import { appendFile, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { availableParallelism, cpus, freemem, platform as osPlatform, totalmem } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 type Json = Record<string, any>;
@@ -20,12 +19,61 @@ const CONFIG_FILE = "config.yaml";
 
 let mergedConfig: Json = {};
 
+const USAGE_SUMMARY_DEBOUNCE_MS = 300;
+const usageSummaryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let sharedCodingSdk: any;
+let sharedAuthStorage: any;
+let sharedModelRegistry: any;
+let sharedAiSdk: any;
+
+
+// --- Config cache (A1) ---------------------------------------------------
+// loadConfig() spawns `python3 agent_config.py merged config.yaml`, which
+// costs 200-500ms per call. Every tool used to invoke it, so a full
+// workflow paid this cost 8-10 times. We cache the parsed config, invalidate
+// on config.yaml file changes (via fs.watch) with a TTL fallback, and
+// deduplicate concurrent loads with an in-flight promise.
+const CONFIG_CACHE_TTL_MS = 30_000;
+let configCache: Json | undefined;
+let configLoadedAt = 0;
+let configLoadedFromCwd: string | undefined;
+let configInflight: Promise<Json> | undefined;
+
+function invalidateConfigCache() {
+  configCache = undefined;
+  configLoadedAt = 0;
+  configLoadedFromCwd = undefined;
+  configInflight = undefined;
+}
+
+async function loadConfigCached(cwd: string): Promise<Json> {
+  const now = Date.now();
+  const fresh = configCache
+    && configLoadedFromCwd === cwd
+    && now - configLoadedAt < CONFIG_CACHE_TTL_MS;
+  if (fresh) return configCache!;
+  if (configInflight) return configInflight;
+  configInflight = (async () => {
+    try {
+      const next = await loadConfig(cwd);
+      configCache = next;
+      configLoadedAt = Date.now();
+      configLoadedFromCwd = cwd;
+      mergedConfig = next;
+      return next;
+    } finally {
+      configInflight = undefined;
+    }
+  })();
+  return configInflight;
+}
+
 function debugDiskWritesEnabled(): boolean {
   return mergedConfig.workflow?.debug_disk_writes === true;
 }
 
 async function syncWorkflowWritePolicy(cwd: string) {
-  mergedConfig = await loadConfig(cwd);
+  mergedConfig = await loadConfigCached(cwd);
 }
 
 function content(details: Json, text?: string) {
@@ -344,11 +392,38 @@ async function writeUsageSummary(runDir: string) {
   });
 }
 
+function scheduleUsageSummary(runDir: string) {
+  if (!debugDiskWritesEnabled()) return;
+  const existing = usageSummaryTimers.get(runDir);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    usageSummaryTimers.delete(runDir);
+    writeUsageSummary(runDir).catch(() => {
+      // Usage accounting must never break the workflow.
+    });
+  }, USAGE_SUMMARY_DEBOUNCE_MS);
+  usageSummaryTimers.set(runDir, timer);
+}
+
+async function flushUsageSummaries() {
+  const runDirs = [...usageSummaryTimers.keys()];
+  for (const runDir of runDirs) {
+    const timer = usageSummaryTimers.get(runDir);
+    if (timer) clearTimeout(timer);
+    usageSummaryTimers.delete(runDir);
+    try {
+      await writeUsageSummary(runDir);
+    } catch {
+      // Usage accounting must never break the workflow.
+    }
+  }
+}
+
 async function tryAppendUsageEntry(runDir: string | undefined, component: string, entry: Json) {
   if (!runDir) return;
   try {
     await appendUsageEntry(runDir, component, entry);
-    await writeUsageSummary(runDir);
+    scheduleUsageSummary(runDir);
   } catch {
     // Usage accounting must never break the workflow.
   }
@@ -490,9 +565,9 @@ async function loadMergedConfigFromPython(cwd: string): Promise<Json> {
 
 async function loadConfig(cwd: string) {
   try {
-    return JSON.parse(await readFile(BAKED_CONFIG_FILE, "utf8"));
+    return await loadMergedConfigFromPython(cwd);
   } catch {
-    return loadMergedConfigFromPython(cwd);
+    return JSON.parse(await readFile(BAKED_CONFIG_FILE, "utf8"));
   }
 }
 
@@ -508,7 +583,6 @@ function level1WorkflowConfig(config: Json) {
     targeted_skill_generate: boolValue("targeted_skill_generate"),
     image_refine: boolValue("image_refine"),
     image_analysis: boolValue("image_analysis"),
-    resource_sensing: boolValue("resource_sensing"),
     save_skill: boolValue("save_skill"),
     transparency: boolValue("transparency"),
     human_review: {
@@ -567,6 +641,50 @@ function humanFeedbackText(run: RunContext, stage: string) {
     .join("\n");
 }
 
+// --- Shared human-review writers (B2) -----------------------------------
+// Same shape as the neuro_approve_stage / neuro_record_feedback tools so
+// the inline approval overlay and the LLM-callable tools produce identical
+// state.human_reviews entries.
+async function recordApproval(run: RunContext, stage: string, notes?: string) {
+  const reviews = run.state.human_reviews || {};
+  const previous = reviews[stage] || {};
+  const nextEntry = {
+    ...previous,
+    status: "approved",
+    approved_at: new Date().toISOString(),
+    notes: notes || previous.notes || "",
+  };
+  await updateState(run, {
+    human_reviews: { ...reviews, [stage]: nextEntry },
+  });
+  return nextEntry;
+}
+
+async function recordFeedback(
+  run: RunContext,
+  stage: string,
+  feedback: string,
+  extra: { status?: string; source?: string } = {},
+) {
+  const reviews = run.state.human_reviews || {};
+  const previous = reviews[stage] || {};
+  const previousFeedback = Array.isArray(previous.feedback) ? previous.feedback : [];
+  const nextEntry: Json = {
+    ...previous,
+    status: extra.status || "changes_requested",
+    feedback: [
+      ...previousFeedback,
+      { at: new Date().toISOString(), text: feedback, source: extra.source || "tool" },
+    ],
+    updated_at: new Date().toISOString(),
+  };
+  delete nextEntry.approved_at;
+  await updateState(run, {
+    human_reviews: { ...reviews, [stage]: nextEntry },
+  });
+  return nextEntry;
+}
+
 function blockedByHumanReview(run: RunContext, stage: string, nextTool: string) {
   const entry = humanReviewEntry(run, stage);
   return content({
@@ -594,6 +712,15 @@ function parseEnv(text: string) {
     values[match[1]] = value;
   }
   return values;
+}
+
+async function ensureProcessEnvFromDotenv(cwd: string) {
+  const env = await loadEnv(cwd);
+  for (const [key, value] of Object.entries(env)) {
+    if (process.env[key] === undefined || process.env[key] === "") {
+      process.env[key] = value;
+    }
+  }
 }
 
 async function loadEnv(cwd: string) {
@@ -976,160 +1103,10 @@ async function updateState(run: RunContext, patch: Json) {
   return next;
 }
 
-// Resource-sensing layer
-const RESOURCE_SENSING_DEFAULTS = {
-  core_fraction: 0.9,
-  max_cores: null as number | null,
-  reserve_cores: 1,
-  blas_threads: "auto" as number | "auto",
-};
-
-function resourceSensingConfig(config: Json) {
-  const raw = (config.modules && config.modules.resource_sensing) || {};
-  const num = (v: any, d: number | null) => (typeof v === "number" && Number.isFinite(v) ? v : d);
-  return {
-    core_fraction: num(raw.core_fraction, RESOURCE_SENSING_DEFAULTS.core_fraction) as number,
-    max_cores: num(raw.max_cores, RESOURCE_SENSING_DEFAULTS.max_cores),
-    reserve_cores: num(raw.reserve_cores, RESOURCE_SENSING_DEFAULTS.reserve_cores) as number,
-    blas_threads:
-      typeof raw.blas_threads === "number" || raw.blas_threads === "auto"
-        ? raw.blas_threads
-        : RESOURCE_SENSING_DEFAULTS.blas_threads,
-  };
-}
-
-function detectSchedulerCores(): { cores: number | null; scheduler: string | null } {
-  const env = process.env;
-  const parse = (v?: string) => {
-    const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  };
-  const slurm = parse(env.SLURM_CPUS_PER_TASK) || parse(env.SLURM_CPUS_ON_NODE);
-  if (slurm) return { cores: slurm, scheduler: "slurm" };
-  const pbs = parse(env.PBS_NP) || parse(env.NCPUS);
-  if (pbs) return { cores: pbs, scheduler: "pbs" };
-  if (env.PJM_PROC_BY_NODE || env.PJMCMD_AVAILABLE || env.PJM_MPI_PROC) {
-    return { cores: parse(env.PJM_PROC_BY_NODE), scheduler: "pjm" };
-  }
-  return { cores: null, scheduler: null };
-}
-
-// Best-effort GPU probe
-async function detectGpuCount(): Promise<number> {
-  return await new Promise((resolvePromise) => {
-    try {
-      const child = spawn("nvidia-smi", ["-L"], { stdio: ["ignore", "pipe", "ignore"] });
-      let out = "";
-      const timer = setTimeout(() => {
-        try {
-          child.kill("SIGKILL");
-        } catch {}
-        resolvePromise(0);
-      }, 2000);
-      child.stdout.on("data", (c) => {
-        out += String(c);
-      });
-      child.on("error", () => {
-        clearTimeout(timer);
-        resolvePromise(0);
-      });
-      child.on("close", () => {
-        clearTimeout(timer);
-        resolvePromise(out.split(/\r?\n/).filter((l) => /^GPU \d+:/.test(l.trim())).length);
-      });
-    } catch {
-      resolvePromise(0);
-    }
-  });
-}
-
-const clampInt = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.floor(v)));
-
-async function detectResources(config: Json): Promise<Json> {
-  const opts = resourceSensingConfig(config);
-  let affinityCores = 1;
-  try {
-    // availableParallelism() honors Linux CPU affinity / cgroup pinning.
-    affinityCores = availableParallelism();
-  } catch {
-    affinityCores = cpus().length || 1;
-  }
-  const totalCores = cpus().length || affinityCores;
-  const sched = detectSchedulerCores();
-  const availCores = sched.cores && sched.cores > 0 ? Math.min(affinityCores, sched.cores) : affinityCores;
-
-  const budget =
-    opts.max_cores != null
-      ? Math.min(opts.max_cores, availCores)
-      : Math.floor(availCores * opts.core_fraction) - opts.reserve_cores;
-  const recommended = clampInt(budget, 1, availCores);
-  const blasThreads = opts.blas_threads === "auto" ? 1 : clampInt(opts.blas_threads, 1, availCores);
-  const gpuCount = await detectGpuCount();
-
-  return {
-    platform: osPlatform(),
-    n_cores_total: totalCores,
-    n_cores_available: availCores,
-    recommended_n_jobs: recommended,
-    blas_threads: blasThreads,
-    mem_total_gb: Math.round((totalmem() / 1e9) * 10) / 10,
-    mem_available_gb: Math.round((freemem() / 1e9) * 10) / 10,
-    gpu_count: gpuCount,
-    scheduler: sched.scheduler,
-    detected_at: new Date().toISOString(),
-  };
-}
-
-// Set thread-env defaults on the extension host process
-function applyThreadEnvDefaults(profile: Json) {
-  const blas = String(profile.blas_threads ?? 1);
-  const setIfUnset = (k: string, v: string) => {
-    if (!process.env[k]) process.env[k] = v;
-  };
-  setIfUnset("OMP_NUM_THREADS", blas);
-  setIfUnset("OPENBLAS_NUM_THREADS", blas);
-  setIfUnset("MKL_NUM_THREADS", blas);
-  setIfUnset("NUMEXPR_NUM_THREADS", blas);
-  setIfUnset("VECLIB_MAXIMUM_THREADS", blas);
-  process.env.NEURO_N_CORES = String(profile.recommended_n_jobs ?? 1);
-}
-
-function formatResourceProfile(profile: Json): string {
-  if (!profile || typeof profile !== "object") return "";
-  const gpu = Number(profile.gpu_count || 0);
-  return [
-    `- available_cpu_cores: ${profile.n_cores_available} (machine total ${profile.n_cores_total})`,
-    `- recommended_parallel_workers: ${profile.recommended_n_jobs} (also exported as env NEURO_N_CORES)`,
-    `- per_worker_blas_threads: ${profile.blas_threads} (OMP/MKL/OPENBLAS/NUMEXPR already set to this)`,
-    `- memory_available_gb: ${profile.mem_available_gb} (machine total ${profile.mem_total_gb})`,
-    `- gpu_count: ${gpu}${gpu > 0 ? " (GPU libs like torch/cupy may accelerate this)" : " (CPU-only node)"}`,
-    profile.scheduler ? `- scheduler: ${profile.scheduler}` : "",
-    `Parallelize the dominant embarrassingly-parallel axis across ${profile.recommended_n_jobs} worker processes; keep per-worker BLAS threads at 1 to avoid oversubscription (workers x BLAS threads must stay <= available cores).`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-// Ensure thread-env is set in the current process from a persisted or freshly
-// detected profile.
-async function ensureResourceEnv(run: RunContext, config: Json) {
-  if (!level1WorkflowConfig(config).resource_sensing) return;
-  try {
-    let profile = run.state.resource_profile;
-    if (!profile || typeof profile !== "object") {
-      profile = await detectResources(config);
-      await updateState(run, { resource_profile: profile });
-    }
-    applyThreadEnvDefaults(profile);
-  } catch {
-    // resource sensing is best-effort; never block the run
-  }
-}
-
 async function snapshotRunArtifacts(run: RunContext, label: string) {
   if (!debugDiskWritesEnabled()) return undefined;
   const safeLabel = label.replace(/[^a-zA-Z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "") || "snapshot";
-  const snapshotDir = join(run.runDir, ".snapshot", `${shortTimestamp()}_${safeLabel}_${randomUUID().slice(0, 8)}`);
+  const snapshotDir = join(run.runDir, "_snapshots", `${shortTimestamp()}_${safeLabel}_${randomUUID().slice(0, 8)}`);
   const deliverables: Artifact[] = run.state.deliverables || DEFAULT_DELIVERABLES;
   const candidates: string[] = [
     join(run.runDir, "exec.log"),
@@ -1153,9 +1130,13 @@ async function snapshotRunArtifacts(run: RunContext, label: string) {
     const target = rel && !rel.startsWith("..") && !rel.startsWith("/")
       ? join(snapshotDir, rel)
       : join(snapshotDir, "external", basename(source));
-    await mkdir(dirname(target), { recursive: true });
-    await copyFile(source, target);
-    copied.push({ source, snapshot_path: target });
+    try {
+      await mkdir(dirname(target), { recursive: true });
+      await copyFile(source, target);
+      copied.push({ source, snapshot_path: target });
+    } catch {
+      continue;
+    }
   }
   if (!copied.length) return undefined;
   const manifest = {
@@ -1163,7 +1144,11 @@ async function snapshotRunArtifacts(run: RunContext, label: string) {
     created_at: new Date().toISOString(),
     copied,
   };
-  await writeJson(join(snapshotDir, "manifest.json"), manifest);
+  try {
+    await writeJson(join(snapshotDir, "manifest.json"), manifest);
+  } catch {
+    return { snapshot_dir: snapshotDir, copied, manifest_warning: "diagnostic_write_failed" };
+  }
   return { snapshot_dir: snapshotDir, copied };
 }
 
@@ -1189,19 +1174,35 @@ function agentTimeoutSeconds(agentConfig: Json) {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+async function getSharedCodingSdk() {
+  if (sharedCodingSdk) {
+    return { sdk: sharedCodingSdk, authStorage: sharedAuthStorage, modelRegistry: sharedModelRegistry };
+  }
+  const cwd = WORKFLOW_ROOT || process.cwd();
+  await ensureProcessEnvFromDotenv(cwd);
+  sharedCodingSdk = await import("@earendil-works/pi-coding-agent");
+  const agentDir = process.env.PI_CODING_AGENT_DIR || resolve(cwd, ".pi", "agent");
+  sharedAuthStorage = sharedCodingSdk.AuthStorage?.create?.(join(agentDir, "auth.json"));
+  sharedModelRegistry = sharedCodingSdk.ModelRegistry?.create?.(sharedAuthStorage, join(agentDir, "models.json"));
+  return { sdk: sharedCodingSdk, authStorage: sharedAuthStorage, modelRegistry: sharedModelRegistry };
+}
+
+async function getSharedAiSdk() {
+  if (!sharedAiSdk) sharedAiSdk = await import("@earendil-works/pi-ai");
+  return sharedAiSdk;
+}
+
 async function resolveModel(agentConfig: Json) {
   if (!agentConfig.provider || !agentConfig.model) return {};
   try {
-    const coding = await import("@mariozechner/pi-coding-agent");
-    const authStorage = (coding as any).AuthStorage?.create?.();
-    const modelRegistry = (coding as any).ModelRegistry?.create?.(authStorage);
+    const { modelRegistry } = await getSharedCodingSdk();
     const customModel = modelRegistry?.find?.(agentConfig.provider, agentConfig.model);
     if (customModel) return { model: customModel };
   } catch {
     // Fall through to built-in model lookup.
   }
   try {
-    const ai = await import("@mariozechner/pi-ai");
+    const ai = await getSharedAiSdk();
     const model = (ai as any).getModel?.(agentConfig.provider, agentConfig.model);
     return model ? { model } : {};
   } catch {
@@ -1652,24 +1653,70 @@ async function openShowOverlay(ctx: any, title: string, fullMarkdown: string): P
   }), { overlay: true, overlayOptions: { width: "85%", anchor: "center" } });
 }
 
-async function snapshotSubagentFiles(agentDir: string) {
+function diagnosticWriteWarning(operation: string, path: string, error: unknown): Json {
+  return {
+    type: "diagnostic_write_failed",
+    operation,
+    path,
+    error: String(error),
+  };
+}
+
+async function writeDiagnosticJson(path: string, data: Json, warnings: Json[]) {
+  try {
+    await writeJson(path, data);
+  } catch (error) {
+    warnings.push(diagnosticWriteWarning("write_json", path, error));
+  }
+}
+
+async function writeDiagnosticText(path: string, text: string, warnings: Json[]) {
+  try {
+    await writeText(path, text);
+  } catch (error) {
+    warnings.push(diagnosticWriteWarning("write_text", path, error));
+  }
+}
+
+async function writeDiagnosticJsonl(path: string, entries: Json[], warnings: Json[]) {
+  try {
+    await writeJsonl(path, entries);
+  } catch (error) {
+    warnings.push(diagnosticWriteWarning("write_jsonl", path, error));
+  }
+}
+
+async function snapshotSubagentFiles(agentDir: string, warnings: Json[]) {
   if (!debugDiskWritesEnabled()) return undefined;
   const files = ["input.json", "output.json", "prompt.md", "events.jsonl"];
   const existing = files.filter((name) => existsSync(join(agentDir, name)));
   if (!existing.length) return undefined;
-  const snapshotDir = join(agentDir, ".snapshot", `call_${shortTimestamp()}_${randomUUID().slice(0, 8)}`);
-  await mkdir(snapshotDir, { recursive: true });
+  const snapshotDir = join(agentDir, "_snapshots", `call_${shortTimestamp()}_${randomUUID().slice(0, 8)}`);
+  try {
+    await mkdir(snapshotDir, { recursive: true });
+  } catch (error) {
+    warnings.push(diagnosticWriteWarning("mkdir", snapshotDir, error));
+    return undefined;
+  }
   const copied: string[] = [];
+  const skipped: Json[] = [];
   for (const name of existing) {
     const source = join(agentDir, name);
     const target = join(snapshotDir, name);
-    await copyFile(source, target);
-    copied.push(target);
+    try {
+      await copyFile(source, target);
+      copied.push(target);
+    } catch (error) {
+      const warning = diagnosticWriteWarning("copy_file", target, error);
+      skipped.push({ source, target, error: warning.error });
+      warnings.push(warning);
+    }
   }
-  await writeJson(join(snapshotDir, "manifest.json"), {
+  await writeDiagnosticJson(join(snapshotDir, "manifest.json"), {
     created_at: new Date().toISOString(),
     copied,
-  });
+    skipped,
+  }, warnings);
   return snapshotDir;
 }
 
@@ -1688,23 +1735,28 @@ async function runSubagent(options: {
   const inputPath = join(agentDir, "input.json");
   const outputPath = join(agentDir, "output.json");
   const persistSubagentFiles = debugDiskWritesEnabled();
+  const diagnosticWarnings: Json[] = [];
   if (persistSubagentFiles) {
-    await mkdir(agentDir, { recursive: true });
+    try {
+      await mkdir(agentDir, { recursive: true });
+    } catch (error) {
+      diagnosticWarnings.push(diagnosticWriteWarning("mkdir", agentDir, error));
+    }
   }
-  const snapshotDir = persistSubagentFiles ? await snapshotSubagentFiles(agentDir) : undefined;
+  const snapshotDir = persistSubagentFiles ? await snapshotSubagentFiles(agentDir, diagnosticWarnings) : undefined;
   if (persistSubagentFiles) {
-    await writeJson(inputPath, {
+    await writeDiagnosticJson(inputPath, {
       agent_name: options.agentName,
       finalize_tool: options.finalizeTool,
       tools: options.tools || [],
       prompt: options.prompt,
-    });
-    await writeText(join(agentDir, "prompt.md"), options.prompt);
+    }, diagnosticWarnings);
+    await writeDiagnosticText(join(agentDir, "prompt.md"), options.prompt, diagnosticWarnings);
   }
 
   const readableLogs: Json[] = [];
   try {
-    const sdk = await import("@mariozechner/pi-coding-agent");
+    const { sdk } = await getSharedCodingSdk();
     const defineTool = (sdk as any).defineTool;
     const createAgentSession = (sdk as any).createAgentSession;
     const SessionManager = (sdk as any).SessionManager;
@@ -1721,7 +1773,7 @@ async function runSubagent(options: {
       async execute(_toolCallId: string, params: Json) {
         finalPayload = params;
         if (persistSubagentFiles) {
-          await writeJson(outputPath, params);
+          await writeDiagnosticJson(outputPath, params, diagnosticWarnings);
         }
         return {
           content: [{ type: "text", text: "Finalized." }],
@@ -1734,8 +1786,10 @@ async function runSubagent(options: {
     const modelOptions = await resolveModel(options.agentConfig || {});
     const activeTools = [...new Set([...(options.tools || []), options.finalizeTool])];
     const timeoutSeconds = agentTimeoutSeconds(options.agentConfig || {});
+    const piAgentDir = process.env.PI_CODING_AGENT_DIR || resolve(WORKFLOW_ROOT || process.cwd(), ".pi", "agent");
     const { session } = await createAgentSession({
       cwd: options.runDir,
+      agentDir: piAgentDir,
       tools: activeTools,
       customTools: [finalize],
       sessionManager: SessionManager.inMemory(options.runDir),
@@ -1766,7 +1820,7 @@ async function runSubagent(options: {
           else options.signal?.addEventListener("abort", signalAbort, { once: true });
         }));
       }
-    await (guards.length ? Promise.race([promptPromise, ...guards]) : promptPromise);
+      await (guards.length ? Promise.race([promptPromise, ...guards]) : promptPromise);
     } catch (error) {
       const stats = session.getSessionStats?.();
       if (stats) await tryAppendUsageEntry(options.runDir, options.agentName, usageEntry(options.agentName, stats, { call_id: snapshotDir }));
@@ -1781,7 +1835,7 @@ async function runSubagent(options: {
     if (stats) await tryAppendUsageEntry(options.runDir, options.agentName, usageEntry(options.agentName, stats, { call_id: snapshotDir }));
     await session.dispose?.();
     if (persistSubagentFiles) {
-      await writeJsonl(join(agentDir, "events.jsonl"), readableLogs);
+      await writeDiagnosticJsonl(join(agentDir, "events.jsonl"), readableLogs, diagnosticWarnings);
     }
 
     if (!finalPayload) {
@@ -1793,12 +1847,11 @@ async function runSubagent(options: {
         snapshot_dir: snapshotDir,
       };
       if (persistSubagentFiles) {
-        await writeJson(outputPath, failure);
+        await writeDiagnosticJson(outputPath, failure, diagnosticWarnings);
       }
-      return failure;
+      return { ...failure, diagnostic_warnings: diagnosticWarnings };
     }
-    const result = persistSubagentFiles ? await readJson(outputPath, finalPayload) : finalPayload;
-    return { ok: true, result, subagent_dir: agentDir, output_path: outputPath, snapshot_dir: snapshotDir };
+    return { ok: true, result: finalPayload, subagent_dir: agentDir, output_path: outputPath, snapshot_dir: snapshotDir, diagnostic_warnings: diagnosticWarnings };
   } catch (error) {
     const failure = {
       ok: false,
@@ -1810,14 +1863,111 @@ async function runSubagent(options: {
       fallback: "prompt artifact written; Pi SDK subagent execution did not complete",
     };
     if (persistSubagentFiles) {
-      await writeJson(outputPath, failure);
+      await writeDiagnosticJson(outputPath, failure, diagnosticWarnings);
     }
-    return failure;
+    return { ...failure, diagnostic_warnings: diagnosticWarnings };
   }
 }
 
-export default function (pi: ExtensionAPI) {
+export default async function (pi: ExtensionAPI) {
   let activeRunDir: string | undefined;
+  let configWatcher: FSWatcher | undefined;
+  let configWatchedPath: string | undefined;
+
+  // A1: pre-warm config in the factory so the first tool call doesn't pay
+  // the python3 agent_config.py spawn cost (~200-500ms). Safe to swallow
+  // errors here — loadConfigCached will retry on demand and fall back to
+  // the baked config.json if the merger keeps failing.
+  try {
+    await loadConfigCached(WORKFLOW_ROOT || process.cwd());
+  } catch {
+    // Best-effort warm-up; real error surfaces at first tool call.
+  }
+
+  function startConfigWatcher(cwd: string, notify?: (msg: string, level?: "info" | "warning" | "error") => void) {
+    const workflowCwd = WORKFLOW_ROOT || cwd;
+    const path = resolve(workflowCwd, CONFIG_FILE);
+    if (configWatcher && configWatchedPath === path) return;
+    stopConfigWatcher();
+    if (!existsSync(path)) return;
+    try {
+      configWatcher = watch(path, { persistent: false }, () => {
+        invalidateConfigCache();
+        // Reload eagerly so debugDiskWritesEnabled() and other synchronous
+        // reads see the new values without waiting for the next tool call.
+        loadConfigCached(cwd)
+          .then(() => notify?.("neuro level-1 config reloaded", "info"))
+          .catch((error) => notify?.(`neuro level-1 config reload failed: ${String(error)}`, "warning"));
+      });
+      configWatchedPath = path;
+    } catch {
+      // Watcher is a best-effort optimisation; TTL fallback still refreshes.
+    }
+  }
+
+  function stopConfigWatcher() {
+    if (!configWatcher) return;
+    try {
+      configWatcher.close();
+    } catch {
+      // ignore
+    }
+    configWatcher = undefined;
+    configWatchedPath = undefined;
+  }
+
+  pi.on("session_start", (_event, ctx) => {
+    const notify = (msg: string, level: "info" | "warning" | "error" = "info") => {
+      try {
+        (ctx as any)?.ui?.notify?.(msg, level);
+      } catch {
+        // notify is optional UI sugar.
+      }
+    };
+    startConfigWatcher(ctx.cwd, notify);
+  });
+
+  pi.on("session_shutdown", async () => {
+    stopConfigWatcher();
+    await flushUsageSummaries();
+  });
+
+  pi.registerCommand("neuro_reload_config", {
+    description: "Force-reload NeuroScientist level-1 config (bypasses the in-memory cache).",
+    async handler(_args, ctx) {
+      invalidateConfigCache();
+      try {
+        const next = await loadConfigCached(ctx?.cwd || WORKFLOW_ROOT || process.cwd());
+        pi.sendMessage({
+          customType: "neuroscientist-level1-config",
+          content: JSON.stringify({
+            extension: "neuroscientist-level1",
+            reloaded: true,
+            workflow: next.workflow || {},
+          }, null, 2),
+          display: true,
+        });
+      } catch (error) {
+        pi.sendMessage({
+          customType: "neuroscientist-level1-config",
+          content: JSON.stringify({
+            extension: "neuroscientist-level1",
+            reloaded: false,
+            error: String(error),
+          }, null, 2),
+          display: true,
+        });
+      }
+    },
+  });
+
+  pi.on("before_agent_start", async (_event, ctx) => {
+    // Cheap now: reads from the in-memory cache unless it expired.
+    await syncWorkflowWritePolicy(ctx.cwd);
+    // Ensure the watcher is bound to the actual session cwd (factory ran
+    // with WORKFLOW_ROOT which may differ from the user's project cwd).
+    startConfigWatcher(ctx.cwd);
+  });
 
   pi.registerCommand("neuro_tools", {
     description: "Show NeuroScientist level-1 loaded and active tools.",
@@ -2084,10 +2234,6 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.on("before_agent_start", async (_event, ctx) => {
-    await syncWorkflowWritePolicy(ctx.cwd);
-  });
-
   pi.on("turn_end", async (event: Json, _ctx) => {
     if (!activeRunDir) return;
     const entry = usageEntryFromMessage("main", event.message || {}, { turn_index: event.turnIndex });
@@ -2190,7 +2336,7 @@ export default function (pi: ExtensionAPI) {
     description: "Report level-1 workflow capabilities and user-configured optional tool availability. Call before starting a run.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const workflow = level1WorkflowConfig(config);
       const status = (enabled: boolean) => enabled ? "enabled" : "disabled_by_user_config";
       const targetedSkillEnabled = workflow.targeted_skill_match || workflow.targeted_skill_generate;
@@ -2208,7 +2354,6 @@ export default function (pi: ExtensionAPI) {
           targeted_skill: status(targetedSkillEnabled),
           image_refine: status(workflow.image_refine),
           image_analysis: status(workflow.image_analysis),
-          resource_sensing: status(workflow.resource_sensing),
           save_skill: status(workflow.save_skill),
           transparency: status(workflow.transparency),
         },
@@ -2237,16 +2382,6 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const run = await startRun(ctx.cwd, params.work_dir, params.deliverables, params.question);
       activeRunDir = run.runDir;
-      try {
-        const config = await loadConfig(ctx.cwd);
-        if (level1WorkflowConfig(config).resource_sensing) {
-          const profile = await detectResources(config);
-          applyThreadEnvDefaults(profile);
-          await updateState(run, { resource_profile: profile });
-        }
-      } catch {
-        // resource sensing is best-effort; never block run creation
-      }
       return content({
         ok: true,
         extension: "neuroscientist-level1",
@@ -2254,7 +2389,6 @@ export default function (pi: ExtensionAPI) {
         run_dir: run.runDir,
         deliverables: run.state.deliverables,
         question: run.state.question,
-        resource_profile: run.state.resource_profile,
       });
     },
   });
@@ -2270,11 +2404,6 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const run = await resumeRun(ctx.cwd, params.work_dir, params.question);
       activeRunDir = run.runDir;
-      try {
-        await ensureResourceEnv(run, await loadConfig(ctx.cwd));
-      } catch {
-        // best-effort
-      }
       return content({
         ok: true,
         extension: "neuroscientist-level1",
@@ -2282,7 +2411,6 @@ export default function (pi: ExtensionAPI) {
         run_dir: run.runDir,
         question: run.state.question,
         state_path: run.statePath,
-        resource_profile: run.state.resource_profile,
       });
     },
   });
@@ -2302,20 +2430,7 @@ export default function (pi: ExtensionAPI) {
       if (!stage) {
         return content({ ok: false, run_id: run.runId, error: "stage is required" });
       }
-      const reviews = run.state.human_reviews || {};
-      const previous = reviews[stage] || {};
-      const nextEntry = {
-        ...previous,
-        status: "approved",
-        approved_at: new Date().toISOString(),
-        notes: params.notes || previous.notes || "",
-      };
-      await updateState(run, {
-        human_reviews: {
-          ...reviews,
-          [stage]: nextEntry,
-        },
-      });
+      const nextEntry = await recordApproval(run, stage, params.notes);
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_approve_stage", stage, ok: true });
       return content({
         ok: true,
@@ -2346,22 +2461,7 @@ export default function (pi: ExtensionAPI) {
       if (!feedback) {
         return content({ ok: false, run_id: run.runId, stage, error: "feedback is required" });
       }
-      const reviews = run.state.human_reviews || {};
-      const previous = reviews[stage] || {};
-      const previousFeedback = Array.isArray(previous.feedback) ? previous.feedback : [];
-      const nextEntry = {
-        ...previous,
-        status: "changes_requested",
-        feedback: [...previousFeedback, { at: new Date().toISOString(), text: feedback }],
-        updated_at: new Date().toISOString(),
-      };
-      delete nextEntry.approved_at;
-      await updateState(run, {
-        human_reviews: {
-          ...reviews,
-          [stage]: nextEntry,
-        },
-      });
+      const nextEntry = await recordFeedback(run, stage, feedback, { source: "tool" });
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_record_feedback", stage, ok: true });
       return content({
         ok: true,
@@ -2391,7 +2491,7 @@ export default function (pi: ExtensionAPI) {
       temperature: Type.Optional(Type.Number()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const workflow = level1WorkflowConfig(config);
       const paths = config.paths || {};
       const targeted = config.modules?.targeted_skill || config.targeted_skill || {};
@@ -2452,7 +2552,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const agentConfig = pickAgentConfig(config, "level1_deep_research");
       const ragConfig = agentConfig.rag || {};
       const run = await resolveRun(ctx.cwd, params.run_id);
@@ -2561,8 +2661,8 @@ export default function (pi: ExtensionAPI) {
       deep_research_context: Type.Optional(Type.String()),
       additional_context: Type.Optional(Type.String()),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+    async execute(_toolCallId, params, signal, onUpdate, ctx) {
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const question = resolveQuestion(run, params.question);
       const rolePrompt = await readPrompt("plan");
@@ -2573,10 +2673,9 @@ export default function (pi: ExtensionAPI) {
         `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${params.deep_research_context || run.state.deep_research_context || ""}`,
-        run.state.resource_profile ? `Resource profile:\n${formatResourceProfile(run.state.resource_profile)}` : "",
         planHumanFeedback ? `Human review feedback for the plan:\n${planHumanFeedback}` : "",
         additionalContextBlock(params.additional_context),
-        "Finalize with: { plan_markdown, summary, confidence, warnings }.",
+        "Finalize with: { plan_markdown, review_summary, summary, confidence, warnings }. review_summary is the concise text shown to the human approval UI; do not make it a copy of the full plan.",
       ].join("\n\n"));
       const sub = await runSubagent({
         runDir: run.runDir,
@@ -2584,6 +2683,7 @@ export default function (pi: ExtensionAPI) {
         finalizeTool: "finalize_plan",
         finalizeSchema: Type.Object({
           plan_markdown: Type.String(),
+          review_summary: Type.String(),
           summary: Type.String(),
           confidence: Type.Number(),
           warnings: Type.Array(Type.String()),
@@ -2603,24 +2703,135 @@ export default function (pi: ExtensionAPI) {
         });
       }
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_plan", ok: sub.ok });
-      return content({
+
+      // Human review: show the plan path and planner-authored summary in the
+      // normal transcript, then use Pi's native select/input controls near the
+      // command line. This avoids a focus-owning modal while keeping one-key
+      // approval for the common path.
+      type PlanDecision = "approve" | "revise" | "reject" | "cancel";
+      let humanDecision: PlanDecision | undefined;
+      let humanDecisionError: string | undefined;
+      let terminateAfter = false;
+      const gateEnabled = humanGateEnabled(config, "plan");
+      const alreadyApproved = humanStageApproved(run, "plan");
+      const planPathForReview = sub.ok ? join(run.runDir, "plan.md") : undefined;
+      const canPromptInline =
+        sub.ok
+        && gateEnabled
+        && !alreadyApproved
+        && !!(ctx as any)?.ui?.select
+        && process.env.NEURO_LEVEL1_NON_INTERACTIVE !== "1";
+      if (canPromptInline) {
+        try {
+          const reviewSummary = String(sub.result?.review_summary || sub.result?.summary || "").trim();
+          const reviewText = [
+            "## NeuroScientist Plan Review",
+            "",
+            planPathForReview ? `Plan path: ${planPathForReview}` : "Plan path: unavailable",
+            sub.result?.confidence !== undefined ? `Confidence: ${Number(sub.result.confidence).toFixed(2)}` : "",
+            "",
+            reviewSummary ? "### Summary" : "",
+            reviewSummary || "No review summary was returned by the planner.",
+          ].filter(Boolean).join("\n");
+          onUpdate?.({ content: [{ type: "text", text: reviewText }] });
+          const selectTitle = [
+            "Approve this plan?",
+            planPathForReview ? `Plan: ${planPathForReview}` : "Plan: unavailable",
+            reviewSummary ? `Summary: ${reviewSummary.slice(0, 360)}` : "Summary: unavailable",
+          ].join("\n");
+          const choice = await (ctx as any).ui.select(selectTitle, [
+            "Yes - approve and continue",
+            "No - stop workflow",
+            "Type feedback - request changes",
+          ]);
+          if (choice?.startsWith("Yes")) {
+            humanDecision = "approve";
+            await recordApproval(run, "plan", "approved via plan review select");
+            await appendStateEntry(pi, {
+              run_id: run.runId,
+              event: "neuro_approve_stage",
+              stage: "plan",
+              ok: true,
+              source: "select",
+            });
+          } else if (choice?.startsWith("Type feedback")) {
+            const feedback = await (ctx as any).ui.input(
+              "Feedback for planner",
+              "Describe what should change before code generation",
+            );
+            const feedbackText = String(feedback || "").trim();
+            if (feedbackText) {
+              humanDecision = "revise";
+              await recordFeedback(run, "plan", feedbackText, { source: "select" });
+              await appendStateEntry(pi, {
+                run_id: run.runId,
+                event: "neuro_record_feedback",
+                stage: "plan",
+                ok: true,
+                source: "select",
+                action: "revise",
+              });
+            } else {
+              humanDecision = "cancel";
+            }
+          } else if (choice?.startsWith("No")) {
+            humanDecision = "reject";
+            terminateAfter = true;
+            await appendStateEntry(pi, {
+              run_id: run.runId,
+              event: "neuro_plan_rejected",
+              stage: "plan",
+              ok: true,
+              source: "select",
+              action: "reject",
+            });
+          } else {
+            humanDecision = "cancel";
+          }
+        } catch (error) {
+          humanDecisionError = String(error);
+        }
+      }
+
+      // Refresh derived human-review views after any select/input-driven writes.
+      const planHumanFeedbackAfter = humanFeedbackText(run, "plan");
+      const approvedAfter = humanStageApproved(run, "plan");
+      const guidanceForModel = humanDecision
+        ? (humanDecision === "approve"
+            ? `Human approved the plan via plan review select. Proceed to neuro_code.`
+            : humanDecision === "revise"
+              ? `Human requested revisions via plan review input. Rerun neuro_plan with this feedback in additional_context.`
+              : humanDecision === "reject"
+                ? `Human rejected the plan via plan review select. The tool result terminates this workflow; do not call neuro_code.`
+                : `Human cancelled the plan gate. Ask the user how to proceed.`)
+        : undefined;
+
+      const payload: Json = {
         run_id: run.runId,
         ok: sub.ok,
         error: sub.error,
         plan_path: sub.ok ? join(run.runDir, "plan.md") : undefined,
         output_path: sub.output_path,
         result: sub.result ? {
+          review_summary: sub.result.review_summary,
           summary: sub.result.summary,
           confidence: sub.result.confidence,
           warnings: sub.result.warnings,
         } : undefined,
         human_review: {
-          required: humanGateEnabled(config, "plan"),
-          approved: humanStageApproved(run, "plan"),
-          feedback: planHumanFeedback,
+          required: gateEnabled,
+          approved: approvedAfter,
+          feedback: planHumanFeedbackAfter,
+          inline_prompted: canPromptInline,
+          inline_decision: humanDecision,
+          inline_error: humanDecisionError,
         },
+        guidance: guidanceForModel,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
-      });
+      };
+      const rendered = content(payload);
+      if (terminateAfter) (rendered as any).terminate = true;
+      return rendered;
     },
   });
 
@@ -2639,7 +2850,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       if (humanGateEnabled(config, "plan") && !humanStageApproved(run, "plan")) {
         return blockedByHumanReview(run, "plan", "neuro_code");
@@ -2682,7 +2893,6 @@ export default function (pi: ExtensionAPI) {
         `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${run.state.deep_research_context || ""}`,
-        run.state.resource_profile ? `Resource profile:\n${formatResourceProfile(run.state.resource_profile)}` : "",
         `Validation feedback:\n${params.validation_feedback || ""}`,
         `Deliverables (read-only contract; produce every file listed):\n${deliverablesToPromptText(deliverables)}`,
         additionalContextBlock(params.additional_context),
@@ -2812,7 +3022,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const agentConfig = pickAgentConfig(config, "level1_validate");
       const question = resolveQuestion(run, params.question);
@@ -2903,7 +3113,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const agentConfig = pickAgentConfig(config, "level1_refine_image");
       const question = resolveQuestion(run, params.question);
@@ -2990,7 +3200,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const agentConfig = pickAgentConfig(config, "level1_analyze_image");
       const question = resolveQuestion(run, params.question);
@@ -3090,7 +3300,7 @@ export default function (pi: ExtensionAPI) {
       additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const config = await loadConfig(ctx.cwd);
+      const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const question = resolveQuestion(run, params.question);
       const dummyDataSignals = run.state.checks?.dummy_data_signals || [];
