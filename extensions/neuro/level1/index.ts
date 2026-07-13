@@ -1875,14 +1875,16 @@ export default async function (pi: ExtensionAPI) {
   let configWatchedPath: string | undefined;
 
   // A1: pre-warm config in the factory so the first tool call doesn't pay
-  // the python3 agent_config.py spawn cost (~200-500ms). Safe to swallow
-  // errors here — loadConfigCached will retry on demand and fall back to
-  // the baked config.json if the merger keeps failing.
-  try {
-    await loadConfigCached(WORKFLOW_ROOT || process.cwd());
-  } catch {
+  // the python3 agent_config.py spawn cost (~200-500ms). loadConfigCached will
+  // retry on demand and fall back to the baked config.json if the merger fails.
+  //
+  // IMPORTANT: do NOT `await` here. This factory registers all commands/tools
+  // below; an `await` before those registrations suspends the (async) factory
+  // and defers registration past pi's command-palette snapshot, so slash
+  // commands like /neuro-show and /neuro-save-skill never appear. Fire-and-forget.
+  void loadConfigCached(WORKFLOW_ROOT || process.cwd()).catch(() => {
     // Best-effort warm-up; real error surfaces at first tool call.
-  }
+  });
 
   function startConfigWatcher(cwd: string, notify?: (msg: string, level?: "info" | "warning" | "error") => void) {
     const workflowCwd = WORKFLOW_ROOT || cwd;
