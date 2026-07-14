@@ -1,1 +1,0 @@
-To gain better insight as to how the HD cells behaved in the symmetric scene, the tuning of the individual HD neurons was plotted for the pre-learning, learning and post-learning epochs, after centring to and sorting by the preferred orientation b.

@@ -63,22 +63,41 @@ else
   echo "Error: 'pi' command not found. Run ./pi_install.sh first." >&2
   exit 1
 fi
+LEVEL1_AUTOMATION_TOOLS="read,bash,edit,write,neuro_ping,neuro_capabilities,neuro_start_research,neuro_continue_research,neuro_start_run,neuro_resume_run,resolve_targeted_skill,neuro_deep_research,neuro_plan,neuro_code,neuro_validate,neuro_refine_image,neuro_analyze_image,neuro_conclude"
+LEVEL1_HUMAN_REVIEW_TOOLS="neuro_approve_stage,neuro_record_feedback,neuro_review_plan,neuro_update_plan"
+LEVEL1_DIFF_REVIEW_TOOLS="neuro_review_code_edit,neuro_propose_code_update,neuro_review_code_update"
+LEVEL1_INTERACTIVE_TOOLS="${LEVEL1_AUTOMATION_TOOLS},${LEVEL1_HUMAN_REVIEW_TOOLS},${LEVEL1_DIFF_REVIEW_TOOLS}"
 PI_RESOURCE_ARGS=(
   --approve
   --no-extensions
   --extension "${LEVEL1_EXTENSION_DIR}/index.ts"
+  --extension "${ROOT_DIR}/extensions/usage-footer.ts"
   --no-prompt-templates
   --prompt-template "${PROMPT_DIR}/entry.md"
-  --tools "read,bash,edit,write,neuro_ping,neuro_capabilities,neuro_start_run,neuro_resume_run,neuro_approve_stage,neuro_record_feedback,resolve_targeted_skill,neuro_deep_research,neuro_plan,neuro_code,neuro_validate,neuro_refine_image,neuro_analyze_image,neuro_conclude"
+  --tools "${LEVEL1_INTERACTIVE_TOOLS}"
 )
 PI_CONCLUDE_ONLY_ARGS=(
   --approve
   --no-extensions
   --extension "${LEVEL1_EXTENSION_DIR}/index.ts"
+  --extension "${ROOT_DIR}/extensions/usage-footer.ts"
   --no-prompt-templates
   --prompt-template "${PROMPT_DIR}/entry.md"
   --tools "read,bash,neuro_resume_run,neuro_conclude"
 )
+
+set_level1_resource_tools() {
+  local toolset="$1"
+  local index
+  for ((index = 0; index < ${#PI_RESOURCE_ARGS[@]} - 1; index++)); do
+    if [[ "${PI_RESOURCE_ARGS[index]}" == "--tools" ]]; then
+      PI_RESOURCE_ARGS[index + 1]="${toolset}"
+      return 0
+    fi
+  done
+  echo "Error: internal Level-1 --tools argument is missing." >&2
+  return 1
+}
 
 NON_INTERACTIVE=false
 QUERY=""
@@ -215,7 +234,7 @@ build_noninteractive_entry_message() {
   prompt="${prompt}
 
 ## Non-interactive execution policy
-This run is non-interactive. Continue through the workflow until neuro_conclude succeeds and writes the final conclusion artifact. Only stop after conclusion. Do not ask the user follow-up questions. If required information is insufficient or a workflow stage is blocked, do not wait for user input. Use the available metadata and paths as far as possible, then finish the workflow by writing a final conclusion that clearly states the blocking condition, missing information, and confidence/limitations."
+This run is non-interactive. Continue through the workflow until neuro_conclude succeeds and writes the final conclusion artifact. Only stop after conclusion. Do not ask the user follow-up questions. Post-run diff/code-edit review tools are intentionally unavailable; use the normal Code -> Validate repair loop for workflow corrections. If required information is insufficient or a workflow stage is blocked, do not wait for user input. Use the available metadata and paths as far as possible, then finish the workflow by writing a final conclusion that clearly states the blocking condition, missing information, and confidence/limitations."
   printf '/entry %s' "${prompt}"
 }
 
@@ -420,6 +439,7 @@ if [[ -z "${DATASET}" ]]; then
   exit 1
 fi
 export NEURO_LEVEL1_NON_INTERACTIVE=1
+set_level1_resource_tools "${LEVEL1_AUTOMATION_TOOLS}"
 
 LOG_PATH="${WORK_DIR:-${ROOT_DIR}}/pi_session.jsonl"
 CONTINUE_LOG_PATH=""

@@ -1,1 +1,0 @@
-To test whether the bump phase maintained a constant offset to the scene orientation in the jump and noise epochs, κ from the von Mises distributions fit on the scene–bump offset histogram was plotted for each fish for each condition, together with the shuffle median and the 95th percentile.

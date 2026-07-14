@@ -28,6 +28,20 @@ For each dimension, check and report issues:
 - If confidence is [CONFIDENT], flag clear errors.
 - If confidence is [UNCERTAIN], scrutinize every dimension aggressively.
 
+## Issue classification
+
+- Put a problem in `blocking_issues` only when it makes the current result
+  scientifically unusable or requires a Code/method change. Write each item as
+  a concrete repair instruction. Any caveat severe enough to overturn the
+  interpretation is blocking and requires `pass=false`.
+- Put a real but non-invalidating limitation in `methodological_caveats`. These
+  qualify the final interpretation and do not request another Code attempt.
+- Use `visual_issues` only for a presentation-only problem worth one automated
+  repair. Return at most one highest-priority `{figure_path, feedback}` target.
+  Ignore cosmetic preferences that do not materially improve readability.
+- Do not turn optional robustness analyses, parameter sweeps, or follow-up
+  questions into repairs of the current round.
+
 ## Correlation sensitivity
 When the question asks whether biological variables, signals, regions,
 conditions, or derived measurements are related/correlated/associated:
@@ -43,8 +57,10 @@ conditions, or derived measurements are related/correlated/associated:
 
 Call finalize_validation with:
 - pass: bool（整体是否回答 question）
-- per_figure: [{path, pass, issues, next_code_feedback}]（每张图一条）
+- per_figure: [{path, pass, issues}]（每张图一条）
 - overall_mismatches: 跨图叙事问题
+- blocking_issues: 使当前结果不可接受的具体问题/修复要求
+- methodological_caveats: 不推翻结果、但必须进入 limitations 的限制
+- visual_issues: 最多一个 [{figure_path, feedback}] presentation-only 修复目标
 - confidence: 0.0-1.0
 - summary: 一句话总评
-- next_code_feedback: 可指名道姓（"result2.png 的 colorbar 缺单位"）

@@ -42,4 +42,4 @@ else
   exit 1
 fi
 
-exec "$PI_CMD" -e extensions/neuro.ts -e extensions/theme-cycler.ts "$@"
+exec "$PI_CMD" -e extensions/neuro.ts -e extensions/usage-footer.ts -e extensions/theme-cycler.ts "$@"

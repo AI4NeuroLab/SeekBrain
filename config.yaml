@@ -116,7 +116,9 @@ agents:
         model: claude-opus-4-7
         thinking: high
         timeout_seconds: 1800
-        vision: true
+        # Visual QA is handled once by level1_validate; the coder verifies
+        # files and numerical outputs only.
+        vision: false
 
     level1_validate:
         provider: neuro-proxy

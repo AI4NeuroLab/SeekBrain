@@ -6,9 +6,11 @@ All tooling is installed **locally inside the project** . Run the installer once
 
 ```bash
 ./pi_install.sh
+.tools/node/bin/npm install
 ```
 
 This downloads **Node.js v24** and the `@earendil-works/pi-coding-agent` package into `.tools/`.
+The second command installs project dependencies, including `pi-subagents`.
 
 
 Export report as `pdf` or `docx`:
@@ -27,7 +29,7 @@ sudo apt install -y pandoc
 Copy the sample and fill in your key:
 
 ```bash
-cp .env.sample .env
+cp .env.example .env
 ```
 
 Set at least:
@@ -127,3 +129,23 @@ Cards stay compact so they don't flood the session. To read the **full content**
 `↑/↓` scroll · `space`/`b` page · `Esc` close.
 
 ---
+
+## 6. Nature Reader and Nature Figure
+
+After installing the JavaScript dependencies and restarting Pi, the project
+provides two focused subagents:
+
+```text
+/run nature.reader <paper path, DOI, arXiv URL, or reading request>
+/run nature.figure <new-figure or code-driven revision request>
+```
+
+`nature.reader` produces a restartable, page-grounded bilingual paper bundle.
+`nature.figure` creates publication figures and can revise the current
+interactive Level-1 figure through a recoverable snapshot/edit/inspect flow.
+Creation jobs use an explicit or saved Python/R backend; asynchronous jobs with
+no preference select and save Python as the project default.
+
+See [`specs/nature-figure-subagent.md`](specs/nature-figure-subagent.md) for the
+figure revision and safety contract. Restart Pi after updating project agents
+so subagent discovery is refreshed.

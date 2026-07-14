@@ -299,8 +299,10 @@ default_provider = "llm-proxy" if "llm-proxy" in providers else (
         "anthropic" if "anthropic" in providers else "openai"
     )
 )
-default_model = "deepseek-v4-pro" if default_provider == "llm-proxy" else (
-    "claude-opus-4-7" if default_provider in {"anthropic", "anthropic-proxy"} else "gpt-5"
+default_model = "claude-opus-4-7" if default_provider in {
+    "llm-proxy", "anthropic", "anthropic-proxy"
+} else (
+    "gpt-5"
 )
 
 write_json(agent_dir / "models.json", {"providers": providers})

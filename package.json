@@ -6,6 +6,7 @@
   "dependencies": {
     "@pi-archimedes/diff": "^1.7.1",
     "diff": "^8.0.0",
+    "pi-subagents": "0.34.0",
     "yaml": "^2.8.0"
   }
 }

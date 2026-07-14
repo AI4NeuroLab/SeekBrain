@@ -2,13 +2,13 @@
  * NeuroScientist workflow selector.
  *
  * Commands:
- *   /neuro      — choose a NeuroScientist workflow level
+ *   /neuro      — switch the NeuroScientist workflow level
  *
- * Usage: pi -e extensions/neuro.ts
+ * Usage: pi -e extensions/neuro.ts (starts in Level 1)
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -88,6 +88,11 @@ const LEVEL2: WorkflowDef = {
 };
 
 const WORKFLOWS = [LEVEL1, LEVEL2];
+const LEVEL1_NEW_RUN_TOOLS = new Set([
+	"neuro_start_research",
+	"neuro_continue_research",
+	"neuro_start_run",
+]);
 
 function resetStages(workflow: WorkflowDef): StageState[] {
 	return workflow.stages.map((name) => ({
@@ -190,7 +195,7 @@ function renderPipeline(stages: StageState[], width: number, theme: any): string
 	return truncateToWidth(parts.join(theme.fg("dim", "  →  ")), width);
 }
 
-function renderCompactPipeline(stages: StageState[], width: number, theme: any): string[] {
+function renderCompactPipeline(stages: StageState[], width: number, theme: any, roundLabel = ""): string[] {
 	const parts = stages.map((stage) => {
 		const icon = stage.status === "pending" ? "○"
 			: stage.status === "running" ? "●"
@@ -202,7 +207,13 @@ function renderCompactPipeline(stages: StageState[], width: number, theme: any):
 		const label = `${stage.name} ${icon}${elapsed}`;
 		return theme.fg(color, label);
 	});
-	return [truncateToWidth(parts.join(theme.fg("dim", "  ")), width)];
+	const pipeline = parts.join(theme.fg("dim", "  "));
+	if (!roundLabel) return [truncateToWidth(pipeline, width)];
+
+	const round = theme.fg("accent", theme.bold(roundLabel));
+	const inline = `${round}${theme.fg("dim", "  ───  ")}${pipeline}`;
+	if (visibleWidth(inline) <= width) return [inline];
+	return [round, truncateToWidth(pipeline, width)];
 }
 
 function renderWorkflowGraph(stages: StageState[], width: number, theme: any): string[] {
@@ -303,6 +314,7 @@ export default function (pi: ExtensionAPI) {
 	let activeWorkflow: WorkflowDef | null = null;
 	let stages: StageState[] = [];
 	let subquestionCards: SubquestionCardState[] = [];
+	let activeRoundLabel = "";
 	let widgetCtx: any;
 
 	function updateWidget() {
@@ -319,7 +331,7 @@ export default function (pi: ExtensionAPI) {
 
 					const lines = activeWorkflow.level === "level2"
 						? renderLevel2Board(stages, subquestionCards, width, theme)
-						: renderCompactPipeline(stages, width, theme);
+						: renderCompactPipeline(stages, width, theme, activeRoundLabel);
 					text.setText(lines.join("\n"));
 					return text.render(width);
 				},
@@ -334,6 +346,7 @@ export default function (pi: ExtensionAPI) {
 		activeWorkflow = workflow;
 		stages = resetStages(workflow);
 		subquestionCards = [];
+		activeRoundLabel = "";
 		widgetCtx = ctx;
 		updateWidget();
 		ctx.ui.setStatus("neuro", `NeuroScientist: ${workflow.level}`);
@@ -477,6 +490,26 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
+	function researchRoundLabel(details: any) {
+		const roundName = String(details?.round_name || details?.result?.round_name || "").trim();
+		const roundMatch = /^round(\d+)$/i.exec(roundName);
+		if (roundMatch) return `Round ${roundMatch[1]}`;
+		const runId = String(details?.run_id || details?.result?.run_id || "").trim();
+		const runMatch = /(?:^|[-_])round(\d+)$/i.exec(runId);
+		return runMatch ? `Round ${runMatch[1]}` : roundName;
+	}
+
+	function resetLevel1RoundBoard(roundLabel = "") {
+		if (activeWorkflow?.level !== "level1") return;
+		stages = resetStages(activeWorkflow);
+		subquestionCards = [];
+		activeRoundLabel = roundLabel;
+		updateWidget();
+		if (widgetCtx) {
+			widgetCtx.ui.setStatus("neuro", stageSummary(activeWorkflow, stages));
+		}
+	}
+
 	pi.registerCommand("neuro", {
 		description: "Select NeuroScientist workflow level",
 		handler: async (_args, ctx) => {
@@ -499,6 +532,13 @@ export default function (pi: ExtensionAPI) {
 	pi.on("tool_execution_end", async (event: any) => {
 		const toolName = event.toolName || event.name;
 		if (typeof toolName !== "string") return;
+		const details = toolDetails(event);
+		if (LEVEL1_NEW_RUN_TOOLS.has(toolName) && !event.isError && details.ok !== false) {
+			// A new research round has its own pipeline state. Clear every stage
+			// atomically so completed timings from the previous round cannot leak
+			// into the new round while its first stage starts.
+			resetLevel1RoundBoard(researchRoundLabel(details));
+		}
 		const status = event.isError ? "error" : "done";
 		setStageFromTool(toolName, status, event.isError ? "failed" : "complete");
 		updateLevel2CardEnd(toolName, event);
@@ -522,11 +562,6 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		applyExtensionDefaults(import.meta.url, ctx);
-		widgetCtx = ctx;
-		activeWorkflow = null;
-		stages = [];
-		subquestionCards = [];
-		ctx.ui.setWidget("neuro-workflow", undefined);
-		ctx.ui.notify("Use /neuro to select a NeuroScientist workflow.", "info");
+		activate(LEVEL1, ctx);
 	});
 }

@@ -31,9 +31,11 @@ __pycache__/
 # ── pi runtime state (keep shared config, ignore ephemeral) ──────────────────
 .pi/agent/
 .pi/agent-sessions/
+.pi-subagents/
 .pi/agent/auth.json
 .pi/neuroscientist-level1/tmp/
 .pi/neuroscientist-level1/run_index.json
+.pi/neuroscientist-level1/current_run.json
 .pi/neuroscientist-level2/tmp/
 .pi/neuroscientist-level2/run_index.json
 

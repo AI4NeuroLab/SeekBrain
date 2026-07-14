@@ -1,13 +1,22 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Box, Spacer, Text, type Component } from "@earendil-works/pi-tui";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { createTwoFilesPatch, structuredPatch } from "diff";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, watch, type FSWatcher } from "node:fs";
-import { appendFile, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import {
+  DEFAULT_MAX_CODE_ATTEMPTS,
+  codeRetryPolicy,
+  currentArtifactsValidated,
+  fastPassRefinedValidation,
+  normalizeValidation,
+  validationNextStep,
+} from "./validation-policy.js";
+import { applyExactCodeEdits, validationInvalidationForScope } from "./code-edit-policy.js";
 
 type Json = Record<string, any>;
 
@@ -18,6 +27,8 @@ const EXTENSION_DIR = dirname(new URL(import.meta.url).pathname);
 const PROMPT_DIR = join(EXTENSION_DIR, "prompts");
 const BAKED_CONFIG_FILE = join(EXTENSION_DIR, "config.json");
 const RUN_INDEX_FILE = ".pi/neuroscientist-level1/run_index.json";
+const CURRENT_RUN_FILE = ".pi/neuroscientist-level1/current_run.json";
+const PROJECT_MANIFEST_FILE = "project.json";
 const CONFIG_FILE = "config.yaml";
 
 let mergedConfig: Json = {};
@@ -30,6 +41,22 @@ let sharedModelRegistry: any;
 let sharedAiSdk: any;
 let diffComponentConstructor: any;
 let diffComponentImport: Promise<any> | undefined;
+
+function preloadDiffComponent() {
+  if (diffComponentConstructor) return Promise.resolve(diffComponentConstructor);
+  if (!diffComponentImport) {
+    diffComponentImport = import("@pi-archimedes/diff")
+      .then((module) => {
+        diffComponentConstructor = module.DiffComponent;
+        return diffComponentConstructor;
+      })
+      .catch((error) => {
+        diffComponentImport = undefined;
+        throw error;
+      });
+  }
+  return diffComponentImport;
+}
 
 class LazyDiffComponent implements Component {
   private inner: Component | undefined;
@@ -49,18 +76,7 @@ class LazyDiffComponent implements Component {
     if (this.inner) return this.inner.render(width);
     if (this.error) return [this.theme.fg("error", `  ${this.error}`)];
 
-    if (!diffComponentImport) {
-      diffComponentImport = import("@pi-archimedes/diff")
-        .then((module) => {
-          diffComponentConstructor = module.DiffComponent;
-          return diffComponentConstructor;
-        })
-        .catch((error) => {
-          diffComponentImport = undefined;
-          throw error;
-        });
-    }
-    diffComponentImport
+    preloadDiffComponent()
       .then(() => this.requestRender())
       .catch((error) => {
         this.error = `Diff renderer failed to load: ${String(error)}`;
@@ -983,6 +999,57 @@ function artifactExistenceWarnings(runDir: string, artifacts: Artifact[]) {
   return warnings;
 }
 
+async function createRefinementGuard(run: RunContext) {
+  const backupDir = join(run.runDir, ".neuro-refine-guard", randomUUID());
+  const guarded: Array<{ source: string; backup: string; immutable: boolean }> = [];
+  const candidates = stateArtifacts(run).filter((artifact) =>
+    ["data", "statistics", "code", "figure"].includes(artifact.kind)
+  );
+  for (const [index, artifact] of candidates.entries()) {
+    const source = resolveArtifactPath(run.runDir, artifact.path);
+    const rel = relative(run.runDir, source);
+    if (!rel || rel.startsWith("..") || rel.startsWith("/") || !existsSync(source)) continue;
+    const backup = join(backupDir, `${index}-${basename(source)}`);
+    await mkdir(dirname(backup), { recursive: true });
+    await copyFile(source, backup);
+    guarded.push({
+      source,
+      backup,
+      immutable: artifact.kind === "data" || artifact.kind === "statistics",
+    });
+  }
+  return { backupDir, guarded };
+}
+
+async function finalizeRefinementGuard(
+  guard: Awaited<ReturnType<typeof createRefinementGuard>>,
+  subagentSucceeded: boolean,
+) {
+  const violations: string[] = [];
+  if (subagentSucceeded) {
+    for (const item of guard.guarded.filter((entry) => entry.immutable)) {
+      try {
+        const [before, after] = await Promise.all([readFile(item.backup), readFile(item.source)]);
+        if (!before.equals(after)) violations.push(item.source);
+      } catch {
+        violations.push(item.source);
+      }
+    }
+  }
+  const accepted = subagentSucceeded && violations.length === 0;
+  if (!accepted) {
+    for (const item of guard.guarded) {
+      try {
+        await copyFile(item.backup, item.source);
+      } catch {
+        // Best-effort rollback; the caller reports the integrity failure.
+      }
+    }
+  }
+  await rm(guard.backupDir, { recursive: true, force: true }).catch(() => {});
+  return { accepted, violations };
+}
+
 async function loadImageForPrompt(path: string) {
   const data = await readFile(path);
   return {
@@ -1081,6 +1148,68 @@ function resolveEditableCodePath(run: RunContext, requestedPath?: string) {
   return existsSync(defaultPath) ? defaultPath : "";
 }
 
+const CODE_EDIT_EXEC_OUTPUT_LIMIT = 1_000_000;
+
+function appendLimitedOutput(current: string, chunk: any) {
+  if (current.length >= CODE_EDIT_EXEC_OUTPUT_LIMIT) return current;
+  return (current + String(chunk)).slice(0, CODE_EDIT_EXEC_OUTPUT_LIMIT);
+}
+
+async function fileStamp(path: string) {
+  try {
+    const info = await stat(path);
+    return { exists: true, mtime_ms: info.mtimeMs, size: info.size };
+  } catch {
+    return { exists: false, mtime_ms: 0, size: 0 };
+  }
+}
+
+async function artifactStamps(paths: string[]) {
+  const entries = await Promise.all(paths.map(async (path) => [path, await fileStamp(path)] as const));
+  return Object.fromEntries(entries);
+}
+
+async function rerunApprovedPythonCode(codePath: string, runDir: string, signal?: AbortSignal) {
+  if (extname(codePath).toLowerCase() !== ".py") {
+    return { ok: false, exit_code: null, error: `Automatic rerun only supports Python code artifacts: ${codePath}` };
+  }
+  const startedAt = Date.now();
+  const env = await loadEnv(WORKFLOW_ROOT);
+  return await new Promise<Json>((done) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const child = spawn("python3", [codePath], { cwd: runDir, env });
+    const finish = (result: Json) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abort);
+      done({ ...result, stdout, stderr, duration_ms: Date.now() - startedAt });
+    };
+    const abort = () => child.kill("SIGTERM");
+    signal?.addEventListener("abort", abort, { once: true });
+    child.stdout?.on("data", (chunk) => { stdout = appendLimitedOutput(stdout, chunk); });
+    child.stderr?.on("data", (chunk) => { stderr = appendLimitedOutput(stderr, chunk); });
+    child.on("error", (error) => finish({ ok: false, exit_code: null, error: String(error) }));
+    child.on("close", (code, childSignal) => finish({
+      ok: code === 0,
+      exit_code: code,
+      signal: childSignal || undefined,
+      error: code === 0 ? undefined : `Regeneration exited with code ${code ?? "unknown"}.`,
+    }));
+    if (signal?.aborted) abort();
+  });
+}
+
+function generatedArtifactsForCodeEdit(run: RunContext, codePath: string, scope: string) {
+  const produced = stateArtifacts(run).filter((artifact) => artifact.produced_by === codePath);
+  const scoped = scope === "presentation"
+    ? produced.filter((artifact) => artifact.kind === "figure")
+    : produced.filter((artifact) => artifact.kind !== "code" && artifact.kind !== "log");
+  if (scoped.length) return scoped;
+  return scope === "presentation" ? stateArtifacts(run).filter((artifact) => artifact.kind === "figure") : [];
+}
+
 type RunContext = {
   runId: string;
   runDir: string;
@@ -1113,6 +1242,188 @@ async function writeRunIndex(cwd: string, runId: string, runDir: string) {
     runs,
     updated_at: new Date().toISOString(),
   });
+}
+
+async function writeCurrentInteractiveRun(cwd: string, runId: string, runDir: string, state?: Json) {
+  if (process.env.NEURO_LEVEL1_NON_INTERACTIVE === "1") return;
+  await writeJson(resolve(cwd, CURRENT_RUN_FILE), {
+    schema_version: 2,
+    source: "neuro-level1",
+    run_id: runId,
+    run_dir: runDir,
+    project_id: state?.project_id,
+    project_dir: state?.project_dir,
+    round_number: state?.round_number,
+    round_name: state?.round_name,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+function researchMetadata(state: Json) {
+  return {
+    data_info: String(state.data_info || ""),
+    extra_path_info: String(state.extra_path_info || ""),
+    metadata_json_path: String(state.metadata_json_path || ""),
+  };
+}
+
+function effectiveMetadata(run: RunContext, requestedDataInfo?: string, requestedExtraPathInfo?: string) {
+  const locked = run.state.metadata_locked === true;
+  return {
+    data_info: locked ? String(run.state.data_info || "") : String(requestedDataInfo || run.state.data_info || ""),
+    extra_path_info: locked ? String(run.state.extra_path_info || "") : String(requestedExtraPathInfo || run.state.extra_path_info || ""),
+  };
+}
+
+function roundNumberFromName(name: string) {
+  const match = /^round(\d+)$/i.exec(name.trim());
+  return match ? Number(match[1]) : undefined;
+}
+
+async function readResearchProject(sourcePath: string) {
+  const source = resolve(sourcePath);
+  const sourceState = await readJson(join(source, "state.json"), {});
+  const declaredProjectDir = typeof sourceState.project_dir === "string" ? resolve(sourceState.project_dir) : "";
+  const candidates = [
+    source,
+    dirname(source),
+    declaredProjectDir,
+  ].filter(Boolean);
+  for (const projectDir of [...new Set(candidates)]) {
+    const manifestPath = join(projectDir, PROJECT_MANIFEST_FILE);
+    const manifest = await readJson(manifestPath, {});
+    if (manifest?.schema_version === 1 && Array.isArray(manifest.rounds)) {
+      return { projectDir, manifestPath, manifest, sourceState };
+    }
+  }
+  throw new Error(`No multi-round research project found for '${sourcePath}'. Expected project.json in the project directory or its round parent.`);
+}
+
+async function writeResearchProject(manifestPath: string, manifest: Json) {
+  await writeJson(manifestPath, { ...manifest, updated_at: new Date().toISOString() });
+}
+
+async function startResearchProject(
+  cwd: string,
+  projectPath: string,
+  question: string,
+  userDeliverables?: any[],
+  metadata?: { data_info?: string; extra_path_info?: string; metadata_json_path?: string },
+) {
+  const researchQuestion = question.trim();
+  if (!researchQuestion) throw new Error("question is required to start round1.");
+  const projectDir = resolve(cwd, projectPath);
+  const manifestPath = join(projectDir, PROJECT_MANIFEST_FILE);
+  if (existsSync(manifestPath)) {
+    throw new Error(`Research project already exists at '${projectDir}'. Use neuro_continue_research to create the next round.`);
+  }
+  const projectId = basename(projectDir) || `research-${shortTimestamp()}-${randomUUID().slice(0, 8)}`;
+  const roundNumber = 1;
+  const roundName = `round${roundNumber}`;
+  const run = await startRun(cwd, join(projectDir, roundName), userDeliverables, researchQuestion);
+  const immutableMetadata = {
+    data_info: String(metadata?.data_info || ""),
+    extra_path_info: String(metadata?.extra_path_info || ""),
+    metadata_json_path: String(metadata?.metadata_json_path || ""),
+  };
+  await updateState(run, {
+    project_id: projectId,
+    project_dir: projectDir,
+    round_number: roundNumber,
+    round_name: roundName,
+    metadata_locked: true,
+    ...immutableMetadata,
+  });
+  const manifest = {
+    schema_version: 1,
+    project_id: projectId,
+    project_dir: projectDir,
+    created_at: new Date().toISOString(),
+    metadata_locked: true,
+    metadata: immutableMetadata,
+    rounds: [{
+      round_number: roundNumber,
+      round_name: roundName,
+      run_id: run.runId,
+      run_dir: run.runDir,
+      question: researchQuestion,
+      status: "active",
+      created_at: new Date().toISOString(),
+    }],
+  };
+  await writeResearchProject(manifestPath, manifest);
+  await writeCurrentInteractiveRun(cwd, run.runId, run.runDir, run.state);
+  return { run, projectDir, projectId, roundNumber, roundName, manifestPath };
+}
+
+async function continueResearch(
+  cwd: string,
+  sourcePath: string,
+  direction: string,
+  userDeliverables?: any[],
+) {
+  const researchDirection = direction.trim();
+  if (!researchDirection) throw new Error("direction is required to continue research.");
+  const { projectDir, manifestPath, manifest, sourceState } = await readResearchProject(resolve(cwd, sourcePath));
+  const rounds = [...manifest.rounds].sort((a: Json, b: Json) => Number(a.round_number) - Number(b.round_number));
+  const sourceRoundNumber = Number(sourceState.round_number || roundNumberFromName(basename(resolve(cwd, sourcePath))) || rounds.at(-1)?.round_number);
+  const sourceRound = rounds.find((entry: Json) => Number(entry.round_number) === sourceRoundNumber) || rounds.at(-1);
+  if (!sourceRound?.run_dir) throw new Error("The research project has no reusable source round.");
+  const roundNumber = Math.max(0, ...rounds.map((entry: Json) => Number(entry.round_number) || 0)) + 1;
+  const roundName = `round${roundNumber}`;
+  const roundDir = join(projectDir, roundName);
+  if (existsSync(roundDir)) throw new Error(`Refusing to overwrite existing round directory '${roundDir}'.`);
+  const inheritedMetadata = manifest.metadata || researchMetadata(sourceState);
+  const run = await startRun(cwd, roundDir, userDeliverables, researchDirection);
+  const sourceRunState = await readJson(join(sourceRound.run_dir, "state.json"), {});
+  const reusableArtifacts = normalizeArtifacts(sourceRunState.artifacts || [], sourceRound.run_dir);
+  await updateState(run, {
+    project_id: manifest.project_id,
+    project_dir: projectDir,
+    round_number: roundNumber,
+    round_name: roundName,
+    parent_round: sourceRound.round_number,
+    parent_run_id: sourceRound.run_id,
+    metadata_locked: true,
+    data_info: String(inheritedMetadata.data_info || ""),
+    extra_path_info: String(inheritedMetadata.extra_path_info || ""),
+    metadata_json_path: String(inheritedMetadata.metadata_json_path || ""),
+    inherited_context: {
+      source_round: sourceRound.round_number,
+      source_run_id: sourceRound.run_id,
+      source_run_dir: sourceRound.run_dir,
+      source_state_path: join(sourceRound.run_dir, "state.json"),
+      conclusions_path: join(sourceRound.run_dir, "conclusions.json"),
+      conclusions: sourceRunState.conclusions || null,
+      reusable_artifacts: reusableArtifacts,
+      note: "Prior artifacts are read-only inputs unless the new round explicitly writes new outputs. Do not overwrite files in earlier rounds.",
+    },
+  });
+  manifest.rounds.push({
+    round_number: roundNumber,
+    round_name: roundName,
+    run_id: run.runId,
+    run_dir: run.runDir,
+    question: researchDirection,
+    parent_round: sourceRound.round_number,
+    parent_run_id: sourceRound.run_id,
+    status: "active",
+    created_at: new Date().toISOString(),
+  });
+  await writeResearchProject(manifestPath, manifest);
+  await writeCurrentInteractiveRun(cwd, run.runId, run.runDir, run.state);
+  return { run, projectDir, projectId: manifest.project_id, roundNumber, roundName, sourceRound, manifestPath };
+}
+
+async function updateResearchRoundManifest(run: RunContext, patch: Json) {
+  if (!run.state.project_dir || !run.state.round_number) return;
+  const manifestPath = join(run.state.project_dir, PROJECT_MANIFEST_FILE);
+  const manifest = await readJson(manifestPath, {});
+  if (!Array.isArray(manifest.rounds)) return;
+  manifest.rounds = manifest.rounds.map((entry: Json) => Number(entry.round_number) === Number(run.state.round_number)
+    ? { ...entry, ...patch, updated_at: new Date().toISOString() }
+    : entry);
+  await writeResearchProject(manifestPath, manifest);
 }
 
 function questionHistory(state: Json): Array<{ at: string; text: string }> {
@@ -1167,6 +1478,7 @@ async function startRun(cwd: string, workDir: string, userDeliverables?: any[], 
   };
   await writeJson(statePath, state);
   await writeRunIndex(cwd, runId, runDir);
+  await writeCurrentInteractiveRun(cwd, runId, runDir);
   return { runId, runDir, statePath, state };
 }
 
@@ -1194,6 +1506,7 @@ async function resumeRun(cwd: string, workDir: string, question?: string): Promi
   }
   await mkdir(join(runDir, "subagents"), { recursive: true });
   await writeRunIndex(cwd, runId, runDir);
+  await writeCurrentInteractiveRun(cwd, runId, runDir);
   const run = await loadRunState(runId, runDir);
   const questionPatch = applyQuestionUpdate(run.state, question);
   if (Object.keys(questionPatch).length) {
@@ -2101,6 +2414,10 @@ export default async function (pi: ExtensionAPI) {
           active_tools: activeTools,
           has_neuro_start_run: allTools.includes("neuro_start_run"),
           active_neuro_start_run: activeTools.includes("neuro_start_run"),
+          has_neuro_start_research: allTools.includes("neuro_start_research"),
+          active_neuro_start_research: activeTools.includes("neuro_start_research"),
+          has_neuro_continue_research: allTools.includes("neuro_continue_research"),
+          active_neuro_continue_research: activeTools.includes("neuro_continue_research"),
         }, null, 2),
         display: true,
       });
@@ -2369,7 +2686,7 @@ export default async function (pi: ExtensionAPI) {
 
   pi.on("tool_execution_end", async (event: Json) => {
     const resultRunDir = event.result?.details?.run_dir || event.result?.run_dir;
-    if (typeof resultRunDir === "string" && (event.toolName === "neuro_start_run" || event.toolName === "neuro_resume_run")) {
+    if (typeof resultRunDir === "string" && ["neuro_start_research", "neuro_continue_research", "neuro_start_run", "neuro_resume_run"].includes(event.toolName)) {
       activeRunDir = resultRunDir;
     }
     if (!activeRunDir) return;
@@ -2462,7 +2779,7 @@ export default async function (pi: ExtensionAPI) {
       return content({
         ok: true,
         required_spine: [
-          "neuro_start_run",
+          "neuro_start_research",
           "neuro_plan",
           "neuro_code",
           "neuro_validate",
@@ -2476,8 +2793,104 @@ export default async function (pi: ExtensionAPI) {
           save_skill: status(workflow.save_skill),
           transparency: status(workflow.transparency),
         },
+        post_run_code_edit: {
+          preferred_tool: "neuro_review_code_edit",
+          diff_review: "required",
+          exact_replacement_fast_path: true,
+          apply_and_regenerate_after_approval: true,
+          legacy_fallback: ["neuro_propose_code_update", "neuro_review_code_update"],
+        },
+        continuation_tool: "neuro_continue_research",
+        legacy_compatibility: ["neuro_start_run", "neuro_resume_run"],
         human_review: workflow.human_review,
         note: "Disabled optional tools are disabled by user configuration, not because the tool is broken. Continue the required spine without placeholder context for disabled tools.",
+      });
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_start_research",
+    label: "Neuro Start Research",
+    description: "Start a multi-round Level-1 research project. Creates project_dir/project.json and project_dir/round1/. Metadata is locked for all later rounds. Prefer this tool for new interactive research; neuro_start_run remains available for legacy single-run callers.",
+    parameters: Type.Object({
+      project_dir: Type.String({ description: "Stable project-ID directory. Round outputs are created below it as round1, round2, ..." }),
+      question: Type.String({ description: "Research question for round1." }),
+      data_info: Type.Optional(Type.String({ description: "Canonical metadata content. It is inherited unchanged by later rounds." })),
+      extra_path_info: Type.Optional(Type.String({ description: "Canonical path/access notes. They are inherited unchanged by later rounds." })),
+      metadata_json_path: Type.Optional(Type.String({ description: "Canonical metadata JSON path for this project." })),
+      deliverables: Type.Optional(Type.Array(Type.Object({
+        path: Type.String(),
+        kind: Type.Union([Type.Literal("figure"), Type.Literal("statistics"), Type.Literal("data"), Type.Literal("code"), Type.Literal("other")]),
+        role: Type.Optional(Type.String()),
+        description: Type.Optional(Type.String()),
+        optional: Type.Optional(Type.Boolean()),
+        produced_by: Type.Optional(Type.String()),
+      }))),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const created = await startResearchProject(
+        ctx.cwd,
+        params.project_dir,
+        params.question,
+        params.deliverables,
+        { data_info: params.data_info, extra_path_info: params.extra_path_info, metadata_json_path: params.metadata_json_path },
+      );
+      activeRunDir = created.run.runDir;
+      return content({
+        ok: true,
+        extension: "neuroscientist-level1",
+        project_id: created.projectId,
+        project_dir: created.projectDir,
+        project_manifest_path: created.manifestPath,
+        round_number: created.roundNumber,
+        round_name: created.roundName,
+        run_id: created.run.runId,
+        run_dir: created.run.runDir,
+        state_path: created.run.statePath,
+        metadata_locked: true,
+        deliverables: created.run.state.deliverables,
+        question: created.run.state.question,
+      });
+    },
+  });
+
+  pi.registerTool({
+    name: "neuro_continue_research",
+    label: "Neuro Continue Research",
+    description: "Create the next independent round in an existing multi-round Level-1 project. Accepts a project directory or any round directory, works across sessions/days, inherits locked metadata, and exposes prior conclusions/data/code as read-only reusable context.",
+    parameters: Type.Object({
+      source_path: Type.String({ description: "Existing project directory or a roundN directory supplied by the user." }),
+      direction: Type.String({ description: "Accepted suggested direction or the user's own next research question." }),
+      deliverables: Type.Optional(Type.Array(Type.Object({
+        path: Type.String(),
+        kind: Type.Union([Type.Literal("figure"), Type.Literal("statistics"), Type.Literal("data"), Type.Literal("code"), Type.Literal("other")]),
+        role: Type.Optional(Type.String()),
+        description: Type.Optional(Type.String()),
+        optional: Type.Optional(Type.Boolean()),
+        produced_by: Type.Optional(Type.String()),
+      }))),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const created = await continueResearch(ctx.cwd, params.source_path, params.direction, params.deliverables);
+      activeRunDir = created.run.runDir;
+      return content({
+        ok: true,
+        extension: "neuroscientist-level1",
+        project_id: created.projectId,
+        project_dir: created.projectDir,
+        project_manifest_path: created.manifestPath,
+        round_number: created.roundNumber,
+        round_name: created.roundName,
+        parent_round: created.sourceRound.round_number,
+        parent_run_id: created.sourceRound.run_id,
+        run_id: created.run.runId,
+        run_dir: created.run.runDir,
+        state_path: created.run.statePath,
+        metadata_locked: true,
+        inherited_context: created.run.state.inherited_context,
+        deliverables: created.run.state.deliverables,
+        question: created.run.state.question,
+        guidance: "Continue the normal Level-1 stages using this new run_id. Reuse prior round artifacts only through inherited_context; write every new output inside the new round directory.",
       });
     },
   });
@@ -2759,6 +3172,307 @@ export default async function (pi: ExtensionAPI) {
   });
 
   pi.registerTool({
+    name: "neuro_review_code_edit",
+    label: "Neuro Review Code Edit",
+    description: "Prepare exact localized code edits, show a diff for approval, then apply and optionally regenerate in one tool call.",
+    renderShell: "self",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      code_path: Type.Optional(Type.String({ description: "Code artifact to edit. Defaults to the single known code artifact or generated_code.py." })),
+      edits: Type.Array(Type.Object({
+        find: Type.String({ description: "Exact source text to replace." }),
+        replace: Type.String({ description: "Replacement source text." }),
+        expected_matches: Type.Optional(Type.Integer({ minimum: 1, description: "Required exact match count. Defaults to 1." })),
+      }), { minItems: 1, maxItems: 20 }),
+      summary: Type.Optional(Type.String({ description: "Short user-facing explanation of the change." })),
+      change_scope: Type.Optional(Type.Union([
+        Type.Literal("presentation"),
+        Type.Literal("scientific"),
+      ], { description: "Presentation-only edits invalidate visual review only; scientific edits invalidate full validation." })),
+      rerun: Type.Optional(Type.Boolean({ description: "After approval, rerun a Python code artifact and verify regenerated outputs. Defaults to true." })),
+    }),
+    async execute(_toolCallId, params, signal, onUpdate, ctx) {
+      // Start the expensive renderer import immediately. Run/state resolution,
+      // file reads, exact edit application, and proposal writes proceed in
+      // parallel with this warm-up; we join only before opening the review UI.
+      const diffWarmup = preloadDiffComponent()
+        .then(() => ({ ok: true }))
+        .catch((error) => ({ ok: false, error: String(error) }));
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const targetPath = resolveEditableCodePath(run, params.code_path);
+      if (!targetPath) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          error: "No editable code artifact found. Pass code_path for a code file inside the run directory.",
+          code_artifacts: codeArtifactsFromRun(run),
+        });
+      }
+
+      const oldCode = await readFile(targetPath, "utf8").catch(() => "");
+      let editResult: { updatedCode: string; appliedEdits: Json[] };
+      try {
+        editResult = applyExactCodeEdits(oldCode, params.edits);
+      } catch (error) {
+        return content({ ok: false, run_id: run.runId, code_path: targetPath, error: String(error) });
+      }
+
+      const scope = params.change_scope === "presentation" ? "presentation" : "scientific";
+      const rerun = params.rerun !== false;
+      const editId = `edit_${shortTimestamp()}_${randomUUID().slice(0, 8)}`;
+      const pendingDir = join(run.runDir, "pending_code_edits", editId);
+      const beforePath = join(pendingDir, `before_${basename(targetPath)}`);
+      const proposedPath = join(pendingDir, basename(targetPath));
+      const diffPath = join(pendingDir, "diff.patch");
+      const summaryPath = join(pendingDir, "summary.md");
+      const executionPath = join(pendingDir, "execution.json");
+      const stdoutPath = join(pendingDir, "stdout.log");
+      const stderrPath = join(pendingDir, "stderr.log");
+      const summary = String(params.summary || "Localized code edit proposed by NeuroScientist.").trim();
+      const diffText = unifiedDiff(oldCode, editResult.updatedCode, targetPath, proposedPath);
+      await Promise.all([
+        writeText(beforePath, oldCode),
+        writeText(proposedPath, editResult.updatedCode),
+        writeText(diffPath, diffText),
+        writeText(summaryPath, summary),
+      ]);
+
+      const pendingEntry = {
+        edit_id: editId,
+        status: "proposed",
+        mode: "exact_replacements",
+        code_path: targetPath,
+        before_path: beforePath,
+        proposed_path: proposedPath,
+        diff_path: diffPath,
+        summary_path: summaryPath,
+        summary,
+        change_scope: scope,
+        rerun_requested: rerun,
+        edits: editResult.appliedEdits,
+        created_at: new Date().toISOString(),
+      };
+      const pending = Array.isArray(run.state.pending_code_edits) ? run.state.pending_code_edits : [];
+      await updateState(run, { pending_code_edits: [...pending, pendingEntry] });
+      await appendStateEntry(pi, {
+        run_id: run.runId,
+        event: "neuro_review_code_edit_proposed",
+        ok: true,
+        edit_id: editId,
+        code_path: targetPath,
+        change_scope: scope,
+      });
+
+      const diffRenderer = await diffWarmup;
+      const reviewDetails = {
+        _type: "neuroCodeUpdateReview",
+        codePath: targetPath,
+        diffPath,
+        summary,
+        diff: parsedDiff(oldCode, editResult.updatedCode),
+        language: diffLanguage(targetPath),
+        diffRenderer,
+      };
+      onUpdate?.({
+        content: [{ type: "text", text: `Review pending code edit for ${targetPath}. Full patch: ${diffPath}` }],
+        details: reviewDetails,
+      });
+
+      if (!(ctx as any)?.ui?.select || process.env.NEURO_LEVEL1_NON_INTERACTIVE === "1") {
+        const result = {
+          ok: false,
+          run_id: run.runId,
+          edit_id: editId,
+          diff_path: diffPath,
+          needs_text_review: true,
+          message: "Interactive selector is unavailable. Ask the user to approve or provide feedback in chat.",
+        };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: { ...reviewDetails, ...result } };
+      }
+
+      const approveLabel = rerun ? "Yes, apply and regenerate" : "Yes, apply";
+      const choice = await (ctx as any).ui.select("Apply this code edit?", [
+        approveLabel,
+        "No, and tell NeuroScientist what to do differently",
+      ]);
+      if (choice?.startsWith("Yes")) {
+        const trackedArtifacts = generatedArtifactsForCodeEdit(run, targetPath, scope);
+        const trackedPaths = trackedArtifacts.map((artifact) => artifact.path);
+        const beforeStamps = await artifactStamps(trackedPaths);
+        const snapshot = await snapshotRunArtifacts(run, `before_code_edit_${editId}`);
+        await writeText(targetPath, editResult.updatedCode);
+        const appliedAt = new Date().toISOString();
+        const appliedEntry = { ...pendingEntry, status: "applied", applied_at: appliedAt, snapshot };
+        const nextPending = (run.state.pending_code_edits || []).map((item: Json) =>
+          item.edit_id === editId ? appliedEntry : item
+        );
+        await updateState(run, {
+          pending_code_edits: nextPending,
+          applied_code_edits: [
+            ...(Array.isArray(run.state.applied_code_edits) ? run.state.applied_code_edits : []),
+            appliedEntry,
+          ],
+          ...validationInvalidationForScope(scope),
+        });
+        await appendStateEntry(pi, {
+          run_id: run.runId,
+          event: "neuro_apply_code_edit",
+          ok: true,
+          edit_id: editId,
+          code_path: targetPath,
+          change_scope: scope,
+        });
+
+        if (!rerun) {
+          return content({
+            ok: true,
+            run_id: run.runId,
+            edit_id: editId,
+            decision: "approve",
+            status: "applied",
+            code_path: targetPath,
+            diff_path: diffPath,
+            approved_for_execution: true,
+          });
+        }
+
+        onUpdate?.({
+          content: [{ type: "text", text: `Approved. Regenerating artifacts with ${basename(targetPath)}...` }],
+          details: reviewDetails,
+        });
+        const execution = await rerunApprovedPythonCode(targetPath, run.runDir, signal);
+        await Promise.all([
+          writeText(stdoutPath, String(execution.stdout || "")),
+          writeText(stderrPath, String(execution.stderr || "")),
+        ]);
+        const afterStamps = await artifactStamps(trackedPaths);
+        const artifactChecks = trackedPaths.map((path) => {
+          const before = beforeStamps[path];
+          const after = afterStamps[path];
+          return {
+            path,
+            exists: Boolean(after?.exists),
+            updated: Boolean(after?.exists && (!before?.exists || after.mtime_ms > before.mtime_ms)),
+            before,
+            after,
+          };
+        });
+        const hasRequiredArtifacts = scope !== "presentation" || trackedPaths.length > 0;
+        const verified = execution.ok === true
+          && hasRequiredArtifacts
+          && artifactChecks.every((check) => check.exists && check.updated);
+        const status = execution.ok !== true ? "execution_failed" : verified ? "verified" : "verification_failed";
+        const executionRecord = {
+          command: ["python3", targetPath],
+          cwd: run.runDir,
+          ok: execution.ok === true,
+          exit_code: execution.exit_code ?? null,
+          signal: execution.signal,
+          error: execution.error,
+          duration_ms: execution.duration_ms,
+          stdout_path: stdoutPath,
+          stderr_path: stderrPath,
+          artifact_checks: artifactChecks,
+          has_required_artifacts: hasRequiredArtifacts,
+          verified,
+          finished_at: new Date().toISOString(),
+        };
+        await writeJson(executionPath, executionRecord);
+        const finalEntry = { ...appliedEntry, status, execution_path: executionPath, executed_at: executionRecord.finished_at };
+        const finalPending = (run.state.pending_code_edits || []).map((item: Json) =>
+          item.edit_id === editId ? finalEntry : item
+        );
+        const finalApplied = (run.state.applied_code_edits || []).map((item: Json) =>
+          item.edit_id === editId ? finalEntry : item
+        );
+        await updateState(run, { pending_code_edits: finalPending, applied_code_edits: finalApplied });
+        await appendStateEntry(pi, {
+          run_id: run.runId,
+          event: "neuro_execute_code_edit",
+          ok: verified,
+          edit_id: editId,
+          status,
+          exit_code: executionRecord.exit_code,
+          artifact_checks: artifactChecks,
+        });
+        return content({
+          ok: verified,
+          run_id: run.runId,
+          edit_id: editId,
+          decision: "approve",
+          status,
+          code_path: targetPath,
+          diff_path: diffPath,
+          execution: executionRecord,
+          artifacts: trackedArtifacts,
+          guidance: verified
+            ? "The approved edit was applied and regenerated artifacts were verified. Summarize the result; do not run the script again."
+            : "The edit remains applied, but regeneration or artifact verification failed. Inspect execution.json and logs before retrying.",
+        });
+      }
+
+      if (choice?.startsWith("No")) {
+        const feedback = await (ctx as any).ui.input(
+          "Feedback for code edit",
+          "Describe what should change before applying and regenerating",
+        );
+        const feedbackText = String(feedback || "").trim();
+        if (!feedbackText) {
+          return content({ ok: false, run_id: run.runId, edit_id: editId, decision: "cancel", message: "No feedback was entered." });
+        }
+        const nextPending = (run.state.pending_code_edits || []).map((item: Json) =>
+          item.edit_id === editId
+            ? {
+                ...item,
+                status: "changes_requested",
+                feedback: [
+                  ...(Array.isArray(item.feedback) ? item.feedback : []),
+                  { at: new Date().toISOString(), text: feedbackText, source: "code_edit_selector" },
+                ],
+                updated_at: new Date().toISOString(),
+              }
+            : item
+        );
+        await updateState(run, { pending_code_edits: nextPending });
+        await appendStateEntry(pi, { run_id: run.runId, event: "neuro_code_edit_feedback", ok: true, edit_id: editId });
+        return content({
+          ok: true,
+          run_id: run.runId,
+          edit_id: editId,
+          decision: "feedback",
+          feedback: feedbackText,
+          guidance: "Prepare corrected exact replacements and call neuro_review_code_edit again.",
+        });
+      }
+
+      return content({ ok: false, run_id: run.runId, edit_id: editId, decision: "cancel", message: "Code edit review was cancelled." });
+    },
+    renderCall(args, theme) {
+      const target = args.code_path ? ` ${theme.fg("muted", args.code_path)}` : "";
+      return new Text(`${theme.fg("toolTitle", theme.bold("review code edit"))}${target}`, 0, 0);
+    },
+    renderResult(result, { isPartial }, theme, context) {
+      const details = result.details as Json | undefined;
+      if (details?._type === "neuroCodeUpdateReview") {
+        const shell = new Box(1, 1, (text: string) => theme.bg(isPartial ? "toolPendingBg" : "toolSuccessBg", text));
+        shell.addChild(new Text(theme.fg("toolTitle", theme.bold("NeuroScientist Code Edit Review")), 0, 0));
+        shell.addChild(new Text(theme.fg("accent", details.codePath), 0, 0));
+        if (details.summary) {
+          shell.addChild(new Spacer(1));
+          shell.addChild(new Text(theme.fg("toolOutput", details.summary), 0, 0));
+        }
+        shell.addChild(new Spacer(1));
+        shell.addChild(new LazyDiffComponent(details.diff, details.language, theme, context.invalidate));
+        shell.addChild(new Spacer(1));
+        shell.addChild(new Text(theme.fg("muted", `Full patch: ${details.diffPath}`), 0, 0));
+        return shell;
+      }
+      const text = result.content.find((item: any) => item.type === "text")?.text || "";
+      return new Text(theme.fg("toolOutput", text), 0, 0);
+    },
+  });
+
+  pi.registerTool({
     name: "neuro_propose_code_update",
     label: "Neuro Propose Code Update",
     description: "Create a pending code edit and diff for post-run user feedback. Does not modify the active code artifact.",
@@ -2841,10 +3555,12 @@ export default async function (pi: ExtensionAPI) {
       edit_id: Type.Optional(Type.String({ description: "Pending code edit id. Defaults to the latest proposed edit." })),
     }),
     async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+      const diffWarmup = preloadDiffComponent().catch(() => undefined);
       const run = await resolveRun(ctx.cwd, params.run_id);
       const pending = Array.isArray(run.state.pending_code_edits) ? run.state.pending_code_edits : [];
       const entry = [...pending].reverse().find((item: any) =>
-        (!params.edit_id || item.edit_id === params.edit_id) && item.status !== "applied"
+        (!params.edit_id || item.edit_id === params.edit_id)
+          && (item.status === "proposed" || item.status === "changes_requested")
       );
       if (!entry) {
         return content({ ok: false, run_id: run.runId, error: "No pending code edit found." });
@@ -2852,6 +3568,7 @@ export default async function (pi: ExtensionAPI) {
       const oldCode = await readFile(entry.code_path, "utf8").catch(() => "");
       const proposedCode = await readFile(entry.proposed_path, "utf8").catch(() => "");
       const summaryText = await readFile(entry.summary_path, "utf8").catch(() => entry.summary || "");
+      await diffWarmup;
       const reviewDetails = {
         _type: "neuroCodeUpdateReview",
         codePath: entry.code_path,
@@ -2904,6 +3621,7 @@ export default async function (pi: ExtensionAPI) {
             ...(Array.isArray(run.state.applied_code_edits) ? run.state.applied_code_edits : []),
             appliedEntry,
           ],
+          validation_invalidated_by_code_edit: true,
         });
         await appendStateEntry(pi, {
           run_id: run.runId,
@@ -3193,11 +3911,13 @@ export default async function (pi: ExtensionAPI) {
       const run = await resolveRun(ctx.cwd, params.run_id);
       const question = resolveQuestion(run, params.question);
       const rolePrompt = await readPrompt("plan");
+      const metadata = effectiveMetadata(run, params.data_info, params.extra_path_info);
       const planHumanFeedback = humanFeedbackText(run, "plan");
       const prompt = finalizationPrompt("planner", "finalize_plan", rolePrompt, [
         `Question:\n${question}`,
-        `Data info:\n${params.data_info || ""}`,
-        `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
+        `Data info:\n${metadata.data_info}`,
+        `Extra path info:\n${metadata.extra_path_info}`,
+        run.state.inherited_context ? `Prior-round reusable context (read-only):\n${JSON.stringify(run.state.inherited_context, null, 2)}` : "",
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${params.deep_research_context || run.state.deep_research_context || ""}`,
         planHumanFeedback ? `Human review feedback for the plan:\n${planHumanFeedback}` : "",
@@ -3225,8 +3945,8 @@ export default async function (pi: ExtensionAPI) {
         await writeText(planPath, sub.result.plan_markdown);
         await updateState(run, {
           plan: sub.result,
-          data_info: params.data_info || run.state.data_info || "",
-          extra_path_info: params.extra_path_info || run.state.extra_path_info || "",
+          data_info: metadata.data_info,
+          extra_path_info: metadata.extra_path_info,
         });
       }
       await appendStateEntry(pi, { run_id: run.runId, event: "neuro_plan", ok: sub.ok });
@@ -3289,16 +4009,62 @@ export default async function (pi: ExtensionAPI) {
       const agentConfig = pickAgentConfig(config, "level1_code");
       const question = resolveQuestion(run, params.question);
       const rolePrompt = await readPrompt("code");
+      const metadata = effectiveMetadata(run, params.data_info, params.extra_path_info);
       const previousAttempt = Number(run.state.code_attempt || 0);
-      const isRetry = Boolean(params.validation_feedback || run.state.code || previousAttempt > 0);
+      const latestValidation = run.state.validation || null;
+      const retryPolicy = codeRetryPolicy(run.state, params.validation_feedback, DEFAULT_MAX_CODE_ATTEMPTS);
+      const retryFeedback = retryPolicy.feedback;
+      if (!retryPolicy.allowed && retryPolicy.reason === "attempt_limit") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: `Code retry limit reached (${DEFAULT_MAX_CODE_ATTEMPTS} total attempts).`,
+          guidance: "Continue with tentative evidence and explicit limitations, or start a new research round.",
+        });
+      }
+      if (!retryPolicy.allowed && retryPolicy.reason === "validation_required") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "The existing Code attempt must be validated before neuro_code can run again.",
+          next_step: { tool: "neuro_validate", args: { run_id: run.runId } },
+        });
+      }
+      if (!retryPolicy.allowed && retryPolicy.reason === "stale_validation") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: `Validation covers Code attempt ${retryPolicy.validatedAttempt}, but the latest attempt is ${previousAttempt}.`,
+          next_step: { tool: "neuro_validate", args: { run_id: run.runId } },
+        });
+      }
+      if (!retryPolicy.allowed && retryPolicy.reason === "already_passed") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "Validation already passed; automatic neuro_code retry is not allowed.",
+          methodological_caveats: latestValidation.methodological_caveats || [],
+          guidance: "Continue to Analysis/Conclude. A scientific redesign requires explicit user approval through the post-run review flow or a new round.",
+        });
+      }
+      if (!retryPolicy.allowed) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "A failed Validation with non-empty repair feedback is required for a Code retry.",
+        });
+      }
+      const isRetry = previousAttempt > 0;
       const deliverables: Artifact[] = run.state.deliverables || DEFAULT_DELIVERABLES;
-      const codeArtifacts = deliverables.filter(a => a.kind === "code");
-      const mainCodePath = codeArtifacts[0]?.path || "generated_code.py";
       const statsArtifact = deliverables.find(a => a.kind === "statistics");
       const statsPath = statsArtifact?.path || "statistics.json";
       const currentArtifacts = stateArtifacts(run);
       const currentExecLog = currentArtifacts.find(a => a.name === "exec_log" || a.kind === "log")?.path || join(run.runDir, "exec.log");
-      const currentFigure = currentArtifacts.find(a => a.kind === "figure" && isVisionImage(a.path));
       const existingArtifacts = {
         deliverables: deliverables.map(a => ({ ...a })),
         artifacts: currentArtifacts,
@@ -3315,21 +4081,19 @@ export default async function (pi: ExtensionAPI) {
             `Existing artifacts:\n${JSON.stringify(existingArtifacts, null, 2)}`,
           ].join("\n")
         : "";
-      const codeVisionPath = agentConfig.vision === true ? currentFigure?.path || "" : "";
-      const codeVision = codeVisionPath ? await loadVisionImages([codeVisionPath]) : { images: [], warnings: [] };
       const prompt = finalizationPrompt("coder", "finalize_code_result", rolePrompt, [
         `Question:\n${question}`,
         `Plan:\n${params.plan || run.state.plan?.plan_markdown || ""}`,
-        `Data info:\n${params.data_info || run.state.data_info || ""}`,
-        `Extra path info:\n${params.extra_path_info || run.state.extra_path_info || ""}`,
+        `Data info:\n${metadata.data_info}`,
+        `Extra path info:\n${metadata.extra_path_info}`,
+        run.state.inherited_context ? `Prior-round reusable context (read-only; do not overwrite earlier rounds):\n${JSON.stringify(run.state.inherited_context, null, 2)}` : "",
         `Targeted skill:\n${params.targeted_skill || run.state.targeted_skill || ""}`,
         `Deep research context:\n${run.state.deep_research_context || ""}`,
-        `Validation feedback:\n${params.validation_feedback || ""}`,
+        `Validation feedback:\n${retryFeedback}`,
         `Deliverables (read-only contract; produce every file listed):\n${deliverablesToPromptText(deliverables)}`,
         additionalContextBlock(params.additional_context),
         retryContext,
-        codeVision.warnings.length ? `Vision warnings:\n${codeVision.warnings.join("\n")}` : "",
-        "Generate analysis code and only finalize with: { code_files, exec_log, statistics, artifacts, summary, warnings }. code_files must list every code artifact you wrote; each entry is { path, code }. artifacts must list every artifact you actually generated, with name/path/kind/role/description; each figure/data artifact must include produced_by pointing to the code artifact path that generated it. For every pdf figure, also produce a same-stem png.",
+        "Generate, write, and execute the analysis code. After one compact non-visual verification, finalize with: { code_files, exec_log, statistics, artifacts, summary, warnings }. code_files must list every code artifact you wrote as { path } only; do not copy source code into the finalize payload. Do not open/read generated images because neuro_validate owns visual review. artifacts must list every artifact actually generated, with name/path/kind/role/description; each figure/data artifact must include produced_by pointing to its code artifact. For every pdf figure, also produce a same-stem png.",
       ].join("\n\n"));
       const sub = await runSubagent({
         runDir: run.runDir,
@@ -3338,8 +4102,7 @@ export default async function (pi: ExtensionAPI) {
         finalizeSchema: Type.Object({
           code_files: Type.Array(Type.Object({
             path: Type.String(),
-            code: Type.String(),
-          })),
+          }), { minItems: 1 }),
           exec_log: Type.String(),
           statistics: Type.Any(),
           artifacts: Type.Array(Type.Object({
@@ -3356,32 +4119,39 @@ export default async function (pi: ExtensionAPI) {
         prompt,
         agentConfig,
         tools: ["read", "write", "edit", "bash", "grep", "find", "ls"],
-        images: codeVision.images,
         signal,
       });
 
-      const returnedCodeText = [
-        ...((Array.isArray(sub.result?.code_files) ? sub.result.code_files : []).map((entry: any) => entry?.code || "")),
-      ].join("\n");
+      const codeFiles = (Array.isArray(sub.result?.code_files) ? sub.result.code_files : [])
+        .filter((entry: any) => entry?.path)
+        .map((entry: any) => ({ path: String(entry.path) }));
+      const codeReadWarnings: Json[] = [];
+      const returnedCodeParts: string[] = [];
+      for (const codeFile of codeFiles) {
+        const physicalPath = resolveArtifactPath(run.runDir, codeFile.path);
+        try {
+          returnedCodeParts.push(await readFile(physicalPath, "utf8"));
+        } catch (error) {
+          codeReadWarnings.push({
+            path: physicalPath,
+            warning: "Unable to read finalized code artifact for deterministic checks.",
+            error: String(error),
+          });
+        }
+      }
+      const returnedCodeText = returnedCodeParts.join("\n");
       let checks: Json = {
         dummy_data_signals: dummyDataSignals([returnedCodeText, sub.result?.exec_log || ""].join("\n")),
         statistics_warnings: statisticsWarnings(sub.result?.statistics, question),
+        code_read_warnings: codeReadWarnings,
       };
       const blocked = checks.dummy_data_signals.length > 0;
       let resultArtifacts: Artifact[] = [];
       if (sub.ok) {
-        // Persist returned code content. Agents usually write files themselves;
-        // this keeps finalize output and declared code artifacts in sync.
-        const mainCodePhysicalPath = resolveArtifactPath(run.runDir, mainCodePath);
+        // Code artifacts are written by the subagent before finalization. Read
+        // them directly above instead of retransmitting full source in the
+        // finalize payload and rewriting the same files here.
         const statsPhysicalPath = resolveArtifactPath(run.runDir, statsPath);
-        const codeFiles = (Array.isArray(sub.result.code_files) ? sub.result.code_files : [])
-          .filter((entry: any) => entry?.path && typeof entry.code === "string")
-          .map((entry: any) => ({ path: String(entry.path), code: String(entry.code) }));
-        const codeFilePaths = new Set<string>();
-        for (const codeFile of codeFiles) {
-          codeFilePaths.add(codeFile.path);
-          await writeText(resolveArtifactPath(run.runDir, codeFile.path), codeFile.code);
-        }
         await writeText(join(run.runDir, "exec.log"), sub.result.exec_log || "");
         await writeJson(statsPhysicalPath, sub.result.statistics || {});
         const declaredArtifacts = normalizeArtifacts(sub.result.artifacts || [], run.runDir);
@@ -3435,6 +4205,7 @@ export default async function (pi: ExtensionAPI) {
         checks,
         blocked_by_dummy_data: blocked,
         code_attempt: previousAttempt + 1,
+        next_step: sub.ok ? { tool: "neuro_validate", args: { run_id: run.runId } } : undefined,
         output_path: sub.output_path,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
       });
@@ -3488,7 +4259,7 @@ export default async function (pi: ExtensionAPI) {
         `Deep research context:\n${run.state.deep_research_context || ""}`,
         `Statistics:\n${JSON.stringify(params.statistics || run.state.code?.statistics || {}, null, 2)}`,
         additionalContextBlock(params.additional_context),
-        "Finalize with: { pass, per_figure, overall_mismatches, confidence, summary, next_code_feedback }. per_figure must have one entry per figure path with { path, pass, issues, next_code_feedback }.",
+        "Finalize with facts only: { pass, per_figure, overall_mismatches, blocking_issues, methodological_caveats, visual_issues, confidence, summary }. per_figure must contain { path, pass, issues } for every figure. visual_issues contains at most one highest-priority { figure_path, feedback }. The extension, not the validator, selects the next workflow action.",
       ].join("\n\n"));
       const sub = await runSubagent({
         runDir: run.runDir,
@@ -3500,12 +4271,16 @@ export default async function (pi: ExtensionAPI) {
             path: Type.String(),
             pass: Type.Boolean(),
             issues: Type.Array(Type.String()),
-            next_code_feedback: Type.String(),
           })),
           overall_mismatches: Type.Array(Type.String()),
+          blocking_issues: Type.Array(Type.String()),
+          methodological_caveats: Type.Array(Type.String()),
+          visual_issues: Type.Array(Type.Object({
+            figure_path: Type.String(),
+            feedback: Type.String(),
+          }), { maxItems: 1 }),
           confidence: Type.Number(),
           summary: Type.String(),
-          next_code_feedback: Type.String(),
         }),
         prompt,
         agentConfig,
@@ -3513,18 +4288,32 @@ export default async function (pi: ExtensionAPI) {
         images: vision.images,
         signal,
       });
+      let validationResult = sub.result;
+      let nextStep: Json | undefined;
       if (sub.ok) {
+        validationResult = normalizeValidation(sub.result, {
+          codeAttempt: Number(run.state.code_attempt || 0),
+          refinementCount: Number(run.state.image_refinement_count || 0),
+          maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
+        });
+        nextStep = validationNextStep(validationResult, run.runId, figures[0]?.path || "");
         const validationPath = join(run.runDir, "validation.json");
-        await writeJson(validationPath, sub.result);
-        await updateState(run, { validation: sub.result, validations: sub.result.per_figure });
+        await writeJson(validationPath, validationResult);
+        await updateState(run, {
+          validation: validationResult,
+          validations: validationResult.per_figure,
+          validation_invalidated_by_code_edit: false,
+          refinement_pending_validation: false,
+        });
         await snapshotRunArtifacts(run, "after_validate");
       }
-      await appendStateEntry(pi, { run_id: run.runId, event: "neuro_validate", ok: sub.ok, pass: sub.result?.pass });
+      await appendStateEntry(pi, { run_id: run.runId, event: "neuro_validate", ok: sub.ok, pass: validationResult?.pass, route: validationResult?.route });
       return content({
         run_id: run.runId,
         ok: sub.ok,
         error: sub.error,
-        result: sub.result,
+        result: validationResult,
+        next_step: nextStep,
         validation_path: sub.ok ? join(run.runDir, "validation.json") : undefined,
         output_path: sub.output_path,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
@@ -3539,7 +4328,7 @@ export default async function (pi: ExtensionAPI) {
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
-      figure_path: Type.String(),
+      figure_path: Type.Optional(Type.String()),
       feedback: Type.Optional(Type.String()),
       additional_context: Type.Optional(Type.String()),
     }),
@@ -3552,15 +4341,54 @@ export default async function (pi: ExtensionAPI) {
       if (!workflow.image_refine) {
         return skippedByConfig(run.runId, "neuro_refine_image", "image_refine");
       }
+      const validation = run.state.validation || null;
+      const refinementCount = Number(run.state.image_refinement_count || 0);
+      if (validation?.pass !== true || validation?.route !== "refine_image") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "Image refinement is allowed only after a passing Validation selects one presentation-only target.",
+        });
+      }
+      if (refinementCount >= 1) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "The single image-refinement allowance for this round has already been used.",
+          guidance: "Continue to Analysis/Conclude and report any remaining visual issue as a limitation.",
+        });
+      }
+      const authorizedFigure = String(validation.refine_target?.figure_path || "").trim();
+      const requestedFigure = String(params.figure_path || authorizedFigure).trim();
+      const refinementFeedback = String(params.feedback || validation.refinement_feedback || "").trim();
+      if (!requestedFigure || !refinementFeedback) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "Validation must provide a concrete figure path and non-empty visual feedback.",
+        });
+      }
+      if (authorizedFigure && resolveArtifactPath(run.runDir, authorizedFigure) !== resolveArtifactPath(run.runDir, requestedFigure)) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "The requested figure does not match the visual target authorized by Validation.",
+          authorized_figure_path: authorizedFigure,
+        });
+      }
       if (agentConfig.vision !== true) {
         return content({
           ok: false,
           run_id: run.runId,
           error: "configuration issue: neuro_refine_image requires vision=true. Report this to the user; do not edit config.yaml unless explicitly asked.",
-          figure_path: params.figure_path,
+          figure_path: requestedFigure,
         });
       }
-      const figurePath = resolveArtifactPath(run.runDir, params.figure_path);
+      const figurePath = resolveArtifactPath(run.runDir, requestedFigure);
       const vision = await loadVisionImages([figurePath]);
       if (!vision.images.length) {
         return content({ ok: false, run_id: run.runId, error: "failed to load refinement image", warnings: vision.warnings });
@@ -3570,22 +4398,23 @@ export default async function (pi: ExtensionAPI) {
       const idx = allFigures.findIndex(a => a.path === figurePath);
       const otherFigures = allFigures.filter((_, i) => i !== idx).map(a => a.path);
       const multiFigureContext = allFigures.length > 1
-        ? `Multi-figure context: 本次共生成 ${allFigures.length} 张图。你只改进第 ${(idx < 0 ? 0 : idx) + 1} 张：${params.figure_path}。其它图：${otherFigures.join(", ")}。跨图综合由下游完成。`
+        ? `Multi-figure context: 本次共生成 ${allFigures.length} 张图。你只改进第 ${(idx < 0 ? 0 : idx) + 1} 张：${requestedFigure}。其它图：${otherFigures.join(", ")}。跨图综合由下游完成。`
         : "";
       const { codePath, ambiguous } = resolveCodePathForFigure(run.runDir, stateArtifacts(run), figurePath);
       const codePathNote = ambiguous
-        ? `生成此图的代码可能在以下脚本中之一：${codePath}。请 read 后自行判断归属，只修改生成 ${params.figure_path} 的那个脚本。`
+        ? `生成此图的代码可能在以下脚本中之一：${codePath}。请 read 后自行判断归属，只修改生成 ${requestedFigure} 的那个脚本。`
         : `生成此图的代码在：${codePath}`;
       const prompt = finalizationPrompt("image refiner", "finalize_refinement", rolePrompt, [
         `Question:\n${question}`,
-        `Figure path:\n${params.figure_path}`,
+        `Figure path:\n${requestedFigure}`,
         multiFigureContext,
         codePathNote,
-        `Feedback:\n${params.feedback || ""}`,
+        `Feedback:\n${refinementFeedback}`,
         additionalContextBlock(params.additional_context),
-        "用 read 读取上述代码，定位生成此图的段并修改，用 bash 重跑该脚本。重跑会更新该脚本产出的所有图，这是正常的；只关注目标 figure 是否按 feedback 改善。原地覆盖 figure_path，不要新存 figure_refine.png。",
+        "用 read 读取上述代码，定位生成此图的段并修改，用 bash 重跑该脚本。只允许修复排版、裁切、重叠、间距、字号、标签或其它 presentation-only 问题；不得改变数据、统计、分析方法、模型参数、阈值或科学选择准则。重跑会更新该脚本产出的图；只关注目标 figure 是否按 feedback 改善。原地覆盖 figure_path，不要新存 figure_refine.png。",
         "Finalize with: { refined_code_patch, refined_figure_path, summary, remaining_issues, stop }. refined_figure_path 应等于原 figure_path。",
       ].join("\n\n"));
+      const refinementGuard = await createRefinementGuard(run);
       const sub = await runSubagent({
         runDir: run.runDir,
         agentName: "neuro_refine_image",
@@ -3603,17 +4432,66 @@ export default async function (pi: ExtensionAPI) {
         images: vision.images,
         signal,
       });
-      if (sub.ok) {
-        await updateState(run, { refinement: sub.result });
+      const integrity = await finalizeRefinementGuard(refinementGuard, sub.ok);
+      const refinementOk = sub.ok && integrity.accepted;
+      let fastValidation: Json | undefined;
+      let nextStep: Json | undefined;
+      if (refinementOk) {
+        const fastPass = fastPassRefinedValidation(validation, sub.result, {
+          integrityAccepted: integrity.accepted,
+          codeAttempt: Number(run.state.code_attempt || 0),
+        });
+        if (!fastPass.allowed) {
+          return content({
+            ok: false,
+            run_id: run.runId,
+            error: "Refinement completed but did not meet the narrow fast-pass policy.",
+            guidance: "Run neuro_validate before Analysis/Conclude.",
+          });
+        }
+        fastValidation = {
+          ...fastPass.validation,
+          refined_fast_pass_at: new Date().toISOString(),
+        };
+        nextStep = validationNextStep(fastValidation, run.runId, figurePath);
+        const refinements = Array.isArray(run.state.refinements) ? run.state.refinements : [];
+        await writeJson(join(run.runDir, "validation.json"), fastValidation);
+        await updateState(run, {
+          refinement: sub.result,
+          refinements: [...refinements, sub.result],
+          image_refinement_count: refinementCount + 1,
+          pre_refinement_validation: validation,
+          validation: fastValidation,
+          validations: fastValidation.per_figure,
+          validation_invalidated_by_code_edit: false,
+          refinement_pending_validation: false,
+          refinement_fast_pass: true,
+        });
         await snapshotRunArtifacts(run, "after_refine");
       }
-      await appendStateEntry(pi, { run_id: run.runId, event: "neuro_refine_image", ok: sub.ok });
+      await appendStateEntry(pi, {
+        run_id: run.runId,
+        event: "neuro_refine_image",
+        ok: refinementOk,
+        fast_pass: Boolean(fastValidation),
+        integrity_violations: integrity.violations,
+        image_refinement_count: refinementCount + (refinementOk ? 1 : 0),
+      });
       return content({
         run_id: run.runId,
-        ok: sub.ok,
-        error: sub.error,
+        ok: refinementOk,
+        error: integrity.violations.length
+          ? `Image refinement changed immutable data/statistics artifacts and was rolled back: ${integrity.violations.join(", ")}`
+          : sub.error,
         result: sub.result,
-        refined_figure_path: sub.ok ? sub.result.refined_figure_path || figurePath : undefined,
+        validation: fastValidation,
+        fast_pass: Boolean(fastValidation),
+        integrity_violations: integrity.violations,
+        refined_figure_path: refinementOk ? sub.result.refined_figure_path || figurePath : undefined,
+        next_step: nextStep,
+        guidance: refinementOk
+          ? "Presentation-only refinement passed the immutable-artifact guard. Scientific validation was reused; no diff review or second Validate is required."
+          : undefined,
         output_path: sub.output_path,
         debug: { subagent_dir: sub.subagent_dir, snapshot_dir: sub.snapshot_dir },
       });
@@ -3633,6 +4511,24 @@ export default async function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
+      if (!currentArtifactsValidated(run.state)) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "The latest Code/refinement artifacts must be validated before image analysis.",
+          next_step: { tool: "neuro_validate", args: { run_id: run.runId } },
+        });
+      }
+      if (run.state.validation?.route === "retry_code") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "Blocking validation issues must be repaired before image analysis.",
+          next_step: validationNextStep(run.state.validation, run.runId, params.figure_path),
+        });
+      }
       const agentConfig = pickAgentConfig(config, "level1_analyze_image");
       const question = resolveQuestion(run, params.question);
       const workflow = level1WorkflowConfig(config);
@@ -3719,7 +4615,7 @@ export default async function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "neuro_conclude",
     label: "Neuro Conclude",
-    description: "Run the isolated conclusion subagent and store conclusions.json.",
+    description: "Run the isolated conclusion subagent, store conclusions.json, and propose grounded next research directions for an optional later round.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
@@ -3733,6 +4629,24 @@ export default async function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfigCached(ctx.cwd);
       const run = await resolveRun(ctx.cwd, params.run_id);
+      if (!currentArtifactsValidated(run.state)) {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "The latest Code/refinement artifacts must be validated before conclusion synthesis.",
+          next_step: { tool: "neuro_validate", args: { run_id: run.runId } },
+        });
+      }
+      if (run.state.validation?.route === "retry_code") {
+        return content({
+          ok: false,
+          run_id: run.runId,
+          blocked_by_validation_policy: true,
+          error: "Blocking validation issues must be repaired before conclusion synthesis.",
+          next_step: validationNextStep(run.state.validation, run.runId, figureArtifactsFromState(run)[0]?.path || ""),
+        });
+      }
       const question = resolveQuestion(run, params.question);
       const dummyDataSignals = run.state.checks?.dummy_data_signals || [];
       const dataIntegrityWarning = dummyDataSignals.length
@@ -3768,7 +4682,7 @@ export default async function (pi: ExtensionAPI) {
         `Deep research context:\n${run.state.deep_research_context || ""}`,
         dataIntegrityWarning,
         additionalContextBlock(params.additional_context),
-        "Finalize with: { conclusions, summary, limitations, confidence }. 跨图综合是你的职责。",
+        "Finalize with: { conclusions, summary, limitations, confidence, next_research_directions }. Provide 1-3 grounded next directions; each direction has title, research_question, rationale, reuses, and expected_output. Directions are suggestions only and must not start another round automatically. 跨图综合是你的职责。",
       ].join("\n\n"));
       const sub = await runSubagent({
         runDir: run.runDir,
@@ -3779,6 +4693,13 @@ export default async function (pi: ExtensionAPI) {
           summary: Type.String(),
           limitations: Type.Array(Type.String()),
           confidence: Type.Number(),
+          next_research_directions: Type.Array(Type.Object({
+            title: Type.String(),
+            research_question: Type.String(),
+            rationale: Type.String(),
+            reuses: Type.Array(Type.String()),
+            expected_output: Type.String(),
+          }), { minItems: 1, maxItems: 3 }),
         }),
         prompt,
         agentConfig: pickAgentConfig(config, "level1_conclude"),
@@ -3786,6 +4707,21 @@ export default async function (pi: ExtensionAPI) {
         signal,
       });
       if (sub.ok) {
+        const validationCaveats = Array.isArray(run.state.validation?.methodological_caveats)
+          ? run.state.validation.methodological_caveats.map(String).filter(Boolean)
+          : [];
+        const unresolvedBlocking = run.state.validation?.route === "conclude_with_limitations"
+          ? (Array.isArray(run.state.validation?.blocking_issues) ? run.state.validation.blocking_issues.map((issue: any) => `Unresolved validation issue: ${String(issue)}`) : [])
+          : [];
+        const unresolvedVisual = Array.isArray(run.state.validation?.visual_issues)
+          ? run.state.validation.visual_issues.map((issue: any) => `Remaining visual issue: ${String(issue?.feedback || issue)}`)
+          : [];
+        sub.result.limitations = [...new Set([
+          ...(Array.isArray(sub.result.limitations) ? sub.result.limitations.map(String) : []),
+          ...validationCaveats,
+          ...unresolvedBlocking,
+          ...unresolvedVisual,
+        ])];
         const conclusionsPath = join(run.runDir, "conclusions.json");
         await writeJson(conclusionsPath, sub.result);
         await updateState(run, {
@@ -3794,6 +4730,13 @@ export default async function (pi: ExtensionAPI) {
             dummy_data_limited: dummyDataSignals.length > 0,
             dummy_data_signals: dummyDataSignals,
           },
+        });
+        await updateResearchRoundManifest(run, {
+          status: "concluded",
+          completed_at: new Date().toISOString(),
+          conclusions_path: conclusionsPath,
+          summary: sub.result.summary,
+          next_research_directions: sub.result.next_research_directions,
         });
         await snapshotRunArtifacts(run, "after_conclude");
       }
@@ -3809,6 +4752,10 @@ export default async function (pi: ExtensionAPI) {
         error: sub.error,
         result: sub.result,
         conclusions_path: sub.ok ? join(run.runDir, "conclusions.json") : undefined,
+        next_research_directions: sub.ok ? sub.result.next_research_directions : undefined,
+        guidance: sub.ok
+          ? "Summarize the conclusions and next_research_directions for the user. Do not create another round until the user accepts one suggestion or supplies their own direction; then call neuro_continue_research with the project/round path and that direction."
+          : undefined,
         output_path: sub.output_path,
         warnings: {
           dummy_data_limited: dummyDataSignals.length > 0,

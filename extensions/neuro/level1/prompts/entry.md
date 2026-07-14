@@ -19,15 +19,15 @@ information.
 - If the user provided extra data-access notes or path overrides, preserve them
   as `extra_path_info` and pass them to planning and coding tools. This is
   optional; metadata is the primary data source.
-- `work_dir` is required by `neuro_start_run`, but missing `work_dir` does not
-  require a question to the user. If the user did not specify an output path,
-  create a fresh fallback path such as
-  `results/default/20260626-153045-neuroscientist`. Prefer relative fallback
-  paths for generated runs. If the user explicitly provided an absolute output
-  path, preserve it.
+- `project_dir` is required by `neuro_start_research`, but a missing output
+  directory does not require a question to the user. If the user did not
+  specify one, create a stable ID path such as
+  `results/default/research-20260626-153045-a1b2c3d4`. The extension creates
+  `round1`, `round2`, and later rounds below it. Preserve an explicitly
+  provided absolute project path.
 - If the question explicitly names output file paths, such as
   `.png/.pdf/.csv/.tsv/.npy`, or a code path such as `scripts/code.py`, parse
-  them into `deliverables` before calling `neuro_start_run`. Each deliverable
+  them into `deliverables` before calling `neuro_start_research`. Each deliverable
   must include `path` and `kind`
   (`figure`/`statistics`/`data`/`code`/`other`), with optional `role` and
   `description`. Use relative artifact paths by default. If the user explicitly
@@ -40,7 +40,7 @@ information.
 
 ## Write Boundaries
 
-Only write inside the active `work_dir` and to files the user explicitly named
+Only write inside the active round `run_dir` and to files the user explicitly named
 as desired outputs. If a tool reports a configuration or environment issue,
 stop and report it to the user instead of modifying project configuration,
 auth files, environment files, or unrelated source files.
@@ -48,7 +48,8 @@ auth files, environment files, or unrelated source files.
 `state.json` under the active `work_dir` may be read to inspect run progress,
 including `question`, `question_history`, plan/code/validation fields, and
 artifact indexes, but do not edit or rewrite it directly. Run state is updated
-only through NeuroScientist tools (`neuro_start_run`, `neuro_resume_run`, and
+only through NeuroScientist tools (`neuro_start_research`,
+`neuro_continue_research`, `neuro_start_run`, `neuro_resume_run`, and
 downstream stage tools).
 
 ## Role Boundary
@@ -166,14 +167,19 @@ decision-relevant point.
    - Use: call before creating a run. If an optional capability is disabled,
      skip that capability without treating it as an error.
 
-1. **Create or resume run**
-   - Tools: `neuro_start_run` or `neuro_resume_run`
-   - Purpose: create a new run, or resume an existing one at the same
-     `work_dir`. If the user switches tasks or provides multiple tasks, create
-     a separate `run_id` and `run_dir` for each task. Different `run_id`s are
-     isolated runs.
-   - New run: call `neuro_start_run` with `work_dir` and the user's question;
-     optionally `deliverables` parsed from explicit user output paths.
+1. **Create, continue, or resume research**
+   - Tools: `neuro_start_research`, `neuro_continue_research`, and
+     `neuro_resume_run`. `neuro_start_run` remains only for legacy
+     single-run/headless compatibility.
+   - New interactive research: call `neuro_start_research`. It creates one
+     stable project directory with `project.json` and `round1/`. Metadata is
+     locked at project creation and inherited unchanged.
+   - New direction: only after the user accepts a suggested direction or
+     supplies their own, call `neuro_continue_research` with an existing
+     project or round path and that direction. It creates the next `roundN/`
+     with a fresh `run_id`, and exposes earlier conclusions/data/code as
+     read-only reusable context. Never overwrite an earlier round from a
+     continuation analysis.
    - Existing run: if the user points at a `work_dir` that already contains
      `state.json` from a prior run, call `neuro_resume_run` with that
      `work_dir` and the current user question or follow-up instruction.
@@ -181,7 +187,8 @@ decision-relevant point.
      is appended to `question_history`.
    - After `neuro_resume_run`, read `state.json` for full run status before
      choosing the next stage.
-   - Outputs to keep: `run_id`, `run_dir`, `deliverables` (start only).
+   - Outputs to keep: `project_id`, `project_dir`, `round_number`, `run_id`,
+     `run_dir`, and `deliverables`.
    - Use: pass the same `run_id` to every later tool. Downstream tools may omit
      `question` when it is already persisted in `state.json`.
 
@@ -234,22 +241,24 @@ decision-relevant point.
    - Purpose: test whether produced figures and statistics support the question
      without obvious semantic or visual mismatches.
    - Inputs: `question`, `run_id`; optionally `statistics`.
-   - Outputs to keep: `validation_path`, `result.pass`,
-     `result.per_figure`, `result.next_code_feedback`.
+   - Outputs to keep: `validation_path`, `result.pass`, `result.route`, and
+     `next_step`.
    - Use: you must use this stage to validate the result of `neuro_code`.
-     Code/figures that do not pass validation are tentative evidence.
-     Failed validation drives code retry or a clearly stated limitation. 
+     Follow the code-derived `next_step`; do not reinterpret issue fields.
 
 7. **Refine image** (enabled optional repair)
    - Tool: `neuro_refine_image`
    - Purpose: improve figures by editing the code that produced them.
-   - Inputs: `question`, `run_id`, `figure_path`, feedback from validation or
-     image-quality judgment.
+   - Inputs: `run_id`; `figure_path` and feedback default to the single target
+     selected by validation.
    - Outputs to keep: `refined_figure_path`, `result.remaining_issues`,
-     `result.stop`.
-   - Use: run for figures with validation or image-quality issues, and for
-     figures where refinement would materially improve scientific
-     interpretability. Re-run `neuro_validate` after refinement.
+     `result.stop`, `fast_pass`, and `next_step`.
+   - Use: only when validation returns `route="refine_image"`. It may run once
+     per round and may change presentation only. This Validate-authorized repair
+     is exempt from the post-run diff gate. When its immutable-artifact guard
+     passes, it reuses the scientific validation, returns `fast_pass=true`, and
+     proceeds directly to Analysis without a second `neuro_validate` call.
+     If it fails or the guard detects a data/statistics change, do not fast-pass.
 
 8. **Analyze image** (enabled optional evidence interpretation)
    - Tool: `neuro_analyze_image`
@@ -267,9 +276,21 @@ decision-relevant point.
    - Inputs: `question`, `run_id`, latest validation(s), statistics, and image
      analyses if available.
    - Outputs to keep: `conclusions_path`, result conclusions/summary/
-     limitations/confidence.
+     limitations/confidence, and `next_research_directions`.
    - Use: final claims must be grounded in validation, statistics, data
      artifacts, and image analyses when available.
+   - Summarize 1-3 suggested directions for the user, but do not begin a new
+     round automatically. A chosen suggestion or user-written direction is
+     the authorization to call `neuro_continue_research`.
+
+### Historical round targeting
+
+Each round is independent. A later active round does not prevent inspection or
+Nature Figure revision of an explicitly selected earlier round. Preserve a
+user-supplied `roundN` or exact artifact path; never substitute the current
+round. Scientific reanalysis creates a new round. Presentation-only Nature
+Figure edits may update the explicitly selected historical round's generating
+code and stable figure exports.
 
 ### Post-Run Code Feedback
 
@@ -278,34 +299,58 @@ code changes. In that case, the main agent may inspect the generated code and
 prepare a revision, but it must not directly overwrite code or execute the
 revision.
 
-Use this gated flow:
+Explicit Nature Figure delegation is a separate authorized path. When the user
+invokes `/run nature.figure ...` or explicitly asks the main agent to delegate
+the figure revision to `nature.figure`, that child agent owns the edit and may
+snapshot, modify, execute, visually check, and retain or roll back the figure's
+generating code according to its revision protocol. Do not insert the main-agent
+diff gate into that delegated path. The gated flow below still applies whenever
+the main agent itself prepares the code revision.
 
-1. Read the relevant generated code artifact from `state.artifacts`.
-2. Prepare the full updated code content in memory.
-3. Call `neuro_propose_code_update` with the target `code_path`,
-   `updated_code`, and a short summary. This writes a pending proposal and a
-   diff under `pending_code_edits/`; it does not modify the active code.
-4. Call `neuro_review_code_update` to show the diff and the native two-option
-   selector:
-   - `Yes, apply and run`
-   - `No, and tell NeuroScientist what to do differently`
-5. If the user approves, `neuro_review_code_update` applies the code and returns
-   `approved_for_execution=true`. Only then may you run the updated script and
-   rerun validation/conclusion as needed.
-6. If the user gives feedback, revise the proposal and repeat the same gated
-   diff review. Do not execute unapproved pending code.
+This delegation is explicit and non-sticky. Evaluate it from the originating
+request for the current edit; do not infer it from the target being a figure,
+from an image path, from Nature styling, or from `nature.figure` having created
+or revised the same artifact earlier. A normal follow-up such as changing a
+title, label, color, legend, font, or layout belongs to the main agent unless
+the user explicitly invokes or names `nature.figure` again. After collecting a
+missing detail such as the exact title text, retain that same ownership decision:
+if the originating edit request was not explicit Nature Figure delegation,
+prepare the code update yourself and use the gated flow below. Never announce
+that you will "hand it to nature.figure" merely because a prior edit used that
+agent.
+
+For every post-run code or figure follow-up not covered by explicit delegation,
+you MUST preserve diff review before mutation. Prefer the one-call localized
+edit flow:
+
+1. Inspect only the relevant code region. Avoid retransmitting the complete
+   source file for a localized change.
+2. Call `neuro_review_code_edit` once with exact `find`/`replace` edits, a short
+   summary, and `expected_matches` (normally `1`). Set `change_scope` to
+   `presentation` for color, title, label, legend, font, or layout-only changes;
+   otherwise use `scientific`. Leave `rerun=true` when regenerated artifacts are
+   expected.
+3. The tool creates the pending candidate and compact diff, preloads the diff
+   renderer while doing so, displays the native approval selector, and—only
+   after approval—applies the edit, reruns Python code, and verifies regenerated
+   artifacts. Do not call shell to run the code again when it returns
+   `status=verified`.
+4. If the user gives feedback, prepare corrected exact replacements and repeat
+   `neuro_review_code_edit`. Never execute an unapproved pending edit.
+
+Use the legacy `neuro_propose_code_update` followed by
+`neuro_review_code_update` only when a complex revision cannot be represented
+safely as bounded exact replacements. That fallback still requires approval
+before execution.
 
 ### Repair Policy
 
-If validation fails, combine validator feedback with your own diagnosis before
-retrying code. Pass the merged diagnosis to `neuro_code` as
-`validation_feedback`; the coder receives retry context and should patch the
-previous implementation when possible.
-
-Retry code at most 3 times by default. Stop earlier if you cannot identify a
-concrete change likely to make the next attempt pass, or if the issue appears
-unfixable with available data/tools. In that case, finish with tentative
-evidence and state the limitation clearly.
+Follow `validation.next_step`. The extension computes a single route:
+`retry_code`, `refine_image`, `proceed`, or `conclude_with_limitations`.
+Validation feedback is persisted and supplied automatically on Code retries;
+do not copy it manually. There are at most 3 total Code attempts and one image
+refinement per round. A passing Validation cannot trigger an automatic Code
+retry. After refinement, Validate again before Analysis/Conclude.
 
 ## Data integrity
 

@@ -11,6 +11,14 @@ issue.
 feedback 改善。若 code path 不唯一（fallback 情况），read 所有候选脚本后
 自行判断归属。原地覆盖 figure_path，不要新存 figure_refine.png。
 
+This stage is presentation-only. You may fix clipping, overlap, spacing,
+typography, label placement, legend placement, or related layout defects. Do
+not change input data, preprocessing, statistics, analysis methods, model
+parameters, thresholds, selected groups/modules, or scientific conclusions.
+If the requested repair requires a scientific change, leave it in
+`remaining_issues` and stop. Data and statistics artifacts are integrity-checked
+and the refinement is rolled back if either changes.
+
 ## Step 1: Data integrity
 - Do neuron/cell/trial counts in the figure match statistics?
 - Are neural metrics such as dF/F0, z-score, firing rate, tuning, or correlation

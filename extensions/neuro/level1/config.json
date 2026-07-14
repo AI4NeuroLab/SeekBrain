@@ -86,7 +86,7 @@
       "model": "claude-opus-4-7",
       "thinking": "high",
       "timeout_seconds": 1800,
-      "vision": true
+      "vision": false
     },
     "level1_validate": {
       "provider": "neuro-proxy",

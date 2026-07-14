@@ -76,7 +76,8 @@ ext-agent-chain:
 
 # 13b. NeuroScientist workflow selector with Level-1 dashboard
 ext-neuro:
-    pi -e extensions/neuro.ts -e extensions/theme-cycler.ts
+    pi -e extensions/neuro.ts -e node_modules/pi-subagents/src/extension/index.ts -e extensions/theme-cycler.ts
+    pi -e extensions/neuro.ts -e node_modules/pi-subagents/src/extension/index.ts -e extensions/usage-footer.ts
 
 #g3
 

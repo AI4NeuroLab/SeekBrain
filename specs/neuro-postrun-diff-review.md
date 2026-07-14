@@ -17,7 +17,45 @@ Normal Level-1 usage is now understood as:
 
 This separates method approval from post-run code-edit approval.
 
+### Nature Figure delegation exception
+
+An explicit `/run nature.figure ...` invocation is a separate delegated edit
+path. The child snapshots the generating code and related figure artifacts,
+then directly edits, executes, visually checks, and either retains or rolls
+back its revision. It does not require the main-agent diff selector. An audit
+diff is still stored in the revision directory. The approval flow documented
+below continues to apply when the main agent itself prepares the code update.
+
+Delegation is scoped to the edit request that explicitly invoked or named
+`nature.figure`; it does not become sticky ownership of that artifact. Later
+ordinary requests to change the same figure—including title, label, color,
+legend, font, and layout tweaks—return to the main-agent proposal/review gate
+unless the user explicitly delegates that new request to `nature.figure`.
+Clarifying a missing value such as title text does not change the route selected
+for the originating edit request.
+
 ## Implemented Code-Edit Gate
+
+### Preferred one-call fast path: `neuro_review_code_edit`
+
+Localized post-run changes now use one tool call with bounded exact
+`find`/`replace` operations. The tool starts loading `@pi-archimedes/diff` as
+soon as execution begins, in parallel with run resolution, code reads, proposal
+writes, and diff construction. It joins the import before opening the review UI.
+
+The same tool then:
+
+- requires the configured exact match count (normally one),
+- stores the original code, proposed code, compact patch, and summary,
+- displays the existing `DiffComponent` review,
+- applies only after the user approves,
+- optionally reruns an approved Python artifact,
+- stores stdout, stderr, and structured execution metadata,
+- verifies that linked output artifacts were regenerated.
+
+Presentation-only edits invalidate visual review without invalidating scientific
+validation. The two-tool flow below remains available as a compatibility
+fallback for complex revisions that cannot be expressed as exact replacements.
 
 New Level-1 tools were added in:
 

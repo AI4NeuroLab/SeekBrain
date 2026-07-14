@@ -10,11 +10,18 @@
  * Usage: pi -e extensions/tool-counter.ts
  */
 
-import type { AssistantMessage } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { basename } from "node:path";
 import { applyExtensionDefaults } from "./themeMap.ts";
+
+type AssistantMessageWithUsage = {
+	usage?: {
+		input?: number;
+		output?: number;
+		cost?: { total?: number };
+	};
+};
 
 export default function (pi: ExtensionAPI) {
 	const counts: Record<string, number> = {};
@@ -38,10 +45,10 @@ export default function (pi: ExtensionAPI) {
 					let cost = 0;
 					for (const entry of ctx.sessionManager.getBranch()) {
 						if (entry.type === "message" && entry.message.role === "assistant") {
-							const m = entry.message as AssistantMessage;
-							tokIn += m.usage.input;
-							tokOut += m.usage.output;
-							cost += m.usage.cost.total;
+							const m = entry.message as AssistantMessageWithUsage;
+							tokIn += Number(m.usage?.input || 0);
+							tokOut += Number(m.usage?.output || 0);
+							cost += Number(m.usage?.cost?.total || 0);
 						}
 					}
 
@@ -52,8 +59,7 @@ export default function (pi: ExtensionAPI) {
 					// --- Line 1: model + context meter (left), tokens + cost (right) ---
 					const usage = ctx.getContextUsage();
 					const pct = usage ? usage.percent : 0;
-					const filled = Math.round(pct / 10) || 1;
-					const bar = "#".repeat(filled) + "-".repeat(10 - filled);
+					const filled = Math.max(0, Math.min(10, Math.round(pct / 10)));
 					const model = ctx.model?.id || "no-model";
 
 					const l1Left =

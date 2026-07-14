@@ -1,1 +1,0 @@
-To test whether the tuning of the HD cells during the learning epoch was single or double peaked, the individual HD-cell tuning curves in the learning epoch were refit with scaled-shifted sinusoids of θ or 2θ, and the ROI-averaged R2 values were compared between the two fits.

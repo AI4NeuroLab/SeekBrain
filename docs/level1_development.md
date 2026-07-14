@@ -573,6 +573,10 @@ coding subagent 可用工具：
 - summary
 - warnings
 
+从第二次调用开始，`neuro_code` 只接受当前 Code attempt 对应的失败
+Validation。extension 会自动读取已保存的 repair feedback，不要求主 agent
+机械复制。每个 round 最多执行 3 次 Code；Validation 通过后拒绝自动重跑。
+
 extension 会把返回的代码和产物写入 run directory：
 
 ```text
@@ -618,16 +622,25 @@ extension 会把返回的代码和产物写入 run directory：
 - `pass`
 - `per_figure`
 - `overall_mismatches`
+- `blocking_issues`
+- `methodological_caveats`
+- `visual_issues`（最多一个 `{figure_path, feedback}`）
+- `route`
 - `confidence`
 - `summary`
-- `next_code_feedback`
+- 由 extension 派生的 `next_code_feedback`、`refine_target` 和 `next_step`
 
-如果验证失败，主 agent 应该把 `next_code_feedback` 合并成
-`validation_feedback`，最多默认重试 code 3 次。
+Validator 只报告事实，不决定工具动作。extension 统一计算：
+
+- `retry_code`：存在阻断问题且仍有 Code 尝试额度。
+- `refine_image`：Validation 通过，且存在一个值得自动修复的视觉问题。
+- `proceed`：Validation 通过并可进入分析/结论。
+- `conclude_with_limitations`：3 次 Code 后仍失败，使用暂定证据并明确限制。
 
 #### `neuro_refine_image`
 
-用途：当图像质量或验证指出问题时，启动 image refinement subagent。
+用途：仅当 Validation 返回 `route="refine_image"` 时，启动一次 image
+refinement subagent。
 
 它会：
 
@@ -641,7 +654,10 @@ extension 会把返回的代码和产物写入 run directory：
 
 - 不生成 `figure_refine.png` 这类旁路文件。
 - `refined_figure_path` 应等于原始 `figure_path`。
-- refine 后应重新运行 `neuro_validate`。
+- 每个 round 最多 refine 一次。
+- 只能改变 presentation，不得改变数据、统计、方法、参数、阈值或科学选择。
+- extension 会校验 data/statistics artifact；发生变化时回滚 refinement。
+- refine 后必须重新运行 `neuro_validate`，否则 Analyze/Conclude 会拒绝运行。
 
 #### `neuro_analyze_image`
 
@@ -1368,7 +1384,11 @@ state.json 中的 "conclusions"
   "artifacts": [],
   "validation": {},
   "validations": [],
+  "validation_invalidated_by_code_edit": false,
   "refinement": {},
+  "refinements": [],
+  "image_refinement_count": 0,
+  "refinement_pending_validation": false,
   "image_analysis": {},
   "image_analyses": [],
   "conclusions": {},
