@@ -30,7 +30,7 @@ workflow:
     # true = persist session logs, events, usage/, snapshots (debug); false = runtime deliverables only.
     debug_disk_writes: true
     level1:
-        deep_research: false
+        deep_research: true
         targeted_skill_match: true
         targeted_skill_generate: true
         image_refine: true
