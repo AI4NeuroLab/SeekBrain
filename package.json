@@ -8,5 +8,8 @@
     "diff": "^8.0.0",
     "pi-subagents": "0.34.0",
     "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "jiti": "^2.7.0"
   }
 }
