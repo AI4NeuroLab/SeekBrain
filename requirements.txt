@@ -150,3 +150,9 @@ zipp==3.23.0
 langchain-openai==0.3.29
 pandas==2.3.2
 h5py==3.15.1
+# Optional report-export engines for internagent/workflow/export_report.py.
+# All are runtime-optional: the exporter feature-detects each and degrades to a
+# skip+warning when absent, so a host without them still produces paper_report.md.
+python-docx==1.1.2
+xhtml2pdf==0.2.16
+markdown==3.7
