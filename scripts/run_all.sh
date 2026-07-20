@@ -12,7 +12,13 @@ if [[ -z "${PAPER_ID}" ]]; then
     exit 1
 fi
 
-BENCHMARK_ROOT="/mnt/shared-storage-user/zhuyuqing-p/benchmark_0714/benchmark"
+# Override on any machine: BENCHMARK_ROOT=/path/to/benchmark bash scripts/run_all.sh ...
+BENCHMARK_ROOT="${BENCHMARK_ROOT:-/mnt/shared-storage-user/zhuyuqing-p/benchmark_0714/benchmark}"
+if [[ ! -d "${BENCHMARK_ROOT}" ]]; then
+    echo "ERROR: benchmark root not found: ${BENCHMARK_ROOT}" >&2
+    echo "Set BENCHMARK_ROOT=/path/to/benchmark and re-run." >&2
+    exit 1
+fi
 QUESTIONS_DIR="${BENCHMARK_ROOT}/questions/${PAPER_ID}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

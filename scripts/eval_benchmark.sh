@@ -46,7 +46,15 @@ for arg in "$@"; do
 done
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-EVALUATE_DIR="/mnt/shared-storage-user/zhuyuqing-p/evaluate"
+# Override on any machine: EVALUATE_DIR=/path/to/evaluate bash scripts/eval_benchmark.sh ...
+# (the in-repo evaluate/ corpus was relocated to shared storage; restore a local
+#  copy with: git checkout 8c36658 -- evaluate/  and point EVALUATE_DIR at it)
+EVALUATE_DIR="${EVALUATE_DIR:-/mnt/shared-storage-user/zhuyuqing-p/evaluate}"
+if [[ ! -d "${EVALUATE_DIR}" ]]; then
+    echo "ERROR: evaluate dir not found: ${EVALUATE_DIR}" >&2
+    echo "Set EVALUATE_DIR=/path/to/evaluate and re-run." >&2
+    exit 1
+fi
 RUBRIC_DIR="${RUBRIC_DIR:-${EVALUATE_DIR}/evaluate_query/rubric_0714}"
 
 QUESTION_ID="${QUESTION_ID%.md}"

@@ -13,7 +13,13 @@ if [[ -z "${PAPER_ID}" || -z "${QUESTION_ID}" ]]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BENCHMARK_ROOT="/mnt/shared-storage-user/zhuyuqing-p/benchmark_0714/benchmark"
+# Override on any machine: BENCHMARK_ROOT=/path/to/benchmark bash scripts/run_benchmark.sh ...
+BENCHMARK_ROOT="${BENCHMARK_ROOT:-/mnt/shared-storage-user/zhuyuqing-p/benchmark_0714/benchmark}"
+if [[ ! -d "${BENCHMARK_ROOT}" ]]; then
+    echo "ERROR: benchmark root not found: ${BENCHMARK_ROOT}" >&2
+    echo "Set BENCHMARK_ROOT=/path/to/benchmark and re-run." >&2
+    exit 1
+fi
 PI_CMD="${ROOT_DIR}/.tools/node/bin/pi"
 
 if [[ ! -x "${PI_CMD}" ]]; then
