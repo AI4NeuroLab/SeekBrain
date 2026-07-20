@@ -1,7 +1,18 @@
 ---
 name: nature-figure
 description: >-
-  Submission-grade Nature/high-impact journal figure workflow for Python or R, plus optional OpenRouter GPT Image 2 manuscript schematic generation when the user explicitly asks for AI-generated graphical abstracts, concept schematics, mechanism diagrams, or paper schematic illustrations. Use whenever the user asks to create, revise, audit, or polish manuscript figures, multi-panel scientific plots, figures4papers-style matplotlib plots, journal-ready SVG/PDF/TIFF outputs, or OpenRouter/API-generated schematic drafts, especially for Nature-family or other high-impact journals. Before plotting or image generation, define the figure's conclusion, evidence logic, export needs, and review risks. For plotting tasks, honor an explicit Python/R choice, otherwise reuse the saved nature-figure backend preference; if no preference exists, ask once whether the user prefers Python or R and save that answer for future calls. For explicit OpenRouter/GPT Image 2 schematic generation, do not ask Python or R; use the AI-schematic route. Supports matplotlib/seaborn, ggplot2/patchwork/ComplexHeatmap, and OpenRouter Images API drafts. Not for dashboards or Illustrator/Figma-first infographics. Also trigger on general academic-writing figure needs even without the word "Nature", such as making figures/plots for a paper, scientific/academic plotting, data visualization for a manuscript, AI-generated paper schematics, and Chinese phrasings like 论文配图、学术写作配图、科研绘图、科研作图、画图、作图、出图、论文图表、可视化、论文示意图、机制示意图、图形摘要.
+  Submission-grade figure workflow for Nature-family and other high-impact
+  journals (Python or R), plus optional OpenRouter GPT Image 2 generation of
+  manuscript schematics, graphical abstracts, and concept or mechanism diagrams.
+  Use whenever the user asks to create, revise, audit, or polish manuscript
+  figures, multi-panel scientific plots, figures4papers-style matplotlib plots,
+  journal-ready SVG/PDF/TIFF exports, or AI-generated schematic drafts. Supports
+  matplotlib/seaborn, ggplot2/patchwork/ComplexHeatmap, and the OpenRouter Images
+  API. Not for dashboards or Illustrator/Figma-first infographics. Also triggers
+  on general academic figure needs without the word "Nature" — scientific or
+  academic plotting, data visualization for a manuscript, AI-generated paper
+  schematics — and on Chinese phrasings such as
+  论文配图、学术写作配图、科研绘图、科研作图、画图、作图、出图、论文图表、可视化、论文示意图、机制示意图、图形摘要.
 version: 2.0.0
 author: Community contribution, refactored into static/dynamic layers
 ---
