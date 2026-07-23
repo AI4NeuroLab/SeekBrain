@@ -1,1 +1,0 @@
-﻿To test whether the temporal dynamics of neural activity are similar to the temporal dynamics of mouse behaviour by correlating neural and behavioural inverse decay constants across sessions.

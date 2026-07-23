@@ -1,0 +1,8 @@
+<article>
+  <body>
+    <sec><title>Software availability</title>
+      <p>MINT is freely available at https://github.com/panzerilab/MINT with DOI 10.5281/zenodo.13998526 and operates under a GNU GPLv3 license.</p>
+      <p>The package contains documentation, tests, examples, a Dockerfile, and replication of paper figures at https://github.com/panzerilab/MINT_figures.</p>
+    </sec>
+  </body>
+</article>

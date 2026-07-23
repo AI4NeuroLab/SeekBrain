@@ -1,1 +1,0 @@
-To investigate the influence of gene expression on larval zebrafish FC, a dataset of spatially resolved gene expression markers is applied. Here, I want to visualize the regional expression level of all genes. Use gene_expression.npy for visualization.

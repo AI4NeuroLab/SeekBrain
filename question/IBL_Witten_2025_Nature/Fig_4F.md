@@ -1,1 +1,0 @@
-﻿Compare effect sizes for the visual stimulus variable across brain regions using multiple analysis methods (population decoding, single-cell responsiveness, trajectory distance, and encoding). Display the normalized effect sizes as a multi-method comparison table with brain regions as columns, distinguishing significant from non-significant regions.

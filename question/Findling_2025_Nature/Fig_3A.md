@@ -1,1 +1,0 @@
-﻿To test whether post-stimulus neural activity in a superior colliculus motor-related region exhibits prior-dependent shifts in decoded right-stimulus choices, by comparing neurometric curves across signed contrast between low-prior and high-prior trial groups.

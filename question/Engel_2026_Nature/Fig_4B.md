@@ -1,1 +1,0 @@
-﻿Compute trial-averaged firing rates (PSTHs) for all simultaneously recorded PMd neurons in an example session,  grouped by chosen side (left/right) and stimulus difficulty (easy/hard). Plot each neuron's firing rate traces with  s.e.m. error bands for the four conditions, demonstrating  the diversity of temporal response profiles across the population.

@@ -1,0 +1,25 @@
+{
+  "paperId": "8c690b4d1fa3ee9e6749b0c12355efd95792e138",
+  "title": "MINT: A toolbox for the analysis of multivariate neural information coding and transmission",
+  "abstract": "MINT combines multivariate information-theoretic methods with statistical tools for neural data. MINT is freely available at https://github.com/panzerilab/MINT with DOI 10.5281/zenodo.13998526 and operates under a GNU GPLv3 license.",
+  "year": 2024,
+  "venue": "bioRxiv",
+  "externalIds": {
+    "PubMedCentral": "12043240",
+    "DOI": "10.1371/journal.pcbi.1012934",
+    "PubMed": "40233091"
+  },
+  "openAccessPdf": {
+    "url": ""
+  },
+  "authors": [
+    { "name": "Gabriel Matías Lorenz" },
+    { "name": "N. M. Engel" },
+    { "name": "Marco Celotto" },
+    { "name": "L. Koçillari" },
+    { "name": "Sebastiano Curreli" },
+    { "name": "Tommaso Fellin" },
+    { "name": "Stefano Panzeri" }
+  ],
+  "url": "https://www.semanticscholar.org/paper/8c690b4d1fa3ee9e6749b0c12355efd95792e138"
+}

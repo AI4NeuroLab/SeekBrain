@@ -1,1 +1,0 @@
-﻿To assess how activation-function mismatch between teacher and student affects errors in recorded and unrecorded neural activity, plot recorded-neuron and unrecorded-neuron error as a function of the number of recorded neurons M for different student activation-function smoothness values β.

@@ -1,1 +1,0 @@
-﻿To characterize the temporal emergence and developmental progression of transcriptomic cell subclasses in the mouse visual cortex, quantify the relative proportions of cells belonging to different subclasses across developmental ages from embryonic day E11.5 to postnatal day P56 using single-cell RNA sequencing (scRNA-seq) data.

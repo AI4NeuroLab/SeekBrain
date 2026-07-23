@@ -1,1 +1,0 @@
-﻿To demonstrate that the Bayes-optimal prior probability of stimulus location is represented in neural population activity recorded in the ventrolateral orbitofrontal cortex during the inter-trial interval, by decoding prior values from neural activity and comparing decoded prior, Bayes-optimal prior, and true block prior across trials.

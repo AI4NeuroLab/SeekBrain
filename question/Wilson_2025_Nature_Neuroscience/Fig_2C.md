@@ -1,1 +1,0 @@
-﻿To quantify how visual cue intensity affects HD encoding accuracy across the population, HD encoding accuracy was compared across no cue, dim cue, and bright cue conditions for 15 flies using grouped scatter plots with statistical comparisons.

@@ -1,1 +1,0 @@
-﻿Compute trial-averaged firing rates (PSTHs) for PMd neurons aligned to stimulus onset, grouped by the animal's actual choice (left/right) and stimulus difficulty (easy/hard). Select representative neurons that illustrate the diversity  of response profiles in the population. 

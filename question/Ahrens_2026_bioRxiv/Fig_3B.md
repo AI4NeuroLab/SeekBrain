@@ -1,1 +1,0 @@
-Classify neurons from all 3 fish into molecular subtypes based on combinatorial expression of 41 genes. Display a gene expression heatmap with neurons ordered by subtype identity, alongside a subtype color vector and a brain region annotation vector, showing how unique gene combinations define subtypes and how subtypes map to  anatomical locations.

@@ -1,0 +1,28 @@
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID>40233091</PMID>
+      <Article>
+        <ArticleTitle>MINT: A toolbox for the analysis of multivariate neural information coding and transmission.</ArticleTitle>
+        <Abstract><AbstractText>MINT combines multivariate information methods with robust estimation tools and is freely available at https://github.com/panzerilab/MINT.</AbstractText></Abstract>
+      </Article>
+    </MedlineCitation>
+    <PubmedData><ArticleIdList>
+      <ArticleId IdType="doi">10.1371/journal.pcbi.1012934</ArticleId>
+      <ArticleId IdType="pmc">PMC12043240</ArticleId>
+    </ArticleIdList></PubmedData>
+  </PubmedArticle>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID>40702322</PMID>
+      <Article>
+        <ArticleTitle>Multimodal cue integration and learning in a neural representation of head direction.</ArticleTitle>
+        <Abstract><AbstractText>The Drosophila head direction system integrates spatial cues with varying informativeness using population calcium imaging and multimodal virtual reality.</AbstractText></Abstract>
+      </Article>
+    </MedlineCitation>
+    <PubmedData><ArticleIdList>
+      <ArticleId IdType="doi">10.1038/s41593-024-01823-z</ArticleId>
+      <ArticleId IdType="pmc">PMC12321575</ArticleId>
+    </ArticleIdList></PubmedData>
+  </PubmedArticle>
+</PubmedArticleSet>

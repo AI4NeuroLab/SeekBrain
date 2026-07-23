@@ -1,1 +1,0 @@
-﻿Can GLM-HMM successfully decompose behavioral data within individual sessions into distinct behavioral states (engaged, left-bias, right-bias), as shown by example session choices and state probability traces?

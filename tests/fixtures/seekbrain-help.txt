@@ -1,0 +1,56 @@
+SeekBrain 0.1.5
+
+Usage:
+  seekbrain [options] [-- <pi-args...>]
+  seekbrain run [options] [-- <pi-args...>]
+  seekbrain report <project-path> <--rounds list|--evidence list>
+  seekbrain setup
+  seekbrain doctor
+  seekbrain config <show|list|get|set|unset|init> [options]
+
+Commands:
+  run                  Run a non-interactive research task
+  report <project>     Generate a report from explicitly selected results
+  setup                Configure model routing and a literature provider
+  doctor               Check Node, Pi, Python, and package dependencies
+  config show          Show configuration paths; add --effective for merged values
+  config list [prefix] List effective public configuration values and their sources
+  config get <key>     Show one effective value and its source
+  config set <key> <value> Set a sparse user override (or use --project)
+  config unset <key>   Remove a user override (or use --project)
+  config init --user   Create the user-wide configuration template
+  config init --project Create the project override template (default scope)
+
+Options:
+  -h, --help           Show this help and exit
+  -V, -v, --version    Show version and exit
+  --cwd <path>         Project working directory
+  --config <path>      Project configuration file
+  --user               Use user scope for config init/set/unset (set/unset default)
+  --project            Use project scope for config init/set/unset
+  --effective          Show the fully merged configuration (config show only)
+  --query <text>       Research question
+  --dataset <path>     Dataset directory, metadata JSON file, or JSON content
+  --work-dir <path>    Output directory
+  --path <text>        Extra path or access notes
+  --rounds <list>      Normal report rounds, e.g. 3,4,6 (report only)
+  --evidence <list>    Report refs, e.g. SQ1-T1:R1,SQ2-T1:R1 (report only)
+  --goal <text>        Optional report synthesis goal (report only)
+  --pi-arg <value>     Forward one argument to Pi (repeatable)
+  -- <pi-args...>      Forward all remaining arguments to Pi
+
+Examples:
+  seekbrain
+  seekbrain setup
+  seekbrain -- --model provider/model
+  seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example
+  seekbrain report results/example --rounds 3,4,6
+  seekbrain report results/example --evidence SQ1-T1:R1,SQ2-T1:R1
+  seekbrain config show
+  seekbrain config show --effective
+  seekbrain config list modules.targeted_skill
+  seekbrain config get modules.targeted_skill.relevance_threshold
+  seekbrain config set modules.targeted_skill.relevance_threshold 0.5
+  seekbrain config unset modules.targeted_skill.relevance_threshold
+  seekbrain config init --user
+  seekbrain config init --project

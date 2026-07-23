@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { default: registerUsageFooter } = await jiti.import("../extensions/usage-footer.ts");
+const { default: registerUsageFooter } = await jiti.import("../src/extension/tui/usage-footer.ts");
 
 let sessionStart;
 registerUsageFooter({

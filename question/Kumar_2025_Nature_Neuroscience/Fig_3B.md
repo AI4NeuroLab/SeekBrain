@@ -1,1 +1,0 @@
-﻿To demonstrate that teacher recurrent neural networks with different sizes produce the same low-dimensional dynamics, by projecting population activity onto the top two principal components and visualizing the explained variance across principal components.

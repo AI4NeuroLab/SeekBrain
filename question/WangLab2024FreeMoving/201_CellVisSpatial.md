@@ -1,1 +1,0 @@
-Visualize the top and side views of the brain-wide neuronal spatial distribution of 0415_fish1. Color cells by their regional labels in  a palette of 11 evenly spaced hues. Provide its total neuronal number and covered region number in the report. The somatic location and regional label of individual neurons is in Calcium_Cell2Region_valid.csv. 

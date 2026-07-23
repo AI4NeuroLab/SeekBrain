@@ -1,1 +1,0 @@
-I want to visualize raw neuronal calcium signals (f) during each prey-capture event of 0316_fish1. Use the mat file for processing. Visualize each event's regional time-series traces. Label the time scale and corresponding region names.

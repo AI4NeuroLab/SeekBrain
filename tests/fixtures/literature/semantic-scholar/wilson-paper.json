@@ -1,0 +1,25 @@
+{
+  "paperId": "75b08757aeccd204be22781fc2296cb5575601bb",
+  "title": "Multimodal cue integration and learning in a neural representation of head direction",
+  "abstract": "The study investigates the Drosophila head direction system using population calcium imaging and multimodal virtual reality. Increasing cue informativeness improves encoding accuracy and produces a narrower and higher bump of activity.",
+  "year": 2025,
+  "venue": "Nature Neuroscience",
+  "externalIds": {
+    "PubMedCentral": "12321575",
+    "DOI": "10.1038/s41593-024-01823-z",
+    "PubMed": "40702322"
+  },
+  "openAccessPdf": {
+    "url": ""
+  },
+  "authors": [
+    { "name": "Melanie A Basnak" },
+    { "name": "A. Kutschireiter" },
+    { "name": "Tatsuo S. Okubo" },
+    { "name": "Albert Chen" },
+    { "name": "P. Gorelik" },
+    { "name": "Jan Drugowitsch" },
+    { "name": "Rachel I. Wilson" }
+  ],
+  "url": "https://www.semanticscholar.org/paper/75b08757aeccd204be22781fc2296cb5575601bb"
+}

@@ -1,1 +1,0 @@
-I want to visualize the regional average of raw neuronal calcium signals (f) during each prey-capture event of 0415_fish1. Calculate event by event. Use the mat file for processing. Visualize each event's regional time-series traces. Label the time scale and corresponding region names.

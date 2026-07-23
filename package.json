@@ -1,15 +1,60 @@
 {
-  "name": "pi-vs-cc",
-  "private": true,
+  "name": "seekbrain",
+  "version": "0.1.5",
   "type": "module",
-  "description": "Pi Coding Agent extension playground",
+  "description": "SeekBrain scientific research agent",
+  "license": "MIT",
+  "bin": {
+    "seekbrain": "./bin/seekbrain.mjs"
+  },
+  "keywords": [
+    "scientific-research",
+    "pi-extension",
+    "agent-workflow"
+  ],
+  "files": [
+    "bin",
+    "src",
+    "prompts",
+    "config",
+    "library/skills/trajectory",
+    ".env.example",
+    "scripts/doctor.mjs",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/extension/index.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "typecheck": "tsc --project tsconfig.json",
+    "test:unit": "vitest run",
+    "test:contract": "node scripts/run-tests.mjs",
+    "test:e2e": "node scripts/package-e2e.mjs",
+    "test": "npm run test:unit && npm run test:contract",
+    "audit:opensource": "node scripts/open-source-audit.mjs",
+    "pack:check": "npm_config_cache=/tmp/seekbrain-npm-cache npm pack --dry-run --json | node scripts/pack-check.mjs"
+  },
   "dependencies": {
-    "@pi-archimedes/diff": "^1.7.1",
-    "diff": "^8.0.0",
-    "pi-subagents": "0.34.0",
-    "yaml": "^2.8.0"
+    "@earendil-works/pi-coding-agent": "0.80.10",
+    "@earendil-works/pi-tui": "0.80.10",
+    "diff": "8.0.4",
+    "typebox": "1.1.24",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
-    "jiti": "^2.7.0"
+    "@types/node": "^22.20.1",
+    "jiti": "^2.7.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   }
 }

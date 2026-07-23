@@ -1,1 +1,0 @@
-Plot the spatial distribution of eomesa-positive, pvalb7-positive, and eomesa-pvalb7 co-expressing neurons in dorsal and lateral 2D anatomical projections, with all other neurons as gray background. Color selected neurons by log-transformed RNA spot counts. 

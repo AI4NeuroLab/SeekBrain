@@ -1,0 +1,11 @@
+<article>
+  <body>
+    <sec><title>Preprocessing imaging data</title>
+      <p>The NoRMCorre algorithm at https://github.com/flatironinstitute/NoRMCorre was used to perform rigid motion correction before selecting the imaging region of interest.</p>
+    </sec>
+    <ref-list>
+      <ref><mixed-citation>Betancourt M. Containment prior modeling case study. GitHub https://github.com/betanalpha/knitr_case_studies/tree/master/some_containment_prior_models (2021).</mixed-citation></ref>
+      <ref><mixed-citation>Betancourt M. Towards a principled Bayesian workflow. GitHub https://github.com/betanalpha/jupyter_case_studies/tree/master/principled_bayesian_workflow (2018).</mixed-citation></ref>
+    </ref-list>
+  </body>
+</article>

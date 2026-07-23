@@ -1,1 +1,0 @@
-﻿To validate the model prediction for individual-level bump width-accuracy correlation, model simulations with varying ER amplitude under dim cue conditions were used to plot bump width versus HD encoding accuracy.

@@ -1,0 +1,112 @@
+# Public SeekBrain defaults. Provider credentials and model selection are owned
+# by Pi auth/model storage, environment variables, or project configuration.
+
+paths: {}
+literature:
+  # Written explicitly by seekbrain setup. When absent, a configured legacy
+  # Shanghai AI Lab base URL remains backward compatible; otherwise capabilities are off.
+  providers: {}
+modules:
+  targeted_skill:
+    # Minimum model/deterministic relevance score required to accept an existing Skill.
+    relevance_threshold: 0.3
+    # Maximum number of existing Skills accepted for one task.
+    top_k: 1
+    compatibility:
+      candidate_pool_size: 10
+      skill_top_k: 2
+      prefer_repository: true
+      paper_only_fallback: true
+    resource_filter:
+      suffixes: [".md", ".py"]
+      max_files: 5
+
+workflow:
+  debug_disk_writes: false
+  seekbrain:
+    # Disable to bypass the lightweight data/question routing check.
+    research_planning: true
+    # Parent-level literature grounding before a Research Planning tree is generated.
+    # This is independent from task/ordinary-run deep_research.
+    research_survey: true
+    # Used only by approved Research Planning trees; ordinary runs do not initialize it.
+    research_execution:
+      planning_concurrency: 3
+      execution_concurrency: 2
+    report:
+      pdf:
+        enabled: false
+        command: seekbrain-pdf
+        timeout_seconds: 120
+    deep_research: false
+    targeted_skill_match: true
+    targeted_skill_generate: true
+    image_refine: true
+    save_skill: true
+    transparency: true
+    human_review:
+      enabled: false
+      gates:
+        plan: false
+        code: false
+        validate: false
+        interpret: false
+
+agents:
+  seekbrain:
+    timeout_seconds: 5400
+  seekbrain_default:
+    thinking: high
+    timeout_seconds: 300
+  seekbrain_data_resolve:
+    timeout_seconds: 900
+  seekbrain_research_route:
+    thinking: low
+    timeout_seconds: 120
+  seekbrain_research_planning:
+    timeout_seconds: 300
+  seekbrain_survey:
+    timeout_seconds: 600
+    rag:
+      paper_source: ailab_rag
+      top_k: 4
+      base_url: ""
+      timeout: 600
+      require_github: false
+      source_char_limit: 5000
+  seekbrain_research_reviewer:
+    timeout_seconds: 300
+  seekbrain_deep_research:
+    timeout_seconds: 600
+    rag:
+      enable: false
+      top_k: 4
+      base_url: ""
+      timeout: 600
+      source_char_limit: 5000
+  seekbrain_skill_match:
+    timeout_seconds: 300
+  seekbrain_skill_context:
+    timeout_seconds: 900
+  seekbrain_skill_generate:
+    timeout_seconds: 900
+  seekbrain_plan:
+    timeout_seconds: 300
+  seekbrain_code:
+    timeout_seconds: 1800
+    vision: false
+  seekbrain_validate:
+    timeout_seconds: 300
+    vision: true
+  seekbrain_interpret:
+    timeout_seconds: 600
+    vision: true
+  seekbrain_report:
+    timeout_seconds: 900
+    vision: true
+  seekbrain_refine_image:
+    timeout_seconds: 1200
+    vision: true
+  seekbrain_save_skill: {}
+
+models: []

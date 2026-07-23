@@ -1,1 +1,0 @@
-I want to evaluate whether individual larvae could be identified by conducting two separate imaging sessions in the same group of larvae 24 hours apart. Compare the FC similarity within and between individuals. Visualize the result with a boxplot. Use FC_matrices_fingerprinting_6dpf.npy and FC_matrices_fingerprinting_7dpf.npy for analysis. 

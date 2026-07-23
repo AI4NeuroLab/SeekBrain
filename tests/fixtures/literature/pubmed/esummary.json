@@ -1,0 +1,41 @@
+{
+  "result": {
+    "uids": ["40233091", "40702322"],
+    "40233091": {
+      "uid": "40233091",
+      "pubdate": "2025 Apr",
+      "source": "PLoS Comput Biol",
+      "fulljournalname": "PLoS computational biology",
+      "title": "MINT: A toolbox for the analysis of multivariate neural information coding and transmission.",
+      "authors": [
+        { "name": "Lorenz GM" }, { "name": "Engel NM" },
+        { "name": "Celotto M" }, { "name": "Koçillari L" },
+        { "name": "Curreli S" }, { "name": "Fellin T" },
+        { "name": "Panzeri S" }
+      ],
+      "articleids": [
+        { "idtype": "pubmed", "value": "40233091" },
+        { "idtype": "pmc", "value": "PMC12043240" },
+        { "idtype": "doi", "value": "10.1371/journal.pcbi.1012934" }
+      ]
+    },
+    "40702322": {
+      "uid": "40702322",
+      "pubdate": "2025 Aug",
+      "source": "Nat Neurosci",
+      "fulljournalname": "Nature neuroscience",
+      "title": "Multimodal cue integration and learning in a neural representation of head direction.",
+      "authors": [
+        { "name": "Basnak MA" }, { "name": "Kutschireiter A" },
+        { "name": "Okubo TS" }, { "name": "Chen A" },
+        { "name": "Gorelik P" }, { "name": "Drugowitsch J" },
+        { "name": "Wilson RI" }
+      ],
+      "articleids": [
+        { "idtype": "pubmed", "value": "40702322" },
+        { "idtype": "pmc", "value": "PMC12321575" },
+        { "idtype": "doi", "value": "10.1038/s41593-024-01823-z" }
+      ]
+    }
+  }
+}

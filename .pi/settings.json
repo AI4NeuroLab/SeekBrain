@@ -1,8 +1,0 @@
-{
-  "theme": "synthwave",
-  "hideThinkingBlock": true,
-  "prompts": [
-    "../.claude/commands"
-  ],
-  "skills": []
-}

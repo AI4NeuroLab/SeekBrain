@@ -1,1 +1,0 @@
-I want to apple the time-only mode of CEBRA for decoding the calcium timeseries in 0225_fish1_calcium_filledNA.mat. Provide some candidate biological hypotheses from the preliminary result.

@@ -1,1 +1,0 @@
-﻿To assess the ability of multiple independently initialized student recurrent neural networks with identical synaptic weights to learn the teacher network readout, by visualizing mean squared error across training epochs for each network.

@@ -1,1 +1,0 @@
-Using post-stimulus neural activity (0–100 ms after stimulus onset) from a superior colliculus motor-related region, apply a signed-contrast decoder to obtain trial-wise decoded right-stimulus outputs. Split trials into high-prior (Bayes-optimal prior > 0.7) and low-prior (prior < 0.3) groups, and compute neurometric curves  for each group. 
