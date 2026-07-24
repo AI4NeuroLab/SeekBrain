@@ -10,7 +10,7 @@ assert.match(extensionSource, /planWorkflow\.execute/);
 assert.match(extensionSource, /humanReviewRequired: humanGateEnabled\(config, "plan"\)/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 assert.match(workflowSource, /plan\.md/);
-assert.match(workflowSource, /neuro_review_plan/);
+assert.match(workflowSource, /seekbrain_formulation_researcher_review/);
 assert.match(promptSource, /add an `## Execution Strategy` section/);
 assert.match(promptSource, /Do not add this section for ordinary small datasets/);
 

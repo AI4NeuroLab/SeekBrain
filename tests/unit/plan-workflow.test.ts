@@ -62,13 +62,13 @@ describe("plan workflow", () => {
       const state = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
       expect(state.plan.review_summary).toBe("review this plan");
       expect(state.data_info).toBe("locked data");
-      expect(events[0]).toMatchObject({ event: "neuro_plan", ok: true });
+      expect(events[0]).toMatchObject({ event: "seekbrain_formulation_generate", ok: true });
       expect(result).toMatchObject({
         ok: true,
         plan_markdown: "# Test plan",
         human_review: { required: true, approved: false, needs_user_review: true, review_owner: "main_agent" },
       });
-      expect(result.guidance).toContain("neuro_review_plan");
+      expect(result.guidance).toContain("seekbrain_formulation_researcher_review");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

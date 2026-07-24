@@ -61,7 +61,7 @@ describe("image workflows", () => {
           allowed: context.integrityAccepted === true,
           validation: { pass: true, route: "proceed", per_figure: [], refinement_summary: refinement?.summary },
         }),
-        nextStep: (_validation, runId) => ({ tool: "neuro_interpret", args: { run_id: runId } }),
+        nextStep: (_validation, runId) => ({ tool: "seekbrain_interpretation_run", args: { run_id: runId } }),
         snapshot: async (_run, label) => { snapshots.push(label); },
         appendEvent: async (event) => { events.push(event); },
       });
@@ -75,16 +75,16 @@ describe("image workflows", () => {
       });
 
       expect(capturedPrompt).toContain("Feedback:\nmove the legend");
-      expect(capturedPrompt).toContain("本次共生成 2 张图");
+      expect(capturedPrompt).toContain("This run produced 2 figures");
       expect(capturedPrompt).toContain(join(item.run.runDir, "generated_code.py"));
-      expect(capturedPrompt).toContain("最小成本方式调用绘图函数并重绘");
+      expect(capturedPrompt).toContain("least computationally expensive safe redraw path");
       expect(capturedPrompt).not.toContain("plot cache");
-      expect(result).toMatchObject({ ok: true, fast_pass: true, next_step: { tool: "neuro_interpret" } });
+      expect(result).toMatchObject({ ok: true, fast_pass: true, next_step: { tool: "seekbrain_interpretation_run" } });
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.image_refinement_count).toBe(1);
       expect(state.refinement_fast_pass).toBe(true);
       expect(state.validation.route).toBe("proceed");
-      expect(events[0]).toMatchObject({ event: "neuro_refine_image", ok: true, fast_pass: true });
+      expect(events[0]).toMatchObject({ event: "seekbrain_figure_refine", ok: true, fast_pass: true });
       expect(snapshots).toEqual(["after_refine"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
@@ -100,7 +100,7 @@ describe("image workflows", () => {
         ...baseDependencies(item),
         runRefiner: async () => ({ ok: true, result: { summary: "redrew figure" } }),
         finalizeGuard: async () => ({ accepted: false, violations: [join(item.run.runDir, "statistics.json")] }),
-        nextStep: (validation, runId) => ({ tool: validation.route === "proceed" ? "neuro_interpret" : "neuro_refine_image", args: { run_id: runId } }),
+        nextStep: (validation, runId) => ({ tool: validation.route === "proceed" ? "seekbrain_interpretation_run" : "seekbrain_figure_refine", args: { run_id: runId } }),
         snapshot: async (_run, label) => { snapshots.push(label); },
         appendEvent: async (event) => { events.push(event); },
       });
@@ -117,10 +117,10 @@ describe("image workflows", () => {
       expect(result).toMatchObject({
         ok: false,
         fast_pass: false,
-        next_step: { tool: "neuro_interpret" },
+        next_step: { tool: "seekbrain_interpretation_run" },
         integrity_violations: [join(item.run.runDir, "statistics.json")],
       });
-      expect(result.guidance).toContain("Do not run Validate or Refine again");
+      expect(result.guidance).toContain("Do not run Validation or Figure Refinement again");
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.image_refinement_count).toBe(1);
       expect(state.refinement_fast_pass).toBe(false);
@@ -128,7 +128,7 @@ describe("image workflows", () => {
       expect(state.validation.refinement_failed).toBe(true);
       expect(state.validation.methodological_caveats.at(-1)).toContain("Remaining presentation issue: move the legend");
       expect(state.refinement_attempts).toHaveLength(1);
-      expect(events[0]).toMatchObject({ event: "neuro_refine_image", ok: false, image_refinement_count: 1, next_step: { tool: "neuro_interpret" } });
+      expect(events[0]).toMatchObject({ event: "seekbrain_figure_refine", ok: false, image_refinement_count: 1, next_step: { tool: "seekbrain_interpretation_run" } });
       expect(snapshots).toEqual(["after_refine_failure"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });

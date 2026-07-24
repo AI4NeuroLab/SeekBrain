@@ -409,7 +409,7 @@ literature:
 
   providers:
     ailab_rag:
-      base_url: "http://127.0.0.1:21800"
+      base_url: "${SEEKBRAIN_AILAB_RAG_BASE_URL}"
       credential_ref: null
 
     semantic_scholar:

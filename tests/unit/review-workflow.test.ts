@@ -34,7 +34,7 @@ describe("review workflow", () => {
       expect(await readFile(join(item.run.runDir, "plan.md"), "utf8")).toBe("# Revised");
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.plan).toMatchObject({ summary: "old", revision: 3, revision_note: "human edit", updated_by: "main_agent" });
-      expect(item.events.map((event) => event.event)).toEqual(["neuro_approve_stage", "neuro_record_feedback", "neuro_update_plan"]);
+      expect(item.events.map((event) => event.event)).toEqual(["seekbrain_review_approve", "seekbrain_review_feedback", "seekbrain_formulation_update"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
     }

@@ -24,7 +24,7 @@ export type TaskPlanReviewSelection =
 export function researchPlanningReviewTitle(assessment: Json, summary?: string): string {
   const reason = String(assessment.reason || summary || "SeekBrain identified multiple evidence workstreams.").slice(0, 520);
   const planningEffect = /[\u3400-\u9fff]/.test(reason)
-    ? "Research Planning 会先将这些证据维度拆分为可独立验证的子问题，再综合形成总体结论。"
+    ? "Research Planning will decompose these evidence dimensions into independently testable subquestions and synthesize them into an overall conclusion."
     : "Research Planning will decompose these evidence dimensions into independently testable subquestions before synthesizing the overall conclusion.";
   return [
     "Use Research Planning for this question?",
@@ -42,7 +42,7 @@ export function researchTreeReviewTitle(plan: Json, planning: Json = {}): string
   const subquestions = Array.isArray(plan.subquestions) ? plan.subquestions : [];
   const taskCount = subquestions.reduce((total: number, item: Json) => total + (Array.isArray(item.tasks) ? item.tasks.length : 0), 0);
   const lines = [
-    "Review the structured research plan?",
+    "Review the hierarchical research plan?",
     "",
     `Overall goal: ${compactReviewLine(plan.research_goal, 220)}`,
   ];
@@ -67,13 +67,13 @@ export function researchTreeReviewTitle(plan: Json, planning: Json = {}): string
 export function taskPlanReviewTitle(item: Json, queueLength: number): string {
   const task = item.task || item;
   return [
-    `Review task plan ${String(item.task_id || task.task_id || "")}?`,
+    `Review methodological schema ${String(item.task_id || task.task_id || "")}?`,
     "",
     compactReviewLine(task.title || task.question || item.plan_summary, 220),
     task.biological_hypothesis ? `Hypothesis: ${compactReviewLine(task.biological_hypothesis, 220)}` : "",
-    item.plan_summary ? `Analysis: ${compactReviewLine(item.plan_summary, 260)}` : task.analysis_strategy ? `Analysis: ${compactReviewLine(task.analysis_strategy, 260)}` : "",
+    item.plan_summary ? `Methodological schema: ${compactReviewLine(item.plan_summary, 260)}` : task.analysis_strategy ? `Methodological schema: ${compactReviewLine(task.analysis_strategy, 260)}` : "",
     task.expected_evidence ? `Expected evidence: ${compactReviewLine(task.expected_evidence, 220)}` : "",
-    item.skill_summary ? `Skill: ${compactReviewLine(item.skill_summary, 160)}` : "",
+    item.skill_summary ? `Analysis recipe: ${compactReviewLine(item.skill_summary, 160)}` : "",
     item.deep_research_summary ? `Deep Research: ${compactReviewLine(item.deep_research_summary, 160)}` : "",
     "",
     `Review queue: 1 of ${queueLength}`,
@@ -95,7 +95,7 @@ export async function selectYesNoReview(context: Json, input: {
     return { decision: "cancel" };
   }
   if (context?.ui?.confirm) {
-    const accepted = await context.ui.confirm(input.title, "Proceed with structured Research Planning?");
+    const accepted = await context.ui.confirm(input.title, "Proceed with Research Planning?");
     return { decision: accepted ? "yes" : "no" };
   }
   return { decision: "unavailable" };
@@ -124,7 +124,7 @@ export async function selectResearchTreeReview(context: Json, input: {
   feedbackPlaceholder: string;
 }): Promise<ReviewSelection> {
   if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
-  const approve = "Approve — begin task execution";
+  const approve = "Approve — begin analysis task execution";
   const revise = "Revise — provide scientific feedback";
   const cancel = "Cancel — retain the plan without execution";
   const choice = await context.ui.select(input.title, [approve, revise, cancel]);
@@ -142,9 +142,9 @@ export async function selectTaskPlanReview(context: Json, input: {
   feedbackPlaceholder: string;
 }): Promise<TaskPlanReviewSelection> {
   if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
-  const approve = "Approve this plan";
+  const approve = "Approve this schema";
   const revise = "Request changes";
-  const approveRemaining = "Approve this and all remaining task plans";
+  const approveRemaining = "Approve this and all remaining schemas";
   const choice = await context.ui.select(input.title, [approve, revise, approveRemaining]);
   if (choice === approve) return { decision: "approve" };
   if (choice === approveRemaining) return { decision: "approve_remaining" };

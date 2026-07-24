@@ -95,8 +95,8 @@ describe("code workflow", () => {
       expect(state.code.code_files).toEqual([{ path: "generated_code.py" }]);
       expect(state.code.statistics.detailed_metric).toBe(3.5);
       expect(state.artifacts.some((artifact: any) => artifact.kind === "code")).toBe(true);
-      expect(result).toMatchObject({ ok: true, code_attempt: 1, blocked_by_dummy_data: false, next_step: { tool: "neuro_validate" } });
-      expect(events[0]).toMatchObject({ event: "neuro_code", code_attempt: 1 });
+      expect(result).toMatchObject({ ok: true, code_attempt: 1, blocked_by_dummy_data: false, next_step: { tool: "seekbrain_validation_run" } });
+      expect(events[0]).toMatchObject({ event: "seekbrain_code_execute", code_attempt: 1 });
       expect(snapshots).toEqual(["after_code_attempt_1"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });

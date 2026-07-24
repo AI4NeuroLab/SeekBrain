@@ -2,6 +2,7 @@ SeekBrain 0.1.5
 
 Usage:
   seekbrain [options] [-- <pi-args...>]
+  seekbrain resume <session-id|path>
   seekbrain run [options] [-- <pi-args...>]
   seekbrain report <project-path> <--rounds list|--evidence list>
   seekbrain setup
@@ -9,7 +10,8 @@ Usage:
   seekbrain config <show|list|get|set|unset|init> [options]
 
 Commands:
-  run                  Run a non-interactive research task
+  resume <session>      Resume a SeekBrain conversation session
+  run                  Run a non-interactive analysis task
   report <project>     Generate a report from explicitly selected results
   setup                Configure model routing and a literature provider
   doctor               Check Node, Pi, Python, and package dependencies
@@ -36,11 +38,15 @@ Options:
   --rounds <list>      Normal report rounds, e.g. 3,4,6 (report only)
   --evidence <list>    Report refs, e.g. SQ1-T1:R1,SQ2-T1:R1 (report only)
   --goal <text>        Optional report synthesis goal (report only)
+  --session <id|path>  Resume a SeekBrain conversation session
+  --session-dir <dir>  Override the session storage directory
   --pi-arg <value>     Forward one argument to Pi (repeatable)
   -- <pi-args...>      Forward all remaining arguments to Pi
 
 Examples:
   seekbrain
+  seekbrain resume 019f8f34-818f-708b-88bc-6018e6d67524
+  seekbrain --session 019f8f34-818f-708b-88bc-6018e6d67524
   seekbrain setup
   seekbrain -- --model provider/model
   seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example

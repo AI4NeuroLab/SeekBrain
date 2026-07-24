@@ -63,7 +63,7 @@ function runIdArgument(args?: string): string | undefined {
 }
 
 function finalizationPrompt(rolePrompt: string, body: string): string {
-  return [rolePrompt.trim(), "", "You are the isolated SeekBrain save_skill_namer subagent.", "Return only by calling the finalize tool. Do not expose scratch reasoning.", "Required final tool: finalize_smmt", "", body].join("\n");
+  return [rolePrompt.trim(), "", "You are the isolated SeekBrain analysis-recipe naming agent for trajectory distillation.", "Return only by calling the finalize tool. Do not expose scratch reasoning.", "Required final tool: finalize_smmt", "", body].join("\n");
 }
 
 async function registerSkillPath(workflowRoot: string, skillDir: string): Promise<string | undefined> {
@@ -80,11 +80,11 @@ async function registerSkillPath(workflowRoot: string, skillDir: string): Promis
 }
 
 export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: SaveSkillCommandDependencies): void {
-  pi.registerCommand("neuro-save-skill", {
-    description: "Save the finished SeekBrain run as a reusable neuroscience skill (Stage-Species-Modality-Method-Target). Optional args: <run_id> [--yes].",
+  pi.registerCommand("seekbrain-save-recipe", {
+    description: "Save a validated SeekBrain run as a reusable analysis recipe (Stage-Species-Modality-Method-Target). Optional args: <run_id> [--yes].",
     async handler(args: string, context: Json) {
       const config = await dependencies.loadConfig(context.cwd);
-      if (!dependencies.saveSkillEnabled(config)) { context.ui?.notify?.("save_skill is disabled by config (workflow.seekbrain.save_skill).", "info"); return; }
+      if (!dependencies.saveSkillEnabled(config)) { context.ui?.notify?.("Analysis recipe saving is disabled by config (workflow.seekbrain.save_skill).", "info"); return; }
       let run: Json | undefined;
       try {
         const runId = runIdArgument(args);
@@ -99,13 +99,13 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
           const ids = Object.keys(index.runs || {});
           if (!ids.length) { context.ui?.notify?.("No runs found. Finish a SeekBrain run first.", "error"); return; }
           let chosen = ids[ids.length - 1];
-          if (context.hasUI && ids.length > 1) { const selected = await context.ui.select("Save which run as a skill?", ids); if (!selected) return; chosen = selected; }
+          if (context.hasUI && ids.length > 1) { const selected = await context.ui.select("Save which run as an analysis recipe?", ids); if (!selected) return; chosen = selected; }
           run = await dependencies.resolveRun(context.cwd, chosen);
         }
       } catch (error) { context.ui?.notify?.(`Could not locate run: ${error}`, "error"); return; }
 
       const generatedCode = join(run.runDir, "generated_code.py");
-      if (!existsSync(generatedCode) && !(run.state.code?.code_files?.length > 0)) { context.ui?.notify?.("This run has no generated analysis code yet; nothing to save.", "error"); return; }
+      if (!existsSync(generatedCode) && !(run.state.code?.code_files?.length > 0)) { context.ui?.notify?.("This run has no generated analysis code yet; there is no trajectory to distill.", "error"); return; }
       const question = String(run.state.question || "").trim();
       const digest = buildTranscriptDigest(context.sessionManager);
       const codeText = existsSync(generatedCode) ? await readFile(generatedCode, "utf8").catch(() => "") : "";
@@ -114,16 +114,16 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
       const body = [
         `Question:\n${question}`,
         `Data info (metadata):\n${String(run.state.data_info || "").slice(0, 3000)}`,
-        `Plan summary:\n${String(run.state.plan?.summary || run.state.plan?.plan_markdown || "").slice(0, 2000)}`,
+        `Methodological schema summary:\n${String(run.state.plan?.summary || run.state.plan?.plan_markdown || "").slice(0, 2000)}`,
         "Analysis code that actually ran:\n```python\n" + codeText.slice(0, 6000) + "\n```",
         `Statistics keys: ${Object.keys(statistics).join(", ") || "(none)"}`,
         `Conclusions:\n${JSON.stringify(run.state.conclusions || {}).slice(0, 1500)}`,
         `Dialogue digest (intent & corrections):\n${digest}`,
         "Finalize with { stage, species, modality, method, target, rationale, proposed_description, triggers[5], tags[4-6] }.",
       ].join("\n\n");
-      context.ui?.notify?.("Analyzing the run to propose a skill name...", "info");
+      context.ui?.notify?.("Analyzing the validated trajectory to propose an analysis recipe name...", "info");
       const namer = await dependencies.runNamer({ runDir: run.runDir, prompt: finalizationPrompt(rolePrompt, body), config });
-      if (!namer.ok || !namer.result) { context.ui?.notify?.(`Skill naming failed: ${namer.error || "no result"}`, "error"); return; }
+      if (!namer.ok || !namer.result) { context.ui?.notify?.(`Analysis recipe naming failed: ${namer.error || "no result"}`, "error"); return; }
       const result = namer.result;
       const smmt = { stage: slug(result.stage), species: slug(result.species), modality: slug(result.modality), method: slug(result.method), target: slug(result.target) };
       if (Object.values(smmt).some((value) => !value)) { context.ui?.notify?.("Namer returned an empty axis; aborting.", "error"); return; }
@@ -132,19 +132,19 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
       const warnings: string[] = [];
       if (!["ns_pre", "ns_seg", "ns_reg", "ns_feat", "ns_ana", "ns_multi"].includes(smmt.stage)) warnings.push(`stage '${smmt.stage}' is new`);
       if (!["zebrafish", "mouse", "marmoset", "human", "global"].includes(smmt.species)) warnings.push(`species '${smmt.species}' is unusual`);
-      const summary = [`Skill name : ${folderName}`, `pi name    : /skill:${piName}`, `description: ${String(result.proposed_description || "").slice(0, 220)}`, `rationale  : ${String(result.rationale || "").slice(0, 220)}`, warnings.length ? `warnings   : ${warnings.join("; ")}` : "", "target dir : .seekbrain/skills/from_expert/"].filter(Boolean).join("\n");
+      const summary = [`Recipe name : ${folderName}`, `Pi command  : /skill:${piName}`, `description : ${String(result.proposed_description || "").slice(0, 220)}`, `rationale   : ${String(result.rationale || "").slice(0, 220)}`, warnings.length ? `warnings    : ${warnings.join("; ")}` : "", "target dir  : .seekbrain/skills/from_expert/"].filter(Boolean).join("\n");
       const autoYes = /(^|\s)(--yes|-y|yes)(\s|$)/.test(String(args || ""));
       let approved: boolean;
-      if (context.hasUI) approved = await context.ui.confirm("Save this run as a skill?", summary);
+      if (context.hasUI) approved = await context.ui.confirm("Save this run as an analysis recipe?", summary);
       else {
         approved = autoYes;
         if (!approved) {
           await dependencies.writeJson(join(run.runDir, "save_skill_proposal.json"), { folder_name: folderName, pi_name: piName, smmt, ...result });
-          pi.sendMessage({ customType: "neuro-save-skill", display: true, content: `Proposed skill:\n${summary}\n\nHeadless mode: re-run '/neuro-save-skill ${run.runId} --yes' to write it, or inspect save_skill_proposal.json.` });
+          pi.sendMessage({ customType: "seekbrain-save-recipe", display: true, content: `Proposed analysis recipe:\n${summary}\n\nHeadless mode: re-run '/seekbrain-save-recipe ${run.runId} --yes' to write it, or inspect save_skill_proposal.json.` });
           return;
         }
       }
-      if (!approved) { context.ui?.notify?.("Skill save cancelled.", "info"); return; }
+      if (!approved) { context.ui?.notify?.("Analysis recipe save cancelled.", "info"); return; }
       const targeted = config.modules?.targeted_skill || {};
       const payload = {
         run_dir: run.runDir, run_id: run.state.run_id, root_dir: dependencies.workflowRoot,
@@ -155,15 +155,15 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
         resource_profile: run.state.resource_profile || {}, image_analyses: run.state.image_analyses || run.state.image_analysis || [], deliverables: run.state.deliverables || [],
         transcript_digest: digest, generated_code_path: existsSync(generatedCode) ? generatedCode : "", use_llm_body: true,
       };
-      context.ui?.notify?.("Authoring the skill...", "info");
+      context.ui?.notify?.("Distilling the validated trajectory into an analysis recipe...", "info");
       const authored = await dependencies.writeSkill(payload, dependencies.workflowRoot);
-      if (!authored.ok) { context.ui?.notify?.(`Skill save failed: ${authored.error || JSON.stringify(authored.errors || authored.warnings || authored)}`, "error"); return; }
+      if (!authored.ok) { context.ui?.notify?.(`Analysis recipe save failed: ${authored.error || JSON.stringify(authored.errors || authored.warnings || authored)}`, "error"); return; }
       await dependencies.updateState(run, { saved_skill: { skill_dir: authored.skill_dir, folder_name: authored.folder_name, pi_name: authored.pi_name, at: new Date().toISOString() } });
-      await dependencies.appendEvent({ run_id: run.runId, event: "neuro_save_skill", ok: true, folder_name: authored.folder_name });
+      await dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_recipe_save", ok: true, folder_name: authored.folder_name });
       const piRelative = authored.skill_dir ? await registerSkillPath(dependencies.workflowRoot, String(authored.skill_dir)) : undefined;
       const validationStatus = authored.validate_skills?.status || "unknown";
-      context.ui?.notify?.(`Saved skill: ${authored.folder_name} (validate_skills: ${validationStatus})`, "info");
-      pi.sendMessage({ customType: "neuro-save-skill", display: true, content: [`## 🧩 Skill saved — \`${authored.folder_name}\``, String(result.proposed_description || "").trim(), "", `- pi: \`/skill:${authored.pi_name}\`${piRelative ? " _(active next pi launch)_" : ""}`, `- dir: \`${authored.skill_dir}\``, `- validate_skills: **${validationStatus}**`, (authored.warnings || []).length ? `- warnings: ${(authored.warnings || []).join("; ")}` : "", "", "→ `/neuro-show skill` for the full SKILL.md"].filter(Boolean).join("\n") });
+      context.ui?.notify?.(`Saved analysis recipe: ${authored.folder_name} (recipe validation: ${validationStatus})`, "info");
+      pi.sendMessage({ customType: "seekbrain-save-recipe", display: true, content: [`## 🧩 Analysis recipe saved — \`${authored.folder_name}\``, String(result.proposed_description || "").trim(), "", `- Pi command: \`/skill:${authored.pi_name}\`${piRelative ? " _(active next Pi launch)_" : ""}`, `- directory: \`${authored.skill_dir}\``, `- recipe validation: **${validationStatus}**`, (authored.warnings || []).length ? `- warnings: ${(authored.warnings || []).join("; ")}` : "", "", "→ `/seekbrain-show recipe` for the full recipe document (`SKILL.md`)"].filter(Boolean).join("\n") });
     },
   });
 }

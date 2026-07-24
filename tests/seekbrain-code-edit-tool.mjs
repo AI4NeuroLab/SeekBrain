@@ -17,8 +17,8 @@ const pi = {
 };
 await registerLevel1(pi);
 
-const tool = tools.get("neuro_review_code_edit");
-assert.ok(tool, "neuro_review_code_edit must be registered");
+const tool = tools.get("seekbrain_code_edit_review");
+assert.ok(tool, "seekbrain_code_edit_review must be registered");
 
 const root = await mkdtemp(join(tmpdir(), "seekbrain-code-edit-"));
 try {

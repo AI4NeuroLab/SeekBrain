@@ -39,9 +39,53 @@ try {
   await registerSeekBrain(pi);
   const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
   const ctx = { cwd, hasUI: false };
-  const started = await byName.neuro_start_run.execute("start", { work_dir: "run", question: "question" }, undefined, undefined, ctx);
-  const skill = await byName.resolve_targeted_skill.execute("skill", { run_id: started.details.run_id }, undefined, undefined, ctx);
-  const research = await byName.neuro_deep_research.execute("research", { run_id: started.details.run_id }, undefined, undefined, ctx);
+  const recommended = await byName.seekbrain_research_start.execute("recommended", {
+    project_dir: "recommended-project",
+    question: "Integrate structural, functional, and molecular evidence.",
+    planning_assessment: {
+      route: "research_planning",
+      reason: "The conclusion requires multiple evidence workstreams.",
+      evidence_dimensions: ["structure", "function", "molecular evidence"],
+    },
+  }, undefined, undefined, ctx);
+  assert.equal(recommended.details.research_route.assessment_source, "orchestrator");
+  assert.equal(recommended.details.research_route.needs_user_review, true);
+  assert.equal(recommended.details.research_route.next_tool, "seekbrain_planning_decision_review");
+  const textFallback = await byName.seekbrain_planning_decision_review.execute(
+    "review-unavailable",
+    { run_id: recommended.details.run_id },
+    undefined,
+    undefined,
+    ctx,
+  );
+  assert.equal(textFallback.details.needs_text_review, true);
+  const recorded = await byName.seekbrain_planning_decision_record.execute(
+    "record-text-decision",
+    { run_id: recommended.details.run_id, decision: "yes", response_quote: "Yes" },
+    undefined,
+    undefined,
+    ctx,
+  );
+  assert.equal(recorded.details.decision_source, "chat_response");
+  assert.equal(recorded.details.next_tool, "seekbrain_planning_generate");
+
+  const explicitQuestion = "Use Research Planning for this study.";
+  const explicitlyRequested = await byName.seekbrain_research_start.execute("explicit", {
+    project_dir: "explicit-project",
+    question: explicitQuestion,
+    planning_assessment: {
+      route: "research_planning",
+      reason: "The user explicitly selected Research Planning.",
+      explicit_request_quote: explicitQuestion,
+    },
+  }, undefined, undefined, ctx);
+  assert.equal(explicitlyRequested.details.research_route.planning_consent, "explicit_request");
+  assert.equal(explicitlyRequested.details.research_route.needs_user_review, false);
+  assert.equal(explicitlyRequested.details.research_route.next_tool, "seekbrain_planning_generate");
+
+  const started = await byName.seekbrain_run_start.execute("start", { work_dir: "run", question: "question" }, undefined, undefined, ctx);
+  const skill = await byName.seekbrain_recipe_retrieve.execute("skill", { run_id: started.details.run_id }, undefined, undefined, ctx);
+  const research = await byName.seekbrain_deep_research.execute("research", { run_id: started.details.run_id }, undefined, undefined, ctx);
   assert.equal(skill.details.skipped_by_config, true);
   assert.equal(skill.details.config_key, "workflow.seekbrain.targeted_skill_match/targeted_skill_generate");
   assert.equal(research.details.skipped_by_config, true);

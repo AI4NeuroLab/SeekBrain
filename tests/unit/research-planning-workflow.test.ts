@@ -3,9 +3,56 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FileRunRepository } from "../../src/core/index.ts";
-import { ResearchPlanningWorkflow, RunLifecycleWorkflow } from "../../src/workflows/index.ts";
+import {
+  ResearchPlanningWorkflow,
+  RunLifecycleWorkflow,
+  verifiedExplicitResearchPlanningRequest,
+} from "../../src/workflows/index.ts";
 
 describe("research planning workflow", () => {
+  it("verifies explicit Research Planning evidence without language-specific intent rules", () => {
+    const question = "Please use Research Planning for this study. Dataset: /data/27";
+    expect(verifiedExplicitResearchPlanningRequest(question, "Please use Research Planning for this study.")).toBe("Please use Research Planning for this study.");
+    expect(verifiedExplicitResearchPlanningRequest(question, "Use Research Planning")).toBeUndefined();
+    expect(verifiedExplicitResearchPlanningRequest("请分别研究三类证据。", "请分别研究三类证据。")).toBeUndefined();
+  });
+
+  it("records an Orchestrator assessment without calling a routing agent", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-orchestrator-route-"));
+    try {
+      const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
+      const run = await lifecycle.startRun(cwd, "run", undefined, "Integrate three evidence streams.");
+      let agentCalled = false;
+      const workflow = new ResearchPlanningWorkflow({
+        lifecycle,
+        runAgent: async () => { agentCalled = true; return { ok: false, error: "unexpected" }; },
+        writeJson: async (path, value) => {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, JSON.stringify(value, null, 2));
+        },
+        appendEvent: async () => {},
+      });
+      const result = await workflow.recordAssessment({
+        cwd,
+        runId: run.runId,
+        assessment: {
+          route: "research_planning",
+          reason: "The conclusion requires independent evidence workstreams.",
+          evidence_dimensions: ["structure", "function", "development"],
+        },
+      });
+      expect(agentCalled).toBe(false);
+      expect(result).toMatchObject({
+        route: "research_planning",
+        assessment_source: "orchestrator",
+        needs_user_review: true,
+        next_tool: "seekbrain_planning_decision_review",
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("stops for clarification when the question and metadata are fundamentally mismatched", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "seekbrain-research-mismatch-"));
     try {
@@ -136,15 +183,21 @@ describe("research planning workflow", () => {
       });
 
       const assessed = await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
-      expect(assessed).toMatchObject({ ok: true, route: "research_planning", needs_user_review: true, next_tool: "neuro_review_research_planning" });
+      expect(assessed).toMatchObject({ ok: true, route: "research_planning", needs_user_review: true, next_tool: "seekbrain_planning_decision_review" });
       expect(assessed.literature_queries).toEqual(["behavior neural prior", "posture neural activity"]);
       expect(await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "subquestion role", agentConfig: {}, finalizeSchema: {} })).toMatchObject({ ok: false, blocked_by_human_review: true });
 
       const declined = await workflow.recordDecision(cwd, run.runId, "no");
-      expect(declined).toMatchObject({ ok: true, route: "standard", next_tool: "resolve_targeted_skill" });
+      expect(declined).toMatchObject({ ok: true, route: "standard", next_tool: "seekbrain_recipe_retrieve" });
 
       await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
-      expect(await workflow.recordDecision(cwd, run.runId, "yes")).toMatchObject({ ok: true, route: "research_planning", next_tool: "neuro_prepare_subquestions" });
+      expect(await workflow.recordDecision(cwd, run.runId, "yes", "native_selector", "Yes — initiate structured research decomposition")).toMatchObject({
+        ok: true,
+        route: "research_planning",
+        next_tool: "seekbrain_planning_generate",
+        decision_source: "native_selector",
+        consent_evidence: "Yes — initiate structured research decomposition",
+      });
       const approvedRun = await lifecycle.resolveRun(cwd, run.runId);
       await lifecycle.updateState(approvedRun, {
         research_planning: {
@@ -181,8 +234,8 @@ describe("research planning workflow", () => {
       const reviewedState = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
       expect(reviewedState.research_planning.status).toBe("ready_for_user_review");
       expect(reviewedState.research_planning.reviewer_call_count).toBe(1);
-      expect(events.map((event) => event.event)).toContain("neuro_prepare_subquestions");
-      expect(events.map((event) => event.event)).toContain("neuro_review_research_plan");
+      expect(events.map((event) => event.event)).toContain("seekbrain_planning_generate");
+      expect(events.map((event) => event.event)).toContain("seekbrain_planning_peer_review");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -300,9 +353,9 @@ describe("research planning workflow", () => {
         orchestratorAgentConfig: {},
         revisionFinalizeSchema: {},
       });
-      expect(approved).toMatchObject({ ok: true, decision: "approve", status: "approved_for_execution", next_tool: "neuro_materialize_research_tasks" });
+      expect(approved).toMatchObject({ ok: true, decision: "approve", status: "approved_for_execution", next_tool: "seekbrain_analysis_tasks_prepare" });
       const materialized = await workflow.materializeResearchTasks({ cwd, runId: run.runId });
-      expect(materialized).toMatchObject({ ok: true, reused: false, task_count: 2, next_tool: "resolve_targeted_skill" });
+      expect(materialized).toMatchObject({ ok: true, reused: false, task_count: 2, next_tool: "seekbrain_recipe_retrieve" });
       expect(materialized.task_runs.map((item: any) => item.task_id)).toEqual(["SQ1-T1", "SQ2-T1"]);
       expect(materialized.task_runs[0].run_dir).toBe(join(cwd, "project", "research_tasks", "SQ1-T1", "round1"));
       expect(materialized.task_runs[0].task_project_manifest_path).toBe(join(cwd, "project", "research_tasks", "SQ1-T1", "project.json"));

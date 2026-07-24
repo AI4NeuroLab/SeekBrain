@@ -13,8 +13,8 @@ function commandApi() {
     api: {
       registerCommand(name: string, command: any) { commands.set(name, command); },
       sendMessage(message: any) { messages.push(message); },
-      getAllTools: () => [{ name: "neuro_start_run" }, { name: "neuro_start_research" }],
-      getActiveTools: () => ["neuro_start_run"],
+      getAllTools: () => [{ name: "seekbrain_run_start" }, { name: "seekbrain_research_start" }],
+      getActiveTools: () => ["seekbrain_run_start"],
     },
   };
 }
@@ -28,11 +28,11 @@ describe("Pi slash commands", () => {
       invalidateConfig: () => { invalidated = true; },
       loadConfig: async () => ({ workflow: { seekbrain: { deep_research: true } } }),
     });
-    await item.commands.get("neuro_reload_config").handler("", { cwd: "/project" });
-    await item.commands.get("neuro_tools").handler();
+    await item.commands.get("seekbrain-reload-config").handler("", { cwd: "/project" });
+    await item.commands.get("seekbrain-tools").handler();
     expect(invalidated).toBe(true);
     expect(JSON.parse(item.messages[0].content)).toMatchObject({ reloaded: true, workflow: { seekbrain: { deep_research: true } } });
-    expect(JSON.parse(item.messages[1].content)).toMatchObject({ has_neuro_start_run: true, active_neuro_start_research: false });
+    expect(JSON.parse(item.messages[1].content)).toMatchObject({ has_seekbrain_run_start: true, active_seekbrain_research_start: false });
   });
 
   it("renders stored research in headless show mode", async () => {
@@ -44,8 +44,8 @@ describe("Pi slash commands", () => {
       loadRunState: async () => ({}),
       runIndexPath: () => "index.json",
     });
-    await item.commands.get("neuro-show").handler("research run-1", { cwd: "/project", hasUI: false, mode: "rpc" });
-    expect(item.messages[0]).toMatchObject({ customType: "neuro-research", display: true });
+    await item.commands.get("seekbrain-show").handler("research run-1", { cwd: "/project", hasUI: false, mode: "rpc" });
+    expect(item.messages[0]).toMatchObject({ customType: "seekbrain-research", display: true });
     expect(item.messages[0].content).toContain("Finding");
     expect(item.messages[0].content).toContain("Paper");
   });
@@ -75,7 +75,7 @@ describe("Pi slash commands", () => {
       updateState: async () => undefined,
       appendEvent: async () => undefined,
     });
-    await item.commands.get("neuro-save-skill").handler("run-1", { cwd: "/project", hasUI: false, sessionManager: { getBranch: () => [] }, ui: { notify() {} } });
+    await item.commands.get("seekbrain-save-recipe").handler("run-1", { cwd: "/project", hasUI: false, sessionManager: { getBranch: () => [] }, ui: { notify() {} } });
     expect(capturedPrompt).toContain("Required final tool: finalize_smmt");
     expect(writerCalled).toBe(false);
     expect(writes[0][0]).toBe("/run/save_skill_proposal.json");
@@ -100,7 +100,7 @@ describe("Pi slash commands", () => {
     const choices = ["[ ] ROUND:1 — first", "[ ] SQ1-T1:R1 — task", "Generate report from 2 selected results"];
     const widgets: any[] = [];
     const statuses: any[] = [];
-    await item.commands.get("neuro-report").handler("", {
+    await item.commands.get("seekbrain-report").handler("", {
       ui: {
         select: async () => choices.shift(),
         notify() {},
@@ -110,8 +110,8 @@ describe("Pi slash commands", () => {
     });
     expect(calls[0]).toMatchObject({ projectPath: "/project", selectedEvidence: ["ROUND:1", "SQ1-T1:R1"] });
     expect(calls[0].onProgress).toEqual(expect.any(Function));
-    expect(item.messages[0]).toMatchObject({ customType: "neuro-report", display: true });
-    expect(widgets[0][1]).toContain("○ Scientific report · generating");
+    expect(item.messages[0]).toMatchObject({ customType: "seekbrain-report", display: true });
+    expect(widgets[0][1]).toContain("○ Report Agent · generating");
     expect(widgets.at(-1)).toEqual(["seekbrain-report-progress", undefined]);
     expect(statuses.at(-1)).toEqual(["seekbrain-report", undefined]);
   });

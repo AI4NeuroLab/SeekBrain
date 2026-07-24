@@ -49,7 +49,7 @@ export interface CodeWorkflowInput {
 
 function resolveQuestion(run: WorkflowRunContext, requested?: string): string {
   const value = String(requested || run.state.question || "").trim();
-  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   return value;
 }
 
@@ -65,7 +65,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
     "",
-    "You are the isolated SeekBrain coder subagent.",
+    "You are the isolated SeekBrain Code Agent.",
     "Return only by calling the finalize tool. Do not expose scratch reasoning.",
     "Required final tool: finalize_code_result",
     "",
@@ -148,9 +148,9 @@ function statisticsWarnings(statistics: unknown, question = ""): string[] {
 
 function policyBlock(run: WorkflowRunContext, decision: CodeRetryDecision, maxAttempts: number): WorkflowJson {
   if (decision.reason === "attempt_limit") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: `Code retry limit reached (${maxAttempts} total attempts).`, guidance: "Continue with tentative evidence and explicit limitations, or start a new research round." };
-  if (decision.reason === "validation_required") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "The existing Code attempt must be validated before neuro_code can run again.", next_step: { tool: "neuro_validate", args: { run_id: run.runId } } };
-  if (decision.reason === "stale_validation") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: `Validation covers Code attempt ${decision.validatedAttempt}, but the latest attempt is ${decision.previousAttempt}.`, next_step: { tool: "neuro_validate", args: { run_id: run.runId } } };
-  if (decision.reason === "already_passed") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "Validation already passed; automatic neuro_code retry is not allowed.", methodological_caveats: run.state.validation?.methodological_caveats || [], guidance: "Continue to Interpret. A scientific redesign requires explicit user approval through the post-run review flow or a new round." };
+  if (decision.reason === "validation_required") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "The existing Code attempt must be validated before seekbrain_code_execute can run again.", next_step: { tool: "seekbrain_validation_run", args: { run_id: run.runId } } };
+  if (decision.reason === "stale_validation") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: `Validation covers Code attempt ${decision.validatedAttempt}, but the latest attempt is ${decision.previousAttempt}.`, next_step: { tool: "seekbrain_validation_run", args: { run_id: run.runId } } };
+  if (decision.reason === "already_passed") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "Validation already passed; automatic seekbrain_code_execute retry is not allowed.", methodological_caveats: run.state.validation?.methodological_caveats || [], guidance: "Continue to Result Interpretation. A scientific redesign requires explicit user approval through the post-run review flow or a new round." };
   return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "A failed Validation with non-empty repair feedback is required for a Code retry." };
 }
 
@@ -161,7 +161,7 @@ export class CodeWorkflow {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const planReview = run.state.human_reviews?.plan || {};
     if (input.planReviewRequired && planReview.status !== "approved") {
-      return { ok: false, blocked_by_human_review: true, required_stage: "plan", next_tool: "neuro_code", run_id: run.runId, status: planReview.status || "pending_review", message: "neuro_code is blocked until human review approves 'plan'. Ask the user to review the latest plan output, then call neuro_approve_stage or neuro_record_feedback." };
+      return { ok: false, blocked_by_human_review: true, required_stage: "plan", next_tool: "seekbrain_code_execute", run_id: run.runId, status: planReview.status || "pending_review", message: "seekbrain_code_execute is blocked until researcher review approves the methodological schema. Ask the user to review the latest schema, then call seekbrain_review_approve or seekbrain_review_feedback." };
     }
     const question = resolveQuestion(run, input.question);
     const metadata = effectiveMetadata(run, input.dataInfo, input.extraPathInfo);
@@ -185,17 +185,17 @@ export class CodeWorkflow {
     ].join("\n") : "";
     const prompt = finalizationPrompt(input.rolePrompt, [
       `Question:\n${question}`,
-      `Plan:\n${input.plan || run.state.plan?.plan_markdown || ""}`,
+      `Methodological schema:\n${input.plan || run.state.plan?.plan_markdown || ""}`,
       `Data info:\n${metadata.data_info}`,
       `Extra path info:\n${metadata.extra_path_info}`,
       run.state.inherited_context ? `Prior-round reusable context (read-only; do not overwrite earlier rounds):\n${JSON.stringify(run.state.inherited_context, null, 2)}` : "",
-      `Targeted skill:\n${input.targetedSkill || run.state.targeted_skill || ""}`,
+      `Analysis recipe:\n${input.targetedSkill || run.state.targeted_skill || ""}`,
       `Deep research context:\n${run.state.deep_research_context || ""}`,
       `Validation feedback:\n${decision.feedback}`,
       `Deliverables (read-only contract; produce every file listed):\n${deliverablesToPromptText(deliverables)}`,
       additionalContextBlock(input.additionalContext),
       retryContext,
-      "Generate, write, and execute the analysis code. After one compact non-visual verification, finalize with: { code_files, exec_log, statistics, artifacts, summary, warnings }. code_files must list every code artifact you wrote as { path } only; do not copy source code into the finalize payload. Do not open/read generated images because neuro_validate owns visual review. artifacts must list every artifact actually generated, with name/path/kind/role/description; each figure/data artifact must include produced_by pointing to its code artifact. For every pdf figure, also produce a same-stem png.",
+      "Generate, write, and execute the analysis code. After one compact non-visual verification, finalize with: { code_files, exec_log, statistics, artifacts, summary, warnings }. code_files must list every code artifact you wrote as { path } only; do not copy source code into the finalize payload. Do not open/read generated images because seekbrain_validation_run owns visual review. artifacts must list every artifact actually generated, with name/path/kind/role/description; each figure/data artifact must include produced_by pointing to its code artifact. For every pdf figure, also produce a same-stem png.",
     ].join("\n\n"));
     const agent = await this.dependencies.runAgent({ runDir: run.runDir, prompt, agentConfig: input.agentConfig, finalizeSchema: input.finalizeSchema, signal: input.signal });
     const codeFiles = (Array.isArray(agent.result?.code_files) ? agent.result.code_files : []).filter((entry: WorkflowJson) => entry?.path).map((entry: WorkflowJson) => ({ path: String(entry.path) }));
@@ -239,7 +239,7 @@ export class CodeWorkflow {
       await this.dependencies.lifecycle.updateState(run, { code_attempt: previousAttempt + 1, code: { ...agent.result, statistics: persistedStatistics, code_files: codeFiles, artifacts: resultArtifacts }, checks, artifacts: resultArtifacts });
       await this.dependencies.snapshot(run, `after_code_attempt_${previousAttempt + 1}`);
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_code", ok: agent.ok, blocked_by_dummy_data: blocked, code_attempt: previousAttempt + 1 });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_code_execute", ok: agent.ok, blocked_by_dummy_data: blocked, code_attempt: previousAttempt + 1 });
     return {
       run_id: run.runId,
       ok: agent.ok,
@@ -249,7 +249,7 @@ export class CodeWorkflow {
       checks,
       blocked_by_dummy_data: blocked,
       code_attempt: previousAttempt + 1,
-      next_step: agent.ok ? { tool: "neuro_validate", args: { run_id: run.runId } } : undefined,
+      next_step: agent.ok ? { tool: "seekbrain_validation_run", args: { run_id: run.runId } } : undefined,
       output_path: agent.output_path,
       debug: { subagent_dir: agent.subagent_dir, snapshot_dir: agent.snapshot_dir },
     };

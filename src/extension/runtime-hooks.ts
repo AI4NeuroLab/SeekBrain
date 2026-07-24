@@ -25,7 +25,7 @@ export interface RuntimeHookDependencies {
   numberValue(value: unknown): number;
 }
 
-const RUN_TOOLS = new Set(["neuro_start_research", "neuro_continue_research", "neuro_start_run", "neuro_resume_run"]);
+const RUN_TOOLS = new Set(["seekbrain_research_start", "seekbrain_research_continue", "seekbrain_run_start", "seekbrain_run_resume"]);
 
 export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: RuntimeHookDependencies): void {
   pi.on("session_start", (_event, context) => {
@@ -69,13 +69,13 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
     for (const entry of dependencies.readableLogEntries(event, "main", "seekbrain")) {
       await dependencies.appendReadableLog(runDir, entry);
     }
-    if (event.toolName !== "neuro_deep_research" && event.toolName !== "resolve_targeted_skill") return;
+    if (event.toolName !== "seekbrain_deep_research" && event.toolName !== "seekbrain_recipe_retrieve") return;
     try {
       if (!await dependencies.transparencyEnabled()) return;
       const state = await dependencies.readRunState(runDir);
-      const content = event.toolName === "neuro_deep_research" ? dependencies.researchCard(state) : dependencies.skillCard(state);
+      const content = event.toolName === "seekbrain_deep_research" ? dependencies.researchCard(state) : dependencies.skillCard(state);
       if (!content) return;
-      pi.appendEntry(event.toolName === "neuro_deep_research" ? RESEARCH_CARD_ENTRY : SKILL_CARD_ENTRY, {
+      pi.appendEntry(event.toolName === "seekbrain_deep_research" ? RESEARCH_CARD_ENTRY : SKILL_CARD_ENTRY, {
         content,
         run_id: state.run_id,
         tool: event.toolName,
@@ -102,9 +102,9 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
   });
 
   pi.on("tool_result", async (event: Json) => {
-    if (event.toolName !== "neuro_code") return;
+    if (event.toolName !== "seekbrain_code_execute") return;
     const details = event.details || {};
     if (!details.blocked_by_dummy_data) return;
-    return { content: [...(event.content || []), { type: "text", text: "\n\n⚠️ [SeekBrain] Dummy/synthetic data signal detected in neuro_code output. Consider asking the user for correct data paths or retrying with adjusted code before proceeding." }], details };
+    return { content: [...(event.content || []), { type: "text", text: "\n\n⚠️ [SeekBrain] Dummy/synthetic data signal detected in seekbrain_code_execute output. Consider asking the user for correct data paths or retrying with adjusted code before proceeding." }], details };
   });
 }

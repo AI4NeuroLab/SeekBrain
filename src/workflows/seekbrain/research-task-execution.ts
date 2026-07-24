@@ -39,7 +39,7 @@ export class ResearchTaskExecutionCoordinator {
         failed_count: 0,
         results: [],
         status: claimed.status,
-        message: "No approved research task is currently available for execution.",
+        message: "No approved analysis task is currently available for execution.",
       };
     }
 

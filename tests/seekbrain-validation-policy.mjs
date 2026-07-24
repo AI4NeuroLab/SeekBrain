@@ -25,7 +25,7 @@ const failed = normalizeValidation({
 }, { codeAttempt: 1 });
 assert.equal(failed.route, "retry_code");
 assert.match(failed.next_code_feedback, /group labels/);
-assert.equal(validationNextStep(failed, "run-1").tool, "neuro_code");
+assert.equal(validationNextStep(failed, "run-1").tool, "seekbrain_code_execute");
 
 const exhausted = normalizeValidation({ ...base, pass: false }, { codeAttempt: 3 });
 assert.equal(exhausted.route, "conclude_with_limitations");
@@ -68,7 +68,7 @@ assert.equal(refinedFastPass.validation.route, "proceed");
 assert.equal(refinedFastPass.validation.refined_fast_pass, true);
 assert.deepEqual(refinedFastPass.validation.visual_issues, []);
 assert.deepEqual(refinedFastPass.validation.refinement_remaining_issues, ["Small label remains."]);
-assert.equal(validationNextStep(refinedFastPass.validation, "run-1", "figure.png").tool, "neuro_interpret");
+assert.equal(validationNextStep(refinedFastPass.validation, "run-1", "figure.png").tool, "seekbrain_interpretation_run");
 assert.equal(currentArtifactsValidated({
   code_attempt: 1,
   refinement_pending_validation: false,

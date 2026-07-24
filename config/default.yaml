@@ -8,9 +8,9 @@ literature:
   providers: {}
 modules:
   targeted_skill:
-    # Minimum model/deterministic relevance score required to accept an existing Skill.
+    # Minimum model/deterministic relevance score required to accept an existing analysis recipe.
     relevance_threshold: 0.3
-    # Maximum number of existing Skills accepted for one task.
+    # Maximum number of existing analysis recipes accepted for one task.
     top_k: 1
     compatibility:
       candidate_pool_size: 10

@@ -39,7 +39,7 @@ export interface ValidateWorkflowInput {
 
 function resolveQuestion(run: WorkflowRunContext, requested?: string): string {
   const value = String(requested || run.state.question || "").trim();
-  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   return value;
 }
 
@@ -47,7 +47,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
     "",
-    "You are the isolated SeekBrain validator subagent.",
+    "You are the isolated SeekBrain Validation Agent.",
     "Return only by calling the finalize tool. Do not expose scratch reasoning.",
     "Required final tool: finalize_validation",
     "",
@@ -81,12 +81,12 @@ export class ValidateWorkflow {
       return {
         ok: false,
         run_id: run.runId,
-        error: "configuration issue: neuro_validate requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked.",
+        error: "configuration issue: seekbrain_validation_run requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked.",
         figure_paths: figures.map((artifact) => artifact.path),
       };
     }
     if (!figures.length) {
-      if (!input.figurePath) return { ok: false, run_id: run.runId, error: "neuro_validate requires at least one actual vision figure artifact from neuro_code" };
+      if (!input.figurePath) return { ok: false, run_id: run.runId, error: "seekbrain_validation_run requires at least one actual vision figure artifact from seekbrain_code_execute" };
       figures = [artifacts.make("figure", input.figurePath, "figure")];
     }
     const vision = await this.dependencies.loadImages(figures.map((artifact) => artifact.path));
@@ -96,7 +96,7 @@ export class ValidateWorkflow {
     const prompt = finalizationPrompt(input.rolePrompt, [
       `Question:\n${question}`,
       `Figures (${figures.length}):\n${figuresText}`,
-      `Plan:\n${run.state.plan?.plan_markdown || ""}`,
+      `Methodological schema:\n${run.state.plan?.plan_markdown || ""}`,
       `Deep research context:\n${run.state.deep_research_context || ""}`,
       `Statistics:\n${JSON.stringify(input.statistics || run.state.code?.statistics || {}, null, 2)}`,
       additionalContextBlock(input.additionalContext),
@@ -129,7 +129,7 @@ export class ValidateWorkflow {
       });
       await this.dependencies.snapshot(run, "after_validate");
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_validate", ok: agent.ok, pass: validationResult?.pass, route: validationResult?.route });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_validation_run", ok: agent.ok, pass: validationResult?.pass, route: validationResult?.route });
     return {
       run_id: run.runId,
       ok: agent.ok,

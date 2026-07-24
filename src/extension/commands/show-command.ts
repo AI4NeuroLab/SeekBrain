@@ -39,8 +39,8 @@ export function researchFullMarkdown(state: Json): string {
 export function skillFullMarkdown(state: Json): string {
   const targeted = String(state.targeted_skill || "").trim();
   const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
-  const label = source === "generated_from_rag" ? "generated" : source === "existing_skill" ? "matched" : "no match";
-  return targeted ? `# 🧩 Targeted Skill — ${label}\n\n${targeted}` : `# 🧩 Targeted Skill — ${label}\n\n_No matching skill was used for this question._`;
+  const label = source === "generated_from_rag" ? "crystallized from literature and code" : source === "existing_skill" ? "retrieved from the Neuroscience Analysis Repertoire" : "no match";
+  return targeted ? `# 🧩 Analysis Recipe — ${label}\n\n${targeted}` : `# 🧩 Analysis Recipe — ${label}\n\n_No matching analysis recipe was found for this question._`;
 }
 
 async function openOverlay(context: Json, title: string, markdown: string): Promise<void> {
@@ -79,21 +79,25 @@ async function openOverlay(context: Json, title: string, markdown: string): Prom
 }
 
 export function registerShowCommand(pi: ShowCommandAPI, dependencies: ShowCommandDependencies): void {
-  pi.registerCommand("neuro-show", {
-    description: "Show the deep-research report or targeted-skill content for a run (scrollable). Usage: /neuro-show research|skill [run_id]",
+  pi.registerCommand("seekbrain-show", {
+    description: "Show the Deep Research background or analysis-recipe content for a run (scrollable). Usage: /seekbrain-show research|recipe [run_id]",
     getArgumentCompletions: (prefix: string) => {
-      const items = [{ value: "research", label: "research — the deep-research report" }, { value: "skill", label: "skill — the targeted-skill content" }];
+      const items = [{ value: "research", label: "research — the Deep Research background" }, { value: "recipe", label: "recipe — the analysis recipe" }];
       const filtered = items.filter((item) => item.value.startsWith(prefix));
       return filtered.length ? filtered : null;
     },
     async handler(args: string, context: Json) {
       const tokens = String(args || "").trim().split(/\s+/).filter(Boolean);
-      let which = tokens.find((token) => token === "research" || token === "skill");
-      if (!which && context.hasUI) { which = await context.ui.select("Show which?", ["research", "skill"]); if (!which) return; }
+      let which = tokens.find((token) => token === "research" || token === "recipe" || token === "skill");
+      if (!which && context.hasUI) {
+        const selected = await context.ui.select("Show which?", ["Deep Research background", "Analysis recipe"]);
+        if (!selected) return;
+        which = selected === "Analysis recipe" ? "recipe" : "research";
+      }
       if (!which) which = "research";
       let run: Json | undefined;
       try {
-        const runId = tokens.find((token) => token !== "research" && token !== "skill" && !token.startsWith("-"));
+        const runId = tokens.find((token) => token !== "research" && token !== "recipe" && token !== "skill" && !token.startsWith("-"));
         if (runId) run = await dependencies.resolveRun(context.cwd, runId);
         else if (dependencies.getActiveRunDir()) {
           const runDir = dependencies.getActiveRunDir()!;
@@ -107,10 +111,10 @@ export function registerShowCommand(pi: ShowCommandAPI, dependencies: ShowComman
           run = await dependencies.resolveRun(context.cwd, ids[ids.length - 1]);
         }
       } catch (error) { context.ui?.notify?.(`Could not locate run: ${error}`, "error"); return; }
-      const full = which === "skill" ? skillFullMarkdown(run.state) : researchFullMarkdown(run.state);
-      const title = which === "skill" ? "🧩 Targeted Skill" : "🔬 Deep Research";
+      const full = which === "recipe" || which === "skill" ? skillFullMarkdown(run.state) : researchFullMarkdown(run.state);
+      const title = which === "recipe" || which === "skill" ? "🧩 Analysis Recipe" : "🔬 Deep Research";
       if (context.mode === "tui") await openOverlay(context, title, full);
-      else pi.sendMessage({ customType: which === "skill" ? "neuro-skill" : "neuro-research", content: full, display: true });
+      else pi.sendMessage({ customType: which === "recipe" || which === "skill" ? "seekbrain-recipe" : "seekbrain-research", content: full, display: true });
     },
   });
 }

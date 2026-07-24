@@ -75,7 +75,7 @@ function findRound(manifest: WorkflowJson, roundNumber: number): WorkflowJson {
 
 async function taskManifest(parent: WorkflowJson, taskId: string): Promise<WorkflowJson> {
   const task = (Array.isArray(parent.research_tasks) ? parent.research_tasks : []).find((item: WorkflowJson) => String(item.task_id) === taskId);
-  if (!task) throw new Error(`Research task '${taskId}' is not registered in the project manifest.`);
+  if (!task) throw new Error(`Analysis task '${taskId}' is not registered in the project manifest.`);
   const path = String(task.project_manifest_path || join(String(task.project_dir || ""), "project.json"));
   return readJson(path, true);
 }

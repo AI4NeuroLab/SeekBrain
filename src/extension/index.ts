@@ -37,19 +37,22 @@ interface StageState {
 
 const EXT_DIR = dirname(fileURLToPath(import.meta.url));
 const ENTRY_PROMPT = join(EXT_DIR, "..", "..", "prompts", "entry.md");
-const STAGE_NAMES = ["Skill", "Plan", "Code", "Validate", "Interpret"];
+const STAGE_NAMES = ["Recipe", "Analytical Formulation", "Code Generation & Execution", "Validation", "Result Interpretation"];
 const TOOL_STAGES: Record<string, string> = {
-	resolve_targeted_skill: "Skill",
-	neuro_plan: "Plan",
-	neuro_code: "Code",
-	neuro_validate: "Validate",
-	neuro_refine_image: "Validate",
-	neuro_interpret: "Interpret",
+	seekbrain_recipe_retrieve: "Recipe",
+	seekbrain_formulation_generate: "Analytical Formulation",
+	seekbrain_code_execute: "Code Generation & Execution",
+	seekbrain_validation_run: "Validation",
+	seekbrain_figure_refine: "Validation",
+	seekbrain_interpretation_run: "Result Interpretation",
 };
 const NEW_RUN_TOOLS = new Set([
-	"neuro_start_research",
-	"neuro_continue_research",
-	"neuro_start_run",
+	"seekbrain_research_start",
+	"seekbrain_research_continue",
+	"seekbrain_run_start",
+	"seekbrain_run_resume",
+	"seekbrain_planning_decision_review",
+	"seekbrain_planning_decision_record",
 ]);
 
 function resetStages(): StageState[] {
@@ -58,7 +61,7 @@ function resetStages(): StageState[] {
 
 function promptText() {
 	if (!existsSync(ENTRY_PROMPT)) {
-		return "You are SeekBrain. Use the registered neuro tools to run the research workflow.";
+		return "You are SeekBrain. Use the registered SeekBrain tools to run the research workflow.";
 	}
 	return readFileSync(ENTRY_PROMPT, "utf8");
 }
@@ -105,6 +108,7 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 	let stages = resetStages();
 	let activeRoundLabel = "";
 	let widgetCtx: any;
+	let pipelineVisible = false;
 	let setupRunning = false;
 
 	async function openSetup(ctx: any) {
@@ -125,6 +129,10 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 
 	function updateWidget() {
 		if (!widgetCtx) return;
+		if (!pipelineVisible) {
+			widgetCtx.ui.setWidget("seekbrain-workflow", undefined);
+			return;
+		}
 		widgetCtx.ui.setWidget("seekbrain-workflow", (_tui: any, theme: any) => {
 			const text = new Text("", 0, 1);
 			return {
@@ -141,12 +149,25 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 		widgetCtx = ctx;
 		stages = resetStages();
 		activeRoundLabel = "";
+		pipelineVisible = false;
 		updateWidget();
-		ctx.ui.setStatus("seekbrain", summary(stages));
+		ctx.ui.setStatus("seekbrain", undefined);
 		if (notify) ctx.ui.notify("SeekBrain workflow ready", "info");
 	}
 
+	function beginOrdinaryRound(details: any) {
+		const roundLabel = researchRoundLabel(details);
+		if (!/^Round \d+$/.test(roundLabel)) return false;
+		stages = resetStages();
+		activeRoundLabel = roundLabel;
+		pipelineVisible = true;
+		updateWidget();
+		widgetCtx?.ui.setStatus("seekbrain", summary(stages));
+		return true;
+	}
+
 	function setStageFromTool(toolName: string, status: StageStatus, detail: string) {
+		if (!pipelineVisible) return;
 		const stageName = TOOL_STAGES[toolName];
 		if (!stageName) return;
 		const stage = stages.find((item) => item.name === stageName);
@@ -175,6 +196,12 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 
 	pi.on("tool_execution_start", async (event: any) => {
 		const toolName = event.toolName || event.name;
+		if (typeof toolName === "string" && NEW_RUN_TOOLS.has(toolName)) {
+			pipelineVisible = false;
+			activeRoundLabel = "";
+			updateWidget();
+			widgetCtx?.ui.setStatus("seekbrain", undefined);
+		}
 		if (typeof toolName === "string") setStageFromTool(toolName, "running", "running");
 	});
 
@@ -183,11 +210,7 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 		if (typeof toolName !== "string") return;
 		const details = toolDetails(event);
 		if (NEW_RUN_TOOLS.has(toolName) && !event.isError && details.ok !== false) {
-			stages = resetStages();
-			const dataStage = stages.find((item) => item.name === "Data");
-			if (dataStage) dataStage.status = "done";
-			activeRoundLabel = researchRoundLabel(details);
-			updateWidget();
+			beginOrdinaryRound(details);
 		}
 		setStageFromTool(toolName, event.isError ? "error" : "done", event.isError ? "failed" : "complete");
 	});

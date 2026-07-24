@@ -182,11 +182,11 @@ function fallbackAuthor(input: RagSkillAuthorInput): Json {
       tags: ["seekbrain", "paper-only"],
       skill_body: [
         `# ${input.question}`, "", "## Description", "", description, "",
-        "## Evidence level", "", "This Skill is derived from paper evidence only. No associated implementation repository was verified, and no executable analysis code is supplied.", "",
+        "## Evidence level", "", "This analysis recipe is derived from paper evidence only. No associated implementation repository was verified, and no executable analysis code is supplied.", "",
         "## Paper context", "", input.paperText.slice(0, 12_000), "",
         "## Adaptation workflow", "", "1. Confirm that the paper method fits the current scientific question and dataset.",
-        "2. Translate only explicitly documented procedures into an analysis plan.",
-        "3. Implement the plan for the current dataset without assuming undocumented parameters or code.",
+        "2. Translate only explicitly documented procedures into a methodological schema.",
+        "3. Implement the schema for the current dataset without assuming undocumented parameters or code.",
         "4. Validate outputs against the paper's stated method and report all deviations.", "",
       ].join("\n"),
       analysis_script: "",
@@ -204,7 +204,7 @@ function fallbackAuthor(input: RagSkillAuthorInput): Json {
       "## Repository implementation", "", input.matchedFiles.map((file) => `- \`${file.path}\``).join("\n") || "No readable repository files were selected.", "",
       "## Paper-to-code mapping", "", input.connectionAnalysis, "", "## Workflow", "", input.reproductionPlan, "",
     ].join("\n"),
-    analysis_script: "# Adapt the repository implementation referenced by this skill to the current dataset.\n",
+    analysis_script: "# Adapt the repository implementation referenced by this analysis recipe to the current dataset.\n",
     utility_script: "",
   };
 }
@@ -213,13 +213,13 @@ function skillDocument(authored: Json, input: RagSkillAuthorInput): string {
   const paperOnly = input.evidenceLevel === "paper_only";
   const metadata = stringifyYaml({
     name: safeName(authored.name || input.question, 64).replace(/_/g, "-").toLowerCase(),
-    description: String(authored.description || `${paperOnly ? "Paper-grounded" : "Repository-backed"} skill for ${input.question}`),
+    description: String(authored.description || `${paperOnly ? "Paper-grounded" : "Repository-backed"} analysis recipe for ${input.question}`),
     triggers: Array.isArray(authored.triggers) ? authored.triggers : [input.question],
     tags: Array.isArray(authored.tags) ? authored.tags : ["seekbrain", paperOnly ? "paper-only" : "repository-backed"],
   }).trim();
   let body = String(authored.skill_body || fallbackAuthor(input).skill_body).replace(/^---[\s\S]*?---\s*/m, "").trim();
   if (paperOnly && !body.includes("No associated implementation repository was verified")) {
-    body = `${body}\n\n## Evidence boundary\n\nNo associated implementation repository was verified. This Skill provides paper-grounded guidance only and does not claim that the described procedures have already been implemented.`;
+    body = `${body}\n\n## Evidence boundary\n\nNo associated implementation repository was verified. This analysis recipe provides paper-grounded guidance only and does not claim that the described procedures have already been implemented.`;
   }
   return `---\n${metadata}\n---\n\n${body}\n`;
 }
@@ -243,7 +243,7 @@ export class RagSkillGenerator {
     const outputDir = resolve(input.outputDir);
     const evidenceLevel = input.evidenceLevel ?? "repository_backed";
     if (evidenceLevel === "paper_only") return await this.generatePaperOnly({ ...input, evidenceLevel, outputDir });
-    if (!input.repoLink) return { ok: false, error: "repository-backed Skill generation requires repoLink" };
+    if (!input.repoLink) return { ok: false, error: "repository-backed Recipe Crystallization requires repoLink" };
     const folderName = `${safeName(input.question, 60)}__${repoIdentifier(input.repoLink)}`;
     const skillDir = join(outputDir, folderName);
     if (existsSync(join(skillDir, "SKILL.md"))) return { ok: true, skill_path: skillDir, reused: true, repo_link: input.repoLink };
@@ -301,7 +301,7 @@ export class RagSkillGenerator {
     };
     let authored: Json;
     try { authored = this.author ? await this.author(authorInput) : fallbackAuthor(authorInput); }
-    catch (error) { warnings.push(`skill author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
+    catch (error) { warnings.push(`recipe author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
 
     const scriptsDir = join(skillDir, "scripts");
     const referencesDir = join(skillDir, "references");
@@ -378,7 +378,7 @@ export class RagSkillGenerator {
     let authored: Json;
     const warnings: string[] = [];
     try { authored = this.author ? await this.author(authorInput) : fallbackAuthor(authorInput); }
-    catch (error) { warnings.push(`skill author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
+    catch (error) { warnings.push(`recipe author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
     const referencesDir = join(skillDir, "references");
     await mkdir(referencesDir, { recursive: true });
     await writeFile(join(skillDir, "SKILL.md"), skillDocument(authored, authorInput), "utf8");

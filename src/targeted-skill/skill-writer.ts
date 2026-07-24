@@ -11,7 +11,7 @@ const REFERENCE_FILES: Record<string, (input: Json) => string> = {
   "question.md": (input) => `# Source question\n\n${input.question || "No question recorded."}\n`,
   "question-history.md": (input) => `# Question history\n\n${JSON.stringify(input.question_history || [], null, 2)}\n`,
   "data-info.md": (input) => `# Data information\n\n${input.data_info || "No data metadata recorded."}\n`,
-  "plan.md": (input) => `# Analysis plan\n\n${input.plan_markdown || "No plan recorded."}\n`,
+  "plan.md": (input) => `# Methodological schema\n\n${input.plan_markdown || "No methodological schema recorded."}\n`,
   "statistics.md": (input) => `# Statistics\n\n\`\`\`json\n${JSON.stringify(input.statistics || {}, null, 2)}\n\`\`\`\n`,
   "conclusions.md": (input) => `# Conclusions\n\n${JSON.stringify(input.conclusions || {}, null, 2)}\n`,
   "research-context.md": (input) => `# Research context\n\n${input.deep_research_context || "No research context recorded."}\n`,
@@ -30,7 +30,7 @@ async function uniqueSkillDir(outputDir: string, requested: string): Promise<{ f
     const skillDir = join(outputDir, folderName);
     if (!existsSync(skillDir)) return { folderName, skillDir };
   }
-  throw new Error(`could not allocate a unique skill folder under ${outputDir}`);
+  throw new Error(`could not allocate a unique analysis recipe folder under ${outputDir}`);
 }
 
 function skillMarkdown(input: Json, folderName: string, commandName: string): string {
@@ -40,7 +40,7 @@ function skillMarkdown(input: Json, folderName: string, commandName: string): st
   const metadata = stringifyYaml({ name: commandName, description, ...(triggers.length ? { triggers } : {}), ...(tags.length ? { tags } : {}) }).trim();
   return [
     "---", metadata, "---", "", `# ${folderName}`, "", "## Description", "", description, "",
-    "## Workflow", "", "1. Read the files in `references/` to recover the original intent, data constraints, plan, and conclusions.",
+    "## Workflow", "", "1. Read the files in `references/` to recover the original intent, data constraints, methodological schema, and conclusions.",
     "2. Adapt `scripts/run_analysis.py` to the current dataset; never assume paths or schemas are unchanged.",
     "3. Run the adapted analysis, validate its outputs, and report any deviations from the captured workflow.", "",
     "## Resources", "", "- `scripts/run_analysis.py`: analysis code captured from the successful run.",

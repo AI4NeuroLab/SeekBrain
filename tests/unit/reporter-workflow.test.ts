@@ -143,7 +143,7 @@ describe("ReporterWorkflow", () => {
         writeText: async () => {},
       });
       await expect(workflow.execute({ evidenceBundlePath: bundlePath, rolePrompt: "role", agentConfig: {}, finalizeSchema: {} }))
-        .resolves.toMatchObject({ ok: false, error: "Reporter produced an invalid evidence_ids or figure_refs provenance reference." });
+        .resolves.toMatchObject({ ok: false, error: "Report Agent produced an invalid evidence_ids or figure_refs provenance reference." });
     } finally {
       await rm(reportDir, { recursive: true, force: true });
     }

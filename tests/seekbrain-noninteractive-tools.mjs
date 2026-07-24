@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { AUTOMATION_TOOLS, INTERACTIVE_TOOLS } from "../src/cli/cli.mjs";
 
 const automation = AUTOMATION_TOOLS;
-const humanReview = "neuro_approve_stage,neuro_record_feedback,neuro_review_plan,neuro_update_plan,neuro_review_research_planning,neuro_review_research_tree,neuro_review_task_plan";
-const diffReview = "neuro_review_code_edit,neuro_propose_code_update,neuro_review_code_update";
+const humanReview = "seekbrain_review_approve,seekbrain_review_feedback,seekbrain_formulation_researcher_review,seekbrain_formulation_update,seekbrain_planning_decision_review,seekbrain_planning_decision_record,seekbrain_planning_researcher_review,seekbrain_planning_researcher_decision_record,seekbrain_execution_schema_review";
+const diffReview = "seekbrain_code_edit_review,seekbrain_code_update_propose,seekbrain_code_update_review";
 
 assert.ok(automation, "automation toolset must be declared");
-assert.equal(humanReview, "neuro_approve_stage,neuro_record_feedback,neuro_review_plan,neuro_update_plan,neuro_review_research_planning,neuro_review_research_tree,neuro_review_task_plan");
-assert.equal(diffReview, "neuro_review_code_edit,neuro_propose_code_update,neuro_review_code_update");
+assert.equal(humanReview, "seekbrain_review_approve,seekbrain_review_feedback,seekbrain_formulation_researcher_review,seekbrain_formulation_update,seekbrain_planning_decision_review,seekbrain_planning_decision_record,seekbrain_planning_researcher_review,seekbrain_planning_researcher_decision_record,seekbrain_execution_schema_review");
+assert.equal(diffReview, "seekbrain_code_edit_review,seekbrain_code_update_propose,seekbrain_code_update_review");
 for (const tool of [...humanReview.split(","), ...diffReview.split(",")]) {
   assert.equal(automation.split(",").includes(tool), false, `${tool} must not be exposed headlessly`);
 }
-assert.equal(AUTOMATION_TOOLS.split(",").includes("neuro_control_research_task"), false, "task retry/cancel requires an explicit interactive user decision");
-assert.equal(INTERACTIVE_TOOLS.split(",").includes("neuro_control_research_task"), true);
+assert.equal(AUTOMATION_TOOLS.split(",").includes("seekbrain_analysis_task_control"), false, "task retry/cancel requires an explicit interactive user decision");
+assert.equal(INTERACTIVE_TOOLS.split(",").includes("seekbrain_analysis_task_control"), true);
 for (const tool of [...humanReview.split(","), ...diffReview.split(",")]) {
   assert.equal(INTERACTIVE_TOOLS.split(",").includes(tool), true, `${tool} must remain interactive`);
 }

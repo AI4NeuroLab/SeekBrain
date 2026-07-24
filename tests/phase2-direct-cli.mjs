@@ -12,11 +12,18 @@ import {
 
 const root = new URL("../", import.meta.url);
 const source = await readFile(new URL("src/cli/cli.mjs", root), "utf8");
+const piLauncherSource = await readFile(new URL("src/cli/pi-launcher.mjs", root), "utf8");
 assert.doesNotMatch(source, /pi_run_seekbrain|internagent\/workflow|spawnSync\("bash"/);
+assert.match(piLauncherSource, /process\.env\.PI_PACKAGE_DIR = packageRoot/);
+assert.match(piLauncherSource, /process\.title = config\.APP_NAME/);
+assert.match(piLauncherSource, /getQuietStartup/);
+assert.match(piLauncherSource, /checkForPackageUpdates/);
 
 const paths = resolveRuntimePaths();
-assert.match(paths.piCli, /@earendil-works\/pi-coding-agent\/dist\/cli\.js$/);
+assert.match(paths.piCli, /src\/cli\/pi-launcher\.mjs$/);
 assert.match(paths.seekbrainExtension, /src\/extension\/index\.ts$/);
+assert.deepEqual(parseArgs(["resume", "session-123"]).options.piArgs, ["--session", "session-123"]);
+assert.deepEqual(parseArgs(["--session", "session-123"]).options.piArgs, ["--session", "session-123"]);
 
 const parsed = parseArgs([
   "run",
@@ -58,6 +65,7 @@ try {
   assert.equal(spec.cwd, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_ROOT, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_NON_INTERACTIVE, "1");
+  assert.equal(spec.env.PI_SKIP_VERSION_CHECK, "1");
   assert.equal(spec.args[0], paths.piCli);
   assert.ok(spec.args.includes("--no-extensions"));
   assert.ok(spec.args.includes(paths.seekbrainExtension));

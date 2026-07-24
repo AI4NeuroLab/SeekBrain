@@ -13,11 +13,11 @@ assert.match(extensionSource, /registerSystemCommands\(pi/);
 assert.match(extensionSource, /registerShowCommand\(pi/);
 assert.match(extensionSource, /registerSaveSkillCommand\(pi/);
 assert.match(extensionSource, /registerReportCommand\(pi/);
-assert.match(systemSource, /"neuro_reload_config"/);
-assert.match(systemSource, /"neuro_tools"/);
-assert.match(showSource, /"neuro-show"/);
-assert.match(saveSource, /"neuro-save-skill"/);
-assert.match(reportSource, /"neuro-report"/);
+assert.match(systemSource, /"seekbrain-reload-config"/);
+assert.match(systemSource, /"seekbrain-tools"/);
+assert.match(showSource, /"seekbrain-show"/);
+assert.match(saveSource, /"seekbrain-save-recipe"/);
+assert.match(reportSource, /"seekbrain-report"/);
 assert.doesNotMatch(systemSource + showSource + saveSource + reportSource, /packages\/workflows|extensions\/seekbrain/);
 
 console.log("Phase 5 slash commands register through dedicated Pi command modules");

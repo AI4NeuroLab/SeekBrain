@@ -57,7 +57,7 @@ describe("research and skill workflows", () => {
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.targeted_skill).toContain("research question");
       expect(state.targeted_skill_result.private_trace).toBeUndefined();
-      expect(item.events[0].event).toBe("resolve_targeted_skill");
+      expect(item.events[0].event).toBe("seekbrain_recipe_retrieve");
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
     }
@@ -104,7 +104,7 @@ describe("research and skill workflows", () => {
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.deep_research_context).toBe("context:true");
       expect(state.deep_research.summary).toBe("summary");
-      expect(item.events[0]).toMatchObject({ event: "neuro_deep_research", source_count: 1 });
+      expect(item.events[0]).toMatchObject({ event: "seekbrain_deep_research", source_count: 1 });
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
     }

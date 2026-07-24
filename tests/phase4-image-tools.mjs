@@ -11,10 +11,10 @@ assert.doesNotMatch(extensionSource, /imageWorkflow\.analyze/);
 assert.match(extensionSource, /finalizeGuard:/);
 assert.match(extensionSource, /fastPass: fastPassRefinedValidation/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|runSubagent/);
-assert.match(workflowSource, /single image-refinement allowance/);
+assert.match(workflowSource, /single Figure Refinement allowance/);
 assert.doesNotMatch(workflowSource, /neuro_analyze_image|image_analyses/);
-assert.match(workflowSource, /尽量避免重新加载原始大数据或重跑完整分析/);
-assert.match(promptSource, /Prefer the lightest safe redraw route/);
+assert.match(workflowSource, /Avoid reloading large source datasets or rerunning the complete analysis/);
+assert.match(promptSource, /Prefer the least computationally expensive safe redraw path/);
 assert.doesNotMatch(promptSource, /plot cache|refinement-only cache/);
 
 console.log("Phase 4 image workflow owns presentation-only refinement; interpretation is a separate stage");

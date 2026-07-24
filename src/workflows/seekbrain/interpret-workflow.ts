@@ -90,7 +90,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
     "",
-    "You are the isolated SeekBrain interpretation subagent.",
+    "You are the isolated SeekBrain Interpretation Agent.",
     "Return only by calling the finalize tool. Do not expose scratch reasoning.",
     "Required final tool: finalize_interpretation",
     "",
@@ -114,7 +114,7 @@ export class InterpretWorkflow {
         run_id: run.runId,
         blocked_by_validation_policy: true,
         error: "The latest Code/refinement artifacts must be validated before interpretation.",
-        next_step: { tool: "neuro_validate", args: { run_id: run.runId } },
+        next_step: { tool: "seekbrain_validation_run", args: { run_id: run.runId } },
       };
     }
     if (run.state.validation?.route === "retry_code") {
@@ -127,15 +127,15 @@ export class InterpretWorkflow {
       };
     }
     if (input.agentConfig.vision !== true) {
-      return { ok: false, run_id: run.runId, error: "configuration issue: neuro_interpret requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked." };
+      return { ok: false, run_id: run.runId, error: "configuration issue: seekbrain_interpretation_run requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked." };
     }
     if (!figure) {
       return {
         ok: false,
         run_id: run.runId,
         error: figures.length > 1
-          ? "neuro_interpret found multiple figures but no canonical role=main or figure.png artifact"
-          : "neuro_interpret requires one canonical vision figure artifact",
+          ? "seekbrain_interpretation_run found multiple figures but no canonical role=main or figure.png artifact"
+          : "seekbrain_interpretation_run requires one canonical vision figure artifact",
         figure_paths: figures.map((artifact) => artifact.path),
       };
     }
@@ -151,7 +151,7 @@ export class InterpretWorkflow {
     const prompt = finalizationPrompt(input.rolePrompt, [
       `Question:\n${question}`,
       `Canonical figure:\n${JSON.stringify({ path: figure.path, role: figure.role, description: figure.description, produced_by: figure.produced_by }, null, 2)}`,
-      `Plan:\n${run.state.plan?.plan_markdown || ""}`,
+      `Methodological schema:\n${run.state.plan?.plan_markdown || ""}`,
       `Statistics:\n${JSON.stringify(run.state.code?.statistics || {}, null, 2)}`,
       `Validation:\n${JSON.stringify(run.state.validation || {}, null, 2)}`,
       `Deterministic checks:\n${JSON.stringify(checks, null, 2)}`,
@@ -274,7 +274,7 @@ export class InterpretWorkflow {
       reportAvailability = await this.dependencies.lifecycle.reportAvailability(run);
       await this.dependencies.snapshot(run, "after_interpret");
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_interpret", ok: agent.ok, figure_path: figure.path });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_interpretation_run", ok: agent.ok, figure_path: figure.path });
     return {
       run_id: run.runId,
       ok: agent.ok,

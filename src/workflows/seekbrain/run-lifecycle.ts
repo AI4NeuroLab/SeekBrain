@@ -5,6 +5,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import {
   ArtifactService,
   atomicWriteJson,
+  migrateLegacyToolReferences,
   type ArtifactKind,
   type RunStateDocument,
   type StateMutation,
@@ -111,7 +112,7 @@ export class RunLifecycleWorkflow {
 
   async loadRunState(runId: string, runDir: string): Promise<WorkflowRunContext> {
     const statePath = join(runDir, "state.json");
-    const existing = await this.storage.loadAt(runId, runDir) as WorkflowJson;
+    const existing = migrateLegacyToolReferences(await this.storage.loadAt(runId, runDir)) as WorkflowJson;
     const state = {
       ...existing,
       run_id: runId,
@@ -133,7 +134,7 @@ export class RunLifecycleWorkflow {
       userDeliverables?.length ? normalizeDeliverables(userDeliverables) : DEFAULT_DELIVERABLES,
     );
     const statePath = join(runDir, "state.json");
-    const existing = await readJson(statePath, {});
+    const existing = migrateLegacyToolReferences(await readJson(statePath, {}));
     const baseState = {
       ...existing,
       run_id: runId,
@@ -156,7 +157,7 @@ export class RunLifecycleWorkflow {
     const existing = await readJson(statePath, {});
     const runId = existing.run_id;
     if (!runId || typeof runId !== "string") {
-      throw new Error(`Cannot resume: ${statePath} is missing run_id. Call neuro_start_run first.`);
+      throw new Error(`Cannot resume: ${statePath} is missing run_id. Call seekbrain_run_start first.`);
     }
     await mkdir(join(runDir, "subagents"), { recursive: true });
     const run = await this.loadRunState(runId, runDir);
@@ -169,12 +170,12 @@ export class RunLifecycleWorkflow {
 
   async resolveRun(cwd: string, requestedRunId?: string): Promise<WorkflowRunContext> {
     if (!requestedRunId) {
-      throw new Error("run_id is required. Call neuro_start_run first, then pass the returned run_id to this tool.");
+      throw new Error("run_id is required. Call seekbrain_run_start first, then pass the returned run_id to this tool.");
     }
     const index = await readJson(resolve(cwd, RunLifecycleWorkflow.RUN_INDEX_FILE), { runs: {} });
     const entry = index.runs?.[requestedRunId];
     if (!entry?.run_dir) {
-      throw new Error(`Unknown run_id '${requestedRunId}'. Call neuro_start_run first or use the run_id returned by it.`);
+      throw new Error(`Unknown run_id '${requestedRunId}'. Call seekbrain_run_start first or use the run_id returned by it.`);
     }
     await mkdir(join(entry.run_dir, "subagents"), { recursive: true });
     return this.loadRunState(requestedRunId, entry.run_dir);
@@ -183,7 +184,7 @@ export class RunLifecycleWorkflow {
   async updateState(run: WorkflowRunContext, patch: WorkflowJson): Promise<void> {
     const hasArtifacts = Object.prototype.hasOwnProperty.call(patch, "artifacts");
     const next = await this.storage.updateAt(run.runId, run.runDir, (document) => {
-      const current = document as WorkflowJson;
+      const current = migrateLegacyToolReferences(document) as WorkflowJson;
       const artifacts = new ArtifactService(run.runDir);
       return {
         ...current,
@@ -194,7 +195,7 @@ export class RunLifecycleWorkflow {
         updated_at: new Date().toISOString(),
       };
     }) as WorkflowJson;
-    run.state = next;
+    run.state = migrateLegacyToolReferences(next);
   }
 
   async startResearch(input: StartResearchInput) {
@@ -203,7 +204,7 @@ export class RunLifecycleWorkflow {
     const projectDir = resolve(input.cwd, input.projectPath);
     const manifestPath = join(projectDir, RunLifecycleWorkflow.PROJECT_MANIFEST_FILE);
     if (existsSync(manifestPath)) {
-      throw new Error(`Research project already exists at '${projectDir}'. Use neuro_continue_research to create the next round.`);
+      throw new Error(`Research project already exists at '${projectDir}'. Use seekbrain_research_continue to create the next round.`);
     }
     const projectId = basename(projectDir) || `research-${timestamp()}-${randomUUID().slice(0, 8)}`;
     const deferred = input.deferInitialRound === true;
@@ -360,7 +361,7 @@ export class RunLifecycleWorkflow {
       completed_round_count: completed.length,
       available: completed.length >= 2,
       hint: completed.length >= 2
-        ? `${completed.length} completed rounds are available for synthesis. Type "generate a report" or run /neuro-report when needed.`
+        ? `${completed.length} completed rounds are available for synthesis. Type "generate a report" or run /seekbrain-report when needed.`
         : undefined,
     };
   }
@@ -404,7 +405,7 @@ export class RunLifecycleWorkflow {
   private async writeCurrentInteractiveRun(cwd: string, runId: string, runDir: string, state?: WorkflowJson): Promise<void> {
     if (process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return;
     await atomicWriteJson(resolve(cwd, RunLifecycleWorkflow.CURRENT_RUN_FILE), {
-      schema_version: 2, source: "neuro-seekbrain", run_id: runId, run_dir: runDir,
+      schema_version: 2, source: "seekbrain", run_id: runId, run_dir: runDir,
       project_id: state?.project_id, project_dir: state?.project_dir,
       round_number: state?.round_number, round_name: state?.round_name,
       updated_at: new Date().toISOString(),

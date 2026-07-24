@@ -31,23 +31,23 @@ export function capabilitiesResult(config: Readonly<SeekBrainConfig>): JsonObjec
   return {
     ok: true,
     required_spine: [
-      "neuro_resolve_data",
-      "neuro_start_research",
-      "neuro_plan",
-      "neuro_code",
-      "neuro_validate",
-      "neuro_interpret",
+      "seekbrain_data_resolve",
+      "seekbrain_research_start",
+      "seekbrain_formulation_generate",
+      "seekbrain_code_execute",
+      "seekbrain_validation_run",
+      "seekbrain_interpretation_run",
     ],
     ...workflowConfig,
     post_run_code_edit: {
-      preferred_tool: "neuro_review_code_edit",
+      preferred_tool: "seekbrain_code_edit_review",
       diff_review: "required",
       exact_replacement_fast_path: true,
       apply_and_regenerate_after_approval: true,
-      legacy_fallback: ["neuro_propose_code_update", "neuro_review_code_update"],
+      legacy_fallback: ["seekbrain_code_update_propose", "seekbrain_code_update_review"],
     },
-    continuation_tool: "neuro_continue_research",
-    legacy_compatibility: ["neuro_start_run", "neuro_resume_run"],
+    continuation_tool: "seekbrain_research_continue",
+    legacy_compatibility: ["seekbrain_run_start", "seekbrain_run_resume"],
     note: "Disabled optional tools are disabled by user configuration, not because the tool is broken. Continue the required spine without placeholder context for disabled tools.",
   };
 }

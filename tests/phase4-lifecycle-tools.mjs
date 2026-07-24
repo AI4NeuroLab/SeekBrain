@@ -35,7 +35,7 @@ try {
   assert.deepEqual(tools.filter((tool) => typeof tool.renderResult !== "function").map((tool) => tool.name), [], "every SeekBrain tool must have a compact result renderer");
   const ctx = { cwd, hasUI: false };
 
-  const first = await byName.neuro_start_research.execute("start", {
+  const first = await byName.seekbrain_research_start.execute("start", {
     project_dir: "project",
     question: "first round",
     background: "user-supplied scientific context",
@@ -49,19 +49,19 @@ try {
     route: "standard",
     needs_user_review: false,
     needs_user_clarification: false,
-    next_tool: "resolve_targeted_skill",
+    next_tool: "seekbrain_recipe_retrieve",
   });
   const firstState = JSON.parse(await readFile(join(first.details.run_dir, "state.json"), "utf8"));
   assert.equal(firstState.user_background, "user-supplied scientific context");
 
-  const resumed = await byName.neuro_resume_run.execute("resume", {
+  const resumed = await byName.seekbrain_run_resume.execute("resume", {
     work_dir: join(cwd, "project", "round1"),
     question: "updated first round",
   }, undefined, undefined, ctx);
   assert.equal(resumed.details.run_id, first.details.run_id);
   assert.equal(resumed.details.workflow_config.optional.targeted_skill, "enabled");
 
-  const second = await byName.neuro_continue_research.execute("continue", {
+  const second = await byName.seekbrain_research_continue.execute("continue", {
     source_path: join(cwd, "project"),
     direction: "second round",
   }, undefined, undefined, ctx);
@@ -71,11 +71,11 @@ try {
   assert.equal(secondState.user_background, "user-supplied scientific context");
   assert.equal(typeof second.details.workflow_config.human_review.enabled, "boolean");
 
-  const ping = await byName.neuro_ping.execute("ping", {}, undefined, undefined, ctx);
+  const ping = await byName.seekbrain_system_check.execute("ping", {}, undefined, undefined, ctx);
   assert.equal(ping.details.run_count, 2);
-  const capabilities = await byName.neuro_capabilities.execute("capabilities", {}, undefined, undefined, ctx);
+  const capabilities = await byName.seekbrain_system_capabilities.execute("capabilities", {}, undefined, undefined, ctx);
   assert.equal(capabilities.details.ok, true);
-  assert.equal(capabilities.details.continuation_tool, "neuro_continue_research");
+  assert.equal(capabilities.details.continuation_tool, "seekbrain_research_continue");
 } finally {
   if (previous === undefined) delete process.env.SEEKBRAIN_NON_INTERACTIVE;
   else process.env.SEEKBRAIN_NON_INTERACTIVE = previous;

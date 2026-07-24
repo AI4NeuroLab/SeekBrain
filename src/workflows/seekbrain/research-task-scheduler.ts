@@ -210,7 +210,7 @@ export class ResearchTaskScheduler {
     const planning = parent.state.research_planning || {};
     const taskRuns = Array.isArray(planning.task_runs) ? planning.task_runs : [];
     if (!taskRuns.length || !["tasks_ready", "tasks_running", "tasks_complete"].includes(String(planning.status || ""))) {
-      throw new Error("Research execution requires an approved, materialized research tree. Call neuro_materialize_research_tasks first.");
+      throw new Error("Analysis Execution requires an approved, materialized hierarchical research plan. Call seekbrain_analysis_tasks_prepare first.");
     }
     const now = new Date().toISOString();
     const scheduler: WorkflowJson = {
@@ -430,10 +430,10 @@ export class ResearchTaskScheduler {
     const queue = await readJson(paths.reviewQueuePath) || { items: [] };
     const waiting = (Array.isArray(queue.items) ? queue.items : []).filter((item: WorkflowJson) => item.status === "waiting");
     if (!waiting.some((item: WorkflowJson) => String(item.task_id) === String(input.taskId))) {
-      throw new Error(`Task '${input.taskId}' is not waiting for Plan review.`);
+      throw new Error(`Analysis task '${input.taskId}' is not waiting for methodological-schema review.`);
     }
     if (input.decision === "revise" && !String(input.feedback || "").trim()) {
-      throw new Error("Plan revision feedback is required.");
+      throw new Error("Methodological-schema revision feedback is required.");
     }
     if (input.decision === "approve_remaining") {
       queue.approve_remaining = true;
@@ -543,7 +543,7 @@ export class ResearchTaskScheduler {
     if (event.parent_run_id !== scheduler.parent_run_id) return { ok: false, error: "parent_run_id does not match the scheduler" };
     const tasks = scheduler.tasks as WorkflowJson[];
     const index = tasks.findIndex((task) => String(task.task_id) === String(event.task_id));
-    if (index < 0) return { ok: false, error: `unknown research task '${event.task_id}'` };
+    if (index < 0) return { ok: false, error: `unknown analysis task '${event.task_id}'` };
     const current = tasks[index];
     const currentStatus = current.status as ResearchTaskStatus;
     if (!ALLOWED_FROM[event.type]?.includes(currentStatus)) {
@@ -622,7 +622,7 @@ export class ResearchTaskScheduler {
   private async parent(cwd: string, runId: string) {
     const parent = await this.dependencies.lifecycle.resolveRun(cwd, runId);
     if (!parent.state.research_planning || parent.state.research_planning.enabled === false) {
-      throw new Error("Research task scheduling is available only for a parent Research Planning run.");
+      throw new Error("Analysis task scheduling is available only for a parent Research Planning run.");
     }
     return parent;
   }
@@ -630,7 +630,7 @@ export class ResearchTaskScheduler {
   private async requireScheduler(path: string): Promise<WorkflowJson> {
     const scheduler = await readJson(path);
     if (!scheduler || scheduler.schema_version !== 1) {
-      throw new Error("Research execution is not initialized. Initialize the scheduler after materializing research tasks.");
+      throw new Error("Analysis Execution is not initialized. Initialize the scheduler after materializing analysis tasks.");
     }
     return scheduler;
   }
@@ -649,7 +649,7 @@ export class ResearchTaskScheduler {
       completed_task_count: completedTaskCount,
       report_available: completedTaskCount >= 2,
       report_hint: completedTaskCount >= 2
-        ? `${completedTaskCount} completed research-task results are available for synthesis. Type "generate a report" or run /neuro-report when needed.`
+        ? `${completedTaskCount} completed analysis-task results are available for synthesis. Type "generate a report" or run /seekbrain-report when needed.`
         : undefined,
       tasks,
       scheduler_path: paths.schedulerPath,

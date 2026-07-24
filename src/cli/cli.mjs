@@ -95,19 +95,19 @@ agents: {}
 
 export const INTERACTIVE_TOOLS = [
   "read", "bash", "edit", "write",
-  "neuro_ping", "neuro_capabilities", "neuro_resolve_data", "neuro_start_research", "neuro_continue_research",
-  "neuro_start_run", "neuro_resume_run", "neuro_assess_research", "neuro_review_research_planning", "neuro_prepare_subquestions", "neuro_review_research_plan", "neuro_review_research_tree", "neuro_materialize_research_tasks", "neuro_initialize_research_execution", "neuro_prepare_task_plans", "neuro_review_task_plan", "neuro_execute_research_tasks", "neuro_control_research_task", "neuro_compile_report_evidence", "neuro_generate_report", "resolve_targeted_skill", "neuro_deep_research",
-  "neuro_plan", "neuro_code", "neuro_validate", "neuro_refine_image", "neuro_interpret",
-  "neuro_approve_stage", "neuro_record_feedback", "neuro_review_plan",
-  "neuro_update_plan", "neuro_review_code_edit", "neuro_propose_code_update",
-  "neuro_review_code_update",
+  "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
+  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_decision_review", "seekbrain_planning_decision_record", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_planning_researcher_review", "seekbrain_planning_researcher_decision_record", "seekbrain_analysis_tasks_prepare", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_schema_review", "seekbrain_execution_tasks_run", "seekbrain_analysis_task_control", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
+  "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
+  "seekbrain_review_approve", "seekbrain_review_feedback", "seekbrain_formulation_researcher_review",
+  "seekbrain_formulation_update", "seekbrain_code_edit_review", "seekbrain_code_update_propose",
+  "seekbrain_code_update_review",
 ].join(",");
 
 export const AUTOMATION_TOOLS = [
   "read", "bash", "edit", "write",
-  "neuro_ping", "neuro_capabilities", "neuro_resolve_data", "neuro_start_research", "neuro_continue_research",
-  "neuro_start_run", "neuro_resume_run", "neuro_assess_research", "neuro_prepare_subquestions", "neuro_review_research_plan", "neuro_materialize_research_tasks", "neuro_initialize_research_execution", "neuro_prepare_task_plans", "neuro_execute_research_tasks", "neuro_compile_report_evidence", "neuro_generate_report", "resolve_targeted_skill", "neuro_deep_research",
-  "neuro_plan", "neuro_code", "neuro_validate", "neuro_refine_image", "neuro_interpret",
+  "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
+  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_analysis_tasks_prepare", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_tasks_run", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
+  "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
 ].join(",");
 
 export function helpText(version = VERSION) {
@@ -115,6 +115,7 @@ export function helpText(version = VERSION) {
 
 Usage:
   seekbrain [options] [-- <pi-args...>]
+  seekbrain resume <session-id|path>
   seekbrain run [options] [-- <pi-args...>]
   seekbrain report <project-path> <--rounds list|--evidence list>
   seekbrain setup
@@ -122,7 +123,8 @@ Usage:
   seekbrain config <show|list|get|set|unset|init> [options]
 
 Commands:
-  run                  Run a non-interactive research task
+  resume <session>      Resume a SeekBrain conversation session
+  run                  Run a non-interactive analysis task
   report <project>     Generate a report from explicitly selected results
   setup                Configure model routing and a literature provider
   doctor               Check Node, Pi, Python, and package dependencies
@@ -149,11 +151,15 @@ Options:
   --rounds <list>      Normal report rounds, e.g. 3,4,6 (report only)
   --evidence <list>    Report refs, e.g. SQ1-T1:R1,SQ2-T1:R1 (report only)
   --goal <text>        Optional report synthesis goal (report only)
+  --session <id|path>  Resume a SeekBrain conversation session
+  --session-dir <dir>  Override the session storage directory
   --pi-arg <value>     Forward one argument to Pi (repeatable)
   -- <pi-args...>      Forward all remaining arguments to Pi
 
 Examples:
   seekbrain
+  seekbrain resume 019f8f34-818f-708b-88bc-6018e6d67524
+  seekbrain --session 019f8f34-818f-708b-88bc-6018e6d67524
   seekbrain setup
   seekbrain -- --model provider/model
   seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example
@@ -185,9 +191,11 @@ export function parseArgs(input) {
   const args = [...input];
   let command = "interactive";
   let configCommand;
-  if (args[0] === "run" || args[0] === "report" || args[0] === "setup" || args[0] === "doctor" || args[0] === "config") {
+  if (args[0] === "resume" || args[0] === "run" || args[0] === "report" || args[0] === "setup" || args[0] === "doctor" || args[0] === "config") {
     command = args.shift();
   }
+  let resumeTarget;
+  if (command === "resume" && args[0] && !args[0].startsWith("-")) resumeTarget = args.shift();
   let reportProject;
   if (command === "report" && args[0] && !args[0].startsWith("-")) reportProject = args.shift();
   if (command === "config") configCommand = args.shift();
@@ -210,6 +218,16 @@ export function parseArgs(input) {
     if (arg === "--") {
       options.piArgs.push(...args.slice(index + 1));
       break;
+    }
+    if (arg === "--session" || arg === "--session-dir") {
+      if (command !== "interactive" && !(command === "resume" && arg === "--session-dir")) {
+        return { action: "error", message: `${arg} is only valid for an interactive SeekBrain session`, code: 2 };
+      }
+      const parsed = parseValue(args, index, arg);
+      if (parsed.error) return { action: "error", message: parsed.error, code: 2 };
+      index = parsed.next;
+      options.piArgs.push(arg, parsed.value);
+      continue;
     }
     if (arg === "--user" || arg === "--project") {
       if (command !== "config" || !["init", "set", "unset"].includes(configCommand)) {
@@ -259,6 +277,13 @@ export function parseArgs(input) {
   if (command === "run" && !options.query) {
     return { action: "error", message: "run requires --query", code: 2 };
   }
+  if (command === "resume") {
+    if (!resumeTarget) {
+      return { action: "error", message: "usage: seekbrain resume <session-id|path>", code: 2 };
+    }
+    options.piArgs.push("--session", resumeTarget);
+    return { action: "launch", nonInteractive: false, options };
+  }
   if (command === "run" && !options.dataset) {
     return { action: "error", message: "run requires --dataset", code: 2 };
   }
@@ -277,7 +302,7 @@ export function parseArgs(input) {
       `Project path: ${reportProject}`,
       `Selected evidence: ${selected.join(", ")}`,
       options.reportGoal ? `Report goal: ${options.reportGoal}` : "",
-      "Call neuro_generate_report exactly once with this project path and exact selection. Do not start or resume a research workflow and do not add unselected evidence.",
+      "Call seekbrain_report_generate exactly once with this project path and exact selection. Do not start or resume a research workflow and do not add unselected evidence.",
     ].filter(Boolean).join("\n");
     delete options.rounds;
     delete options.evidence;
@@ -307,16 +332,10 @@ export function parseArgs(input) {
   return { action: "launch", nonInteractive: command === "run", options };
 }
 
-function packageRootFromEntry(entry) {
-  return resolve(dirname(entry), "..");
-}
-
 export function resolveRuntimePaths(packageRoot = PACKAGE_ROOT, env = process.env) {
-  const piEntry = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
-  const piRoot = packageRootFromEntry(piEntry);
   return {
     packageRoot,
-    piCli: env.SEEKBRAIN_PI_CLI || join(piRoot, "dist", "cli.js"),
+    piCli: env.SEEKBRAIN_PI_CLI || join(packageRoot, "src", "cli", "pi-launcher.mjs"),
     seekbrainExtension: join(packageRoot, "src", "extension", "index.ts"),
     usageExtension: join(packageRoot, "src", "extension", "tui", "usage-footer.ts"),
     entryPrompt: join(packageRoot, "prompts", "entry.md"),
@@ -391,7 +410,7 @@ export function buildTaskPrompt(options, projectRoot, nonInteractive = false) {
   if (nonInteractive) {
     sections.push(options.reportMode
       ? "## Non-interactive report policy\nGenerate only the explicitly requested report. Do not start, continue, or resume research and do not request dataset metadata."
-      : "## Non-interactive execution policy\nContinue through the workflow until neuro_interpret succeeds and writes the final interpretation and conclusion artifacts. Do not ask follow-up questions. If blocked, report the blocking condition, missing information, and limitations.");
+      : "## Non-interactive execution policy\nContinue through the workflow until seekbrain_interpretation_run succeeds and writes the final interpretation and conclusion artifacts. Do not ask follow-up questions. If blocked, report the blocking condition, missing information, and limitations.");
   }
   return sections.filter(Boolean).join("\n\n");
 }
@@ -409,6 +428,7 @@ export function buildPiLaunchSpec(parsed, runtime = {}) {
     ...(runtime.env || {}),
     SEEKBRAIN_ROOT: projectRoot,
     SEEKBRAIN_PROJECT_ROOT: projectRoot,
+    PI_SKIP_VERSION_CHECK: "1",
   };
   const configs = configPaths(parsed, runtime, projectRoot, env);
   const configuredMainAgentArgs = mainAgentPiArgs(

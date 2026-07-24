@@ -37,7 +37,7 @@ describe("review TUI adapters", () => {
   it("offers approve, revise and retain choices for the final research tree", async () => {
     const input = { title: "Review the structured research plan?", feedbackTitle: "Scientific feedback", feedbackPlaceholder: "Describe changes" };
     expect(await selectResearchTreeReview({}, input)).toEqual({ decision: "unavailable" });
-    expect(await selectResearchTreeReview({ ui: { select: async () => "Approve — begin task execution" } }, input)).toEqual({ decision: "approve" });
+    expect(await selectResearchTreeReview({ ui: { select: async () => "Approve — begin analysis task execution" } }, input)).toEqual({ decision: "approve" });
     expect(await selectResearchTreeReview({ ui: { select: async () => "Revise — provide scientific feedback", input: async () => " sharpen SQ2 " } }, input)).toEqual({ decision: "feedback", feedback: "sharpen SQ2" });
     expect(await selectResearchTreeReview({ ui: { select: async () => "Cancel — retain the plan without execution" } }, input)).toEqual({ decision: "cancel" });
   });
@@ -59,7 +59,7 @@ describe("review TUI adapters", () => {
     expect(title).toContain("Reviewer: accept · one refinement applied · 0 unresolved blocking issues");
   });
 
-  it("shows a compact scientific summary for each queued task Plan", () => {
+  it("shows a compact scientific summary for each queued methodological schema", () => {
     const title = taskPlanReviewTitle({
       task_id: "SQ1-T1",
       plan_summary: "Fit SC-FC models with node-label permutation and robustness checks.",
@@ -71,10 +71,10 @@ describe("review TUI adapters", () => {
         expected_evidence: "Stable positive SC-FC effects and reusable residuals.",
       },
     }, 2);
-    expect(title).toContain("Review task plan SQ1-T1?");
+    expect(title).toContain("Review methodological schema SQ1-T1?");
     expect(title).toContain("Hypothesis: Anatomical connectivity");
-    expect(title).toContain("Analysis: Fit SC-FC models");
-    expect(title).toContain("Skill: Matched structural_functional_connectivity");
+    expect(title).toContain("Methodological schema: Fit SC-FC models");
+    expect(title).toContain("Analysis recipe: Matched structural_functional_connectivity");
     expect(title).toContain("Review queue: 1 of 2");
   });
 

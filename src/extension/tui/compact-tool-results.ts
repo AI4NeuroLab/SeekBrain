@@ -80,14 +80,15 @@ function lifecycleResult(action: string, details: Json, theme: Json) {
     return textComponent([
       "○ Input clarification required",
       summary(researchRoute.reason || researchRoute.message),
-      `${summary(researchRoute.recommended_action || "请检查所提供的数据集或 metadata 是否正确，或调整研究问题。") } · Ctrl+O for details`,
+      `${summary(researchRoute.recommended_action || "Verify that the supplied dataset and metadata match the research question, or revise the question.") } · Ctrl+O for details`,
     ], theme);
   }
   if (researchRoute.route === "research_planning") {
+    const approved = researchRoute.decision === "yes" && researchRoute.needs_user_review === false;
     return textComponent([
-      `○ ${action} ${round} · Research Planning review suggested`,
+      `${approved ? "✓" : "○"} ${action} ${round} · Research Planning ${approved ? "requested" : "recommended"}`,
       summary(researchRoute.reason),
-      "User decision required · Ctrl+O for details",
+      approved ? "Continue to hierarchical research plan generation · Ctrl+O for details" : "User decision required · Ctrl+O for details",
     ], theme);
   }
   return textComponent([
@@ -111,7 +112,7 @@ function expandedStartResearchResult(details: Json, theme: Json) {
     optional.length ? `Enabled options: ${optional.join(", ")}` : "",
     route.route === "needs_clarification" ? `Assessment: ${summary(route.reason || route.message)}` : "",
     route.route === "needs_clarification"
-      ? `Required action: ${summary(route.recommended_action || "请检查所提供的数据集或 metadata 是否正确，或调整研究问题。")}`
+      ? `Required action: ${summary(route.recommended_action || "Verify that the supplied dataset and metadata match the research question, or revise the question.")}`
       : "",
     route.assessment_path ? `Assessment record: ${route.assessment_path}` : "",
   ], theme);
@@ -119,21 +120,27 @@ function expandedStartResearchResult(details: Json, theme: Json) {
 
 function reviewResult(details: Json, theme: Json) {
   const decision = String(details.decision || details.review?.status || "recorded");
-  const stage = String(details.stage || details.required_stage || "plan");
+  const rawStage = String(details.stage || details.required_stage || "plan");
+  const stage = rawStage === "plan" ? "Methodological schema" : rawStage;
   const icon = decision === "approve" || decision === "approved" ? "✓" : decision === "feedback" ? "↻" : "○";
   return textComponent([
     `${icon} ${stage} review: ${decision}`,
     details.feedback ? `Feedback: ${summary(details.feedback)}` : summary(details.message),
-    details.plan_path ? `Plan: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
+    details.plan_path ? `Schema: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
   ], theme);
 }
 
 function targetedSkillResult(details: Json, theme: Json) {
-  const names = (Array.isArray(details.skill_paths) ? details.skill_paths : []).map((path: unknown) => basename(String(path))).filter(Boolean);
-  const state = details.matched === true ? "matched" : details.generated === true ? "generated" : "not found";
+  const paths = Array.isArray(details.recipe_paths) ? details.recipe_paths : Array.isArray(details.skill_paths) ? details.skill_paths : [];
+  const names = paths.map((path: unknown) => basename(String(path))).filter(Boolean);
+  const state = details.source === "crystallized" || details.source === "generated_from_rag" || details.generated === true
+    ? "crystallized from literature and code"
+    : details.source === "repertoire" || details.matched === true
+      ? "retrieved from the Neuroscience Analysis Repertoire"
+      : "not found";
   return textComponent([
-    `${details.matched === true ? "✓" : "○"} Targeted skill ${state}${details.source ? ` · ${details.source}` : ""}`,
-    names.length > 0 ? `Skills: ${names.join(", ")}` : "No targeted skill selected",
+    `${details.matched === true ? "✓" : "○"} Analysis recipe ${state}`,
+    names.length > 0 ? `Recipes: ${names.join(", ")}` : "No matching analysis recipe found",
     `${count(details.reference_paths)} references${warningSuffix(details)} · Ctrl+O for details`,
   ], theme);
 }
@@ -151,67 +158,97 @@ function deepResearchResult(details: Json, theme: Json) {
 function dataResolveResult(details: Json, theme: Json) {
   const reused = details.source === "cache";
   return textComponent([
-    `${reused ? "✓" : "✓"} Dataset metadata ${reused ? "reused" : "generated"}`,
+    `✓ Dataset profile ${reused ? "reused" : "generated"}`,
     details.summary ? summary(details.summary) : `Dataset: ${basename(String(details.data_dir || ""))}`,
     details.metadata_path ? `Metadata: ${compactPath(details.metadata_path)}${warningSuffix(details)} · Ctrl+O for details` : "Ctrl+O for details",
   ], theme);
 }
 
 function researchPlanningResult(toolName: string, details: Json, theme: Json) {
-  if (toolName === "neuro_prepare_subquestions" && details.progress === true) {
+  if (toolName === "seekbrain_planning_generate" && details.progress === true) {
     return textComponent([
-      details.stage === "research_survey" ? "○ Research Survey · building global background" : "○ Research Planning · generating research tree",
+      details.stage === "research_survey" ? "○ Research Survey · building global background" : "○ Research Planning · generating hierarchical research plan",
       summary(details.message),
     ], theme);
   }
-  if (toolName === "neuro_assess_research") {
+  if (toolName === "seekbrain_planning_assess") {
     const planning = details.route === "research_planning";
     const clarification = details.route === "needs_clarification";
     return textComponent([
-      `${planning || clarification ? "○" : "✓"} Research route · ${clarification ? "input clarification required" : planning ? "review suggested" : "standard workflow"}`,
+      `${planning || clarification ? "○" : "✓"} Planning assessment · ${clarification ? "input clarification required" : planning ? "Research Planning recommended" : "direct analysis workflow"}`,
       summary(details.reason),
-      clarification ? "Correct the question or metadata before continuing · Ctrl+O for details" : planning ? "User decision required · Ctrl+O for details" : "Continue to Skill · Ctrl+O for details",
+      clarification ? "Correct the question or metadata before continuing · Ctrl+O for details" : planning ? "User decision required · Ctrl+O for details" : "Continue to Recipe · Ctrl+O for details",
     ], theme);
   }
-  if (toolName === "neuro_review_research_planning") {
+  if (toolName === "seekbrain_planning_decision_review" || toolName === "seekbrain_planning_decision_record") {
+    if (details.needs_text_review === true) {
+      return textComponent([
+        "○ Research Planning · decision required",
+        summary(details.message),
+        `Next: ${details.next_tool || "await user response"} · Ctrl+O for details`,
+      ], theme);
+    }
     return textComponent([
-      `✓ Research Planning · ${details.decision === "yes" ? "approved" : "standard workflow selected"}`,
+      `✓ Research Planning · ${details.decision === "yes" ? "approved" : "direct analysis workflow selected"}`,
       summary(details.message),
-      `Next: ${details.next_tool || "resolve_targeted_skill"} · Ctrl+O for details`,
+      `Next: ${details.next_tool || "seekbrain_recipe_retrieve"} · Ctrl+O for details`,
     ], theme);
   }
-  if (toolName === "neuro_review_research_plan") {
+  if (toolName === "seekbrain_planning_peer_review") {
     if (details.verdict === "blocked") {
       return textComponent([
-        "○ Research plan blocked by data feasibility",
+        "○ Hierarchical research plan blocked by data feasibility",
         summary(details.blocked_reason || details.summary),
         `${summary(details.recommended_action)} · Ctrl+O for details`,
       ], theme);
     }
+    if (details.needs_text_review === true) {
+      return textComponent([
+        "○ Hierarchical research plan reviewed · researcher decision required",
+        `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} tasks · ${Number(details.unresolved_issue_count || 0)} unresolved issues`,
+        `Next: ${details.next_tool || "seekbrain_planning_researcher_decision_record"} · Ctrl+O for details`,
+      ], theme);
+    }
+    if (details.decision) {
+      const revised = details.decision === "revise";
+      const cancelled = details.decision === "cancel";
+      return textComponent([
+        revised ? "↻ Hierarchical research plan revised · review again" : cancelled ? "○ Hierarchical research plan retained · execution cancelled" : "✓ Hierarchical research plan reviewed and approved",
+        `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} tasks · ${Number(details.unresolved_issue_count || 0)} unresolved issues`,
+        `Next: ${details.next_tool || (cancelled ? "none" : "seekbrain_analysis_tasks_prepare")} · Ctrl+O for details`,
+      ], theme);
+    }
     return textComponent([
-      `✓ Research tree reviewed · ${details.verdict}${details.refined ? " · refined once" : ""}`,
+      `✓ Hierarchical research plan reviewed · ${details.verdict}${details.refined ? " · refined once" : ""}`,
       `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} tasks · ${Number(details.unresolved_issue_count || 0)} unresolved issues`,
       details.final_plan_path ? `Plan: ${compactPath(details.final_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
-  if (toolName === "neuro_review_research_tree") {
+  if (toolName === "seekbrain_planning_researcher_review" || toolName === "seekbrain_planning_researcher_decision_record") {
+    if (details.needs_text_review === true) {
+      return textComponent([
+        "○ Hierarchical research plan · researcher decision required",
+        summary(details.message),
+        `Next: ${details.next_tool || "seekbrain_planning_researcher_decision_record"} · Ctrl+O for details`,
+      ], theme);
+    }
     const revised = details.decision === "revise";
     const cancelled = details.decision === "cancel";
     return textComponent([
-      revised ? "↻ Research tree revised · review again" : cancelled ? "○ Research tree retained · execution cancelled" : "✓ Research tree approved",
+      revised ? "↻ Hierarchical research plan revised · review again" : cancelled ? "○ Hierarchical research plan retained · execution cancelled" : "✓ Hierarchical research plan approved",
       revised ? summary(details.feedback_response || details.message) : summary(details.message),
       details.final_plan_path ? `Plan: ${compactPath(details.final_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
-  if (toolName === "neuro_materialize_research_tasks") {
+  if (toolName === "seekbrain_analysis_tasks_prepare") {
     return textComponent([
-      `✓ Research tasks ${details.reused ? "restored" : "prepared"} · ${Number(details.task_count || 0)} child runs`,
+      `✓ Analysis tasks ${details.reused ? "restored" : "prepared"} · ${Number(details.task_count || 0)} child runs`,
       details.next_task ? `Next: ${details.next_task.task_id} · ${summary(details.next_task.question)}` : "",
       details.task_manifest_path ? `Manifest: ${compactPath(details.task_manifest_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
   return textComponent([
-    `✓ Research tree drafted · ${Number(details.subquestion_count ?? count(details.subquestions))} subquestions · ${Number(details.task_count ?? 0)} tasks`,
+    `✓ Hierarchical research plan drafted · ${Number(details.subquestion_count ?? count(details.subquestions))} subquestions · ${Number(details.task_count ?? 0)} analysis tasks`,
     details.research_survey ? `Survey: ${String(details.research_survey.status || "ready")} · ${Number(details.research_survey.source_count || 0)} sources${details.research_survey.reused ? " · reused" : ""}` : "",
     summary(details.research_plan?.planning_rationale),
     details.draft_plan_path ? `Draft: ${compactPath(details.draft_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
@@ -219,14 +256,14 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
 }
 
 function researchExecutionResult(toolName: string, details: Json, theme: Json) {
-  if (toolName === "neuro_prepare_task_plans") {
+  if (toolName === "seekbrain_execution_run") {
     if (details.progress === true) {
       const marker = (value: unknown) => ["matched", "not_found", "complete", "ready", "approved"].includes(String(value))
         ? "✓" : String(value) === "skipped" ? "–" : ["running", "queued", "revision_required"].includes(String(value)) ? "●" : String(value) === "failed" ? "✗" : "○";
       const taskLines = (Array.isArray(details.task_progress) ? details.task_progress : []).map((task: Json) =>
-        `${String(task.task_id)} · Skill ${marker(task.skill)} · Plan ${marker(task.plan)} · Review ${marker(task.review)} · Code ${marker(task.code)} · Validate ${marker(task.validate)} · Refine ${marker(task.refine)} · Interpret ${marker(task.interpret)}`);
+        `${String(task.task_id)} · Recipe ${marker(task.skill)} · Formulation ${marker(task.plan)} · Review ${marker(task.review)} · Code & Execute ${marker(task.code)} · Validation ${marker(task.validate)} · Figure Refinement ${marker(task.refine)} · Interpretation ${marker(task.interpret)}`);
       return textComponent([
-        "○ Research Task Pipeline",
+        "○ Analysis Execution Engine",
         summary(details.message),
         ...taskLines,
       ], theme);
@@ -234,15 +271,15 @@ function researchExecutionResult(toolName: string, details: Json, theme: Json) {
     const summaries = (Array.isArray(details.results) ? details.results : []).filter((item: Json) => item.ok === true)
       .map((item: Json) => `${String(item.task_id)} · ${summary(item.plan_summary)}`);
     return textComponent([
-      `${details.ok ? "✓" : "○"} Research task pipeline · ${Number(details.planned_count || 0)} planned · ${Number(details.executed_count || 0)} completed${details.execution_failed_count ? ` · ${Number(details.execution_failed_count)} attention required` : ""}`,
+      `${details.ok ? "✓" : "○"} Analysis Execution Engine · ${Number(details.planned_count || 0)} formulated · ${Number(details.executed_count || 0)} completed${details.execution_failed_count ? ` · ${Number(details.execution_failed_count)} attention required` : ""}`,
       ...summaries,
-      details.next_review ? `Next review: ${details.next_review.task_id} · queue ${Number(details.review_queue_length || 0)}` : "No Plan review is currently waiting",
+      details.next_review ? `Next review: ${details.next_review.task_id} · queue ${Number(details.review_queue_length || 0)}` : "No methodological-schema review is currently waiting",
       "Ctrl+O for full details",
     ], theme);
   }
-  if (toolName === "neuro_review_task_plan") {
+  if (toolName === "seekbrain_execution_schema_review") {
     return textComponent([
-      details.queue_empty ? "○ No task Plan is waiting for review" : `✓ Task Plan review · ${String(details.decision || "recorded")}`,
+      details.queue_empty ? "○ No methodological schema is waiting for review" : `✓ Methodological schema review · ${String(details.decision || "recorded")}`,
       details.task_id ? `Task: ${details.task_id}` : "",
       details.next_review ? `Next review: ${details.next_review.task_id}` : "Review queue is clear",
       "Ctrl+O for full details",
@@ -253,11 +290,11 @@ function researchExecutionResult(toolName: string, details: Json, theme: Json) {
     : "";
   const limits = details.limits || {};
   return textComponent([
-    toolName === "neuro_initialize_research_execution"
-      ? `✓ Research execution ${details.reused ? "restored" : "initialized"} · ${Number(details.task_count || 0)} tasks`
-      : `○ Research execution · ${String(details.status || "unknown")}`,
+    toolName === "seekbrain_execution_initialize"
+      ? `✓ Analysis Execution Engine ${details.reused ? "restored" : "initialized"} · ${Number(details.task_count || 0)} tasks`
+      : `○ Analysis Execution Engine · ${String(details.status || "unknown")}`,
     counts,
-    `Parallel limits: Plan ${Number(limits.planning_concurrency || 0)} · Execute ${Number(limits.execution_concurrency || 0)}`,
+    `Parallel limits: Formulation ${Number(limits.planning_concurrency || 0)} · Execution ${Number(limits.execution_concurrency || 0)}`,
     details.report_hint ? String(details.report_hint) : "",
     "Ctrl+O for full details",
   ], theme);
@@ -268,19 +305,19 @@ function stageResult(stage: string, details: Json, theme: Json) {
   const path = details.plan_path || details.validation_path || details.interpretation_path || details.image_analysis_path || details.conclusions_path || details.output_path;
   const warnings = warningSuffix(details);
   const extra: string[] = [];
-  if (stage === "Plan" && details.human_review?.needs_user_review === true) extra.push("Human review required");
-  if (stage === "Code") {
+  if (stage === "Analytical Formulation" && details.human_review?.needs_user_review === true) extra.push("Researcher review required");
+  if (stage === "Code Generation & Execution") {
     const artifacts = Array.isArray(details.artifacts) ? details.artifacts : [];
     const names = artifacts.slice(0, 5).map((artifact: Json) => artifact.name || basename(String(artifact.path || ""))).filter(Boolean);
     extra.push(`${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"}${names.length > 0 ? `: ${names.join(", ")}` : ""}`);
   }
-  if (stage === "Validate") {
+  if (stage === "Validation") {
     const passed = nested.pass === true;
     const issues = count(nested.blocking_issues) + count(nested.overall_mismatches);
     extra.push(`${passed ? "Passed" : "Needs revision"}${nested.route ? ` · ${nested.route}` : ""}${issues > 0 ? ` · ${issues} issues` : ""}`);
   }
-  if (stage === "Image refinement" && details.refined_figure_path) extra.push(`Figure: ${compactPath(details.refined_figure_path)}${details.fast_pass ? " · fast pass" : ""}`);
-  if (stage === "Interpret") {
+  if (stage === "Figure Refinement" && details.refined_figure_path) extra.push(`Figure: ${compactPath(details.refined_figure_path)}${details.fast_pass ? " · fast pass" : ""}`);
+  if (stage === "Result Interpretation") {
     extra.push(`${count(nested.conclusions)} conclusions · ${count(details.next_research_directions || nested.next_research_directions)} next directions`);
     if (details.report_hint) extra.push(String(details.report_hint));
   }
@@ -305,71 +342,83 @@ export function renderSeekBrainResult(toolName: string) {
   return (result: Json, options: Json, theme: Json) => {
     const details = detailsFrom(result);
     if (options.expanded) {
-      if (toolName === "neuro_start_research") return expandedStartResearchResult(details, theme);
+      if (toolName === "seekbrain_research_start") return expandedStartResearchResult(details, theme);
       return expandedComponent(result, theme);
     }
     if (details.skipped === true || details.skipped_by_config === true) return skippedResult(toolName, details, theme);
+    if (
+      details.needs_text_review === true
+      && (
+        toolName === "seekbrain_planning_decision_review"
+        || toolName === "seekbrain_planning_decision_record"
+        || toolName === "seekbrain_planning_peer_review"
+        || toolName === "seekbrain_planning_researcher_review"
+        || toolName === "seekbrain_planning_researcher_decision_record"
+      )
+    ) return researchPlanningResult(toolName, details, theme);
     if (details.ok !== true) return failureResult(toolName, details, theme);
     switch (toolName) {
-      case "neuro_ping":
+      case "seekbrain_system_check":
         return textComponent([`✓ SeekBrain extension ready · ${Number(details.run_count || 0)} indexed runs`, "Ctrl+O for details"], theme);
-      case "neuro_capabilities":
+      case "seekbrain_system_capabilities":
         return renderCapabilitiesResult(result, options, theme);
-      case "neuro_start_research":
+      case "seekbrain_research_start":
         return lifecycleResult("Started", details, theme);
-      case "neuro_continue_research":
+      case "seekbrain_research_continue":
         return lifecycleResult("Created", details, theme);
-      case "neuro_start_run":
+      case "seekbrain_run_start":
         return lifecycleResult("Started", details, theme);
-      case "neuro_resume_run":
+      case "seekbrain_run_resume":
         return renderResumeRunResult(result, options, theme);
-      case "neuro_approve_stage":
-      case "neuro_record_feedback":
-      case "neuro_review_plan":
+      case "seekbrain_review_approve":
+      case "seekbrain_review_feedback":
+      case "seekbrain_formulation_researcher_review":
         return reviewResult(details, theme);
-      case "neuro_update_plan":
-        return textComponent(["✓ Plan updated · Human review required", summary(details.result?.summary || details.message), details.plan_path ? `Plan: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details"], theme);
-      case "neuro_propose_code_update":
+      case "seekbrain_formulation_update":
+        return textComponent(["✓ Methodological schema updated · Researcher review required", summary(details.result?.summary || details.message), details.plan_path ? `Schema: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details"], theme);
+      case "seekbrain_code_update_propose":
         return proposedCodeResult(details, theme);
-      case "resolve_targeted_skill":
+      case "seekbrain_recipe_retrieve":
         return targetedSkillResult(details, theme);
-      case "neuro_deep_research":
+      case "seekbrain_deep_research":
         return deepResearchResult(details, theme);
-      case "neuro_resolve_data":
+      case "seekbrain_data_resolve":
         return dataResolveResult(details, theme);
-      case "neuro_assess_research":
-      case "neuro_review_research_planning":
-      case "neuro_prepare_subquestions":
-      case "neuro_review_research_plan":
-      case "neuro_review_research_tree":
-      case "neuro_materialize_research_tasks":
+      case "seekbrain_planning_assess":
+      case "seekbrain_planning_decision_review":
+      case "seekbrain_planning_decision_record":
+      case "seekbrain_planning_generate":
+      case "seekbrain_planning_peer_review":
+      case "seekbrain_planning_researcher_review":
+      case "seekbrain_planning_researcher_decision_record":
+      case "seekbrain_analysis_tasks_prepare":
         return researchPlanningResult(toolName, details, theme);
-      case "neuro_initialize_research_execution":
-      case "neuro_prepare_task_plans":
-      case "neuro_review_task_plan":
+      case "seekbrain_execution_initialize":
+      case "seekbrain_execution_run":
+      case "seekbrain_execution_schema_review":
         return researchExecutionResult(toolName, details, theme);
-      case "neuro_compile_report_evidence":
+      case "seekbrain_report_evidence_compile":
         return textComponent([
           `✓ Report evidence compiled · ${Number(details.selected_count || 0)} selected results · ${Number(details.figure_count || 0)} figures`,
           details.report_dir ? `Report workspace: ${compactPath(details.report_dir)}` : "",
-          "Reporter has not been called · Ctrl+O for full details",
+          "Report Agent has not been called · Ctrl+O for full details",
         ], theme);
-      case "neuro_execute_research_tasks":
+      case "seekbrain_execution_tasks_run":
         if (details.progress === true) {
           const marker = (value: unknown) => ["complete", "skipped"].includes(String(value))
             ? "✓" : ["running", "revision_required"].includes(String(value)) ? "●" : String(value) === "failed" ? "✗" : "○";
           const taskLines = (Array.isArray(details.task_progress) ? details.task_progress : []).map((task: Json) => {
             const attempt = Number(task.code_attempt || 0) > 1 ? ` (${Number(task.code_attempt)})` : "";
-            return `${String(task.task_id)} · Code ${marker(task.code)}${attempt} · Validate ${marker(task.validate)} · Refine ${marker(task.refine)} · Interpret ${marker(task.interpret)}`;
+            return `${String(task.task_id)} · Code & Execute ${marker(task.code)}${attempt} · Validation ${marker(task.validate)} · Figure Refinement ${marker(task.refine)} · Interpretation ${marker(task.interpret)}`;
           });
-          return textComponent(["○ Executing Research Tasks", summary(details.message), ...taskLines], theme);
+          return textComponent(["○ Executing Analysis Tasks", summary(details.message), ...taskLines], theme);
         }
         return textComponent([
-          `${details.ok ? "✓" : "○"} Research task batch complete · ${Number(details.executed_count || 0)} completed · ${Number(details.failed_count || 0)} attention required`,
+          `${details.ok ? "✓" : "○"} Analysis task batch complete · ${Number(details.executed_count || 0)} completed · ${Number(details.failed_count || 0)} attention required`,
           details.task_status_counts ? Object.entries(details.task_status_counts).map(([status, value]) => `${status} ${value}`).join(" · ") : "",
           `Execution state: ${String(details.status || "unknown")} · Ctrl+O for full details`,
         ], theme);
-      case "neuro_generate_report":
+      case "seekbrain_report_generate":
         if (details.progress === true) {
           return textComponent([
             "○ Scientific report · generating",
@@ -385,16 +434,16 @@ export function renderSeekBrainResult(toolName: string) {
           details.pdf_generated === false && details.pdf_note ? `PDF: ${summary(details.pdf_note)}` : "",
           details.report_path ? `Report: ${compactPath(details.report_path)} · Ctrl+O for details` : "Ctrl+O for details",
         ], theme);
-      case "neuro_plan":
-        return stageResult("Plan", details, theme);
-      case "neuro_code":
-        return stageResult("Code", details, theme);
-      case "neuro_validate":
-        return stageResult("Validate", details, theme);
-      case "neuro_refine_image":
-        return stageResult("Image refinement", details, theme);
-      case "neuro_interpret":
-        return stageResult("Interpret", details, theme);
+      case "seekbrain_formulation_generate":
+        return stageResult("Analytical Formulation", details, theme);
+      case "seekbrain_code_execute":
+        return stageResult("Code Generation & Execution", details, theme);
+      case "seekbrain_validation_run":
+        return stageResult("Validation", details, theme);
+      case "seekbrain_figure_refine":
+        return stageResult("Figure Refinement", details, theme);
+      case "seekbrain_interpretation_run":
+        return stageResult("Result Interpretation", details, theme);
       default:
         return textComponent([`✓ ${toolName} complete${warningSuffix(details)}`, summary(details.summary || details.message), "Ctrl+O for full details"], theme);
     }

@@ -24,11 +24,11 @@ function reportProgress(context: Json, selectedCount: number) {
   const render = () => {
     const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
     context.ui?.setWidget?.(REPORT_PROGRESS_WIDGET, [
-      "○ Scientific report · generating",
+      "○ Report Agent · generating",
       `${selectedCount} selected result${selectedCount === 1 ? "" : "s"}`,
       `${message} · ${elapsed}s`,
     ], { placement: "aboveEditor" });
-    context.ui?.setStatus?.("seekbrain-report", `Report generating · ${elapsed}s`);
+    context.ui?.setStatus?.("seekbrain-report", `Report Agent generating · ${elapsed}s`);
   };
   render();
   const timer = setInterval(render, 1000);
@@ -80,8 +80,8 @@ async function selectEvidence(context: Json, available: Json[]): Promise<string[
 }
 
 export function registerReportCommand(pi: ReportCommandAPI, dependencies: ReportCommandDependencies): void {
-  pi.registerCommand("neuro-report", {
-    description: "Generate a scientific report from explicitly selected completed rounds. Usage: /neuro-report [project-path] [ROUND:2 SQ1-T1:R1 ...]",
+  pi.registerCommand("seekbrain-report", {
+    description: "Generate an academic report from explicitly selected completed rounds. Usage: /seekbrain-report [project-path] [ROUND:2 SQ1-T1:R1 ...]",
     async handler(args: string, context: Json) {
       const parsed = parseArgs(args);
       const projectPath = parsed.projectPath || dependencies.getActiveProjectPath();
@@ -106,10 +106,10 @@ export function registerReportCommand(pi: ReportCommandAPI, dependencies: Report
         }
         if (!result.ok) {
           pi.sendMessage({
-            customType: "neuro-report",
+            customType: "seekbrain-report",
             display: true,
             content: [
-              "# Scientific report failed",
+              "# Report generation failed",
               "",
               String(result.error || "Report generation failed."),
               result.error_path ? `Diagnostic: ${result.error_path}` : "",
@@ -118,10 +118,10 @@ export function registerReportCommand(pi: ReportCommandAPI, dependencies: Report
           return;
         }
         pi.sendMessage({
-          customType: "neuro-report",
+          customType: "seekbrain-report",
           display: true,
           content: [
-            "# Scientific report generated",
+            "# Academic report generated",
             "",
             result.title ? `**${result.title}**` : "",
             `Selected results: ${selected.join(", ")}`,
@@ -132,9 +132,9 @@ export function registerReportCommand(pi: ReportCommandAPI, dependencies: Report
         });
       } catch (error) {
         pi.sendMessage({
-          customType: "neuro-report",
+          customType: "seekbrain-report",
           display: true,
-          content: `# Scientific report failed\n\n${String(error)}`,
+          content: `# Report generation failed\n\n${String(error)}`,
         });
       }
     },

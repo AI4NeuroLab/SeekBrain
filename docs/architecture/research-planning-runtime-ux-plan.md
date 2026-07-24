@@ -12,18 +12,18 @@ generation reliable and traceable.
 
 ## Confirmed problems
 
-1. `neuro_start_research` eagerly creates `round1` before the route is known.
+1. `seekbrain_research_start` eagerly creates `round1` before the route is known.
    A Research Planning parent therefore owns an analysis round that never runs
    the ordinary Skill-to-Interpret spine.
 2. The final research-tree selector reports only counts and Reviewer status.
    It does not show the scientific subquestions or terminal tasks being
    approved.
-3. `neuro_prepare_task_plans` waits for its full `Promise.all` batch. Skill,
+3. `seekbrain_execution_run` waits for its full `Promise.all` batch. Skill,
    Deep Research, and Plan work is hidden, and the first completed Plan cannot
    be reviewed while other Plans continue preparing.
 4. A queued task-Plan selector shows the task question but no useful summary
    of its hypothesis, analysis strategy, outputs, or validation target.
-5. `neuro_execute_research_tasks` exposes only the final batch result. Users
+5. `seekbrain_execution_tasks_run` exposes only the final batch result. Users
    cannot see which task is in Code, Validate, Refine, or Interpret.
 6. Reporter treats PNG and PDF variants as separate scientific figures and
    attempts to attach PDF bytes as `image/png`. The observed report attempts
@@ -133,7 +133,7 @@ Acceptance:
 ### WP6 — Lazy round materialization
 
 - Split project intake/planning state from analysis-round state.
-- `neuro_start_research` creates the project and planning context first.
+- `seekbrain_research_start` creates the project and planning context first.
 - Standard route or Research Planning No materializes ordinary `round1`.
 - Research Planning Yes keeps the parent under `planning/` and creates only
   child Task rounds.

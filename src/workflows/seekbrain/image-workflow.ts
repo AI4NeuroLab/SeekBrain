@@ -48,12 +48,12 @@ export interface RefineImageInput {
 
 function resolveQuestion(run: WorkflowRunContext, requested?: string): string {
   const value = String(requested || run.state.question || "").trim();
-  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+  if (!value) throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   return value;
 }
 
 function finalizationPrompt(agentName: string, finalizeTool: string, rolePrompt: string, body: string): string {
-  return [rolePrompt.trim(), "", `You are the isolated SeekBrain ${agentName} subagent.`, "Return only by calling the finalize tool. Do not expose scratch reasoning.", `Required final tool: ${finalizeTool}`, "", body].join("\n");
+  return [rolePrompt.trim(), "", `You are the isolated SeekBrain ${agentName}.`, "Return only by calling the finalize tool. Do not expose scratch reasoning.", `Required final tool: ${finalizeTool}`, "", body].join("\n");
 }
 
 function additionalContextBlock(value?: string): string {
@@ -84,37 +84,37 @@ export class ImageWorkflow {
   async refine(input: RefineImageInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const question = resolveQuestion(run, input.question);
-    if (!input.enabled) return skipped(run.runId, "neuro_refine_image", "image_refine");
+    if (!input.enabled) return skipped(run.runId, "seekbrain_figure_refine", "image_refine");
     const validation = run.state.validation || null;
     const refinementCount = Number(run.state.image_refinement_count || 0);
-    if (validation?.pass !== true || validation?.route !== "refine_image") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "Image refinement is allowed only after a passing Validation selects one presentation-only target." };
-    if (refinementCount >= 1) return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "The single image-refinement allowance for this round has already been used.", guidance: "Continue to Interpret and report any remaining visual issue as a limitation." };
+    if (validation?.pass !== true || validation?.route !== "refine_image") return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "Figure Refinement is allowed only after a passing Validation selects one presentation-only target." };
+    if (refinementCount >= 1) return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "The single Figure Refinement allowance for this round has already been used.", guidance: "Continue to Result Interpretation and report any remaining visual issue as a limitation." };
     const authorizedFigure = String(validation.refine_target?.figure_path || "").trim();
     const requestedFigure = String(input.figurePath || authorizedFigure).trim();
     const feedback = String(input.feedback || validation.refinement_feedback || "").trim();
     if (!requestedFigure || !feedback) return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "Validation must provide a concrete figure path and non-empty visual feedback." };
     const service = new ArtifactService(run.runDir);
     if (authorizedFigure && service.paths.resolve(authorizedFigure) !== service.paths.resolve(requestedFigure)) return { ok: false, run_id: run.runId, blocked_by_validation_policy: true, error: "The requested figure does not match the visual target authorized by Validation.", authorized_figure_path: authorizedFigure };
-    if (input.agentConfig.vision !== true) return { ok: false, run_id: run.runId, error: "configuration issue: neuro_refine_image requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked.", figure_path: requestedFigure };
+    if (input.agentConfig.vision !== true) return { ok: false, run_id: run.runId, error: "configuration issue: seekbrain_figure_refine requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked.", figure_path: requestedFigure };
     const figurePath = service.paths.resolve(requestedFigure);
     const vision = await this.dependencies.loadImages([figurePath]);
     if (!vision.images.length) return { ok: false, run_id: run.runId, error: "failed to load refinement image", warnings: vision.warnings };
     const allFigures = figures(run, service);
     const index = allFigures.findIndex((artifact) => artifact.path === figurePath);
     const otherFigures = allFigures.filter((_, itemIndex) => itemIndex !== index).map((artifact) => artifact.path);
-    const multiFigureContext = allFigures.length > 1 ? `Multi-figure context: 本次共生成 ${allFigures.length} 张图。你只改进第 ${(index < 0 ? 0 : index) + 1} 张：${requestedFigure}。其它图：${otherFigures.join(", ")}。跨图综合由下游完成。` : "";
+    const multiFigureContext = allFigures.length > 1 ? `Multi-figure context: This run produced ${allFigures.length} figures. Refine only figure ${(index < 0 ? 0 : index) + 1}: ${requestedFigure}. Other figures: ${otherFigures.join(", ")}. Cross-figure synthesis remains the responsibility of downstream stages.` : "";
     const stateArtifacts = service.normalizeMany(run.state.artifacts || []);
     const { codePath, ambiguous } = codeForFigure(service, stateArtifacts, figurePath);
-    const codePathNote = ambiguous ? `生成此图的代码可能在以下脚本中之一：${codePath}。请 read 后自行判断归属，只修改生成 ${requestedFigure} 的那个脚本。` : `生成此图的代码在：${codePath}`;
-    const prompt = finalizationPrompt("image refiner", "finalize_refinement", input.rolePrompt, [
+    const codePathNote = ambiguous ? `The code that generates this figure is in one of these scripts: ${codePath}. Read the candidates, identify the producing script, and modify only the script that generates ${requestedFigure}.` : `Code that generates this figure: ${codePath}`;
+    const prompt = finalizationPrompt("Figure Refinement stage agent", "finalize_refinement", input.rolePrompt, [
       `Question:\n${question}`,
       `Figure path:\n${requestedFigure}`,
       multiFigureContext,
       codePathNote,
       `Feedback:\n${feedback}`,
       additionalContextBlock(input.additionalContext),
-      "用 read 读取上述代码，只定位并修改生成此图的 render 函数或绘图段。只允许修复排版、裁切、重叠、间距、字号、标签或其它 presentation-only 问题；不得改变数据、统计、分析方法、模型参数、阈值或科学选择准则。修改后优先利用工作目录中已有的分析产物或自然保存的中间结果，以代码实际支持的最小成本方式调用绘图函数并重绘；尽量避免重新加载原始大数据或重跑完整分析。若无法从已有产物安全重绘，仅在完整分析成本合理且没有更窄路径时才重跑，否则在 remaining_issues 中说明并停止。原地覆盖 figure_path，不要新存 figure_refine.png。",
-      "Finalize with: { refined_code_patch, refined_figure_path, summary, remaining_issues, stop }. refined_figure_path 应等于原 figure_path。",
+      "Read the code identified above and modify only the rendering function or plotting section that generates this figure. Permitted changes are limited to presentation defects such as layout, clipping, overlap, spacing, typography, labels, and legends. Do not alter data, statistics, analysis methods, model parameters, thresholds, or scientific selection criteria. Prefer existing analysis artifacts or naturally persisted intermediate results, and use the least computationally expensive safe redraw path supported by the code. Avoid reloading large source datasets or rerunning the complete analysis. If safe redraw from existing outputs is not possible, rerun the complete analysis only when its cost is reasonable and no narrower path exists; otherwise record the limitation in remaining_issues and stop. Overwrite figure_path in place and do not create figure_refine.png.",
+      "Finalize with: { refined_code_patch, refined_figure_path, summary, remaining_issues, stop }. refined_figure_path must equal the original figure_path.",
     ].join("\n\n"));
     const guard = await this.dependencies.createGuard(run);
     const agent = await this.dependencies.runRefiner({ runDir: run.runDir, prompt, agentConfig: input.agentConfig, finalizeSchema: input.finalizeSchema, images: vision.images, signal: input.signal });
@@ -125,7 +125,7 @@ export class ImageWorkflow {
     let nextStep: WorkflowJson | undefined;
     if (ok) {
       const fastPass = this.dependencies.fastPass(validation, agent.result, { integrityAccepted: integrity.accepted, codeAttempt: Number(run.state.code_attempt || 0) });
-      if (!fastPass.allowed) return { ok: false, run_id: run.runId, error: "Refinement completed but did not meet the narrow fast-pass policy.", guidance: "Run neuro_validate before Interpret." };
+      if (!fastPass.allowed) return { ok: false, run_id: run.runId, error: "Figure Refinement completed but did not meet the narrow fast-pass policy.", guidance: "Run seekbrain_validation_run before Result Interpretation." };
       fastValidation = { ...fastPass.validation, refined_fast_pass_at: new Date().toISOString() };
       nextStep = this.dependencies.nextStep(fastValidation, run.runId, figurePath);
       const refinements = Array.isArray(run.state.refinements) ? run.state.refinements : [];
@@ -171,11 +171,11 @@ export class ImageWorkflow {
       fastValidation = failedValidation;
       nextStep = this.dependencies.nextStep(failedValidation, run.runId, figurePath);
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_refine_image", ok, fast_pass: ok, integrity_violations: integrity.violations, image_refinement_count: attemptedCount, next_step: nextStep });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_figure_refine", ok, fast_pass: ok, integrity_violations: integrity.violations, image_refinement_count: attemptedCount, next_step: nextStep });
     return {
       run_id: run.runId,
       ok,
-      error: integrity.violations.length ? `Image refinement changed immutable data/statistics artifacts and was rolled back: ${integrity.violations.join(", ")}` : agent.error,
+      error: integrity.violations.length ? `Figure Refinement changed immutable data/statistics artifacts and was rolled back: ${integrity.violations.join(", ")}` : agent.error,
       result: agent.result,
       validation: fastValidation,
       fast_pass: ok,
@@ -183,8 +183,8 @@ export class ImageWorkflow {
       refined_figure_path: ok ? agent.result?.refined_figure_path || figurePath : undefined,
       next_step: nextStep,
       guidance: ok
-        ? "Presentation-only refinement passed the immutable-artifact guard. Scientific validation was reused; no diff review or second Validate is required."
-        : "The one allowed refinement attempt was consumed and rolled back. The original artifacts remain scientifically validated; continue directly to neuro_interpret and report the remaining presentation issue as a limitation. Do not run Validate or Refine again.",
+        ? "Presentation-only Figure Refinement passed the immutable-artifact guard. Scientific validation was reused; no diff review or second Validation is required."
+        : "The one allowed Figure Refinement attempt was consumed and rolled back. The original artifacts remain scientifically validated; continue directly to seekbrain_interpretation_run and report the remaining presentation issue as a limitation. Do not run Validation or Figure Refinement again.",
       output_path: agent.output_path,
       debug: { subagent_dir: agent.subagent_dir, snapshot_dir: agent.snapshot_dir },
     };

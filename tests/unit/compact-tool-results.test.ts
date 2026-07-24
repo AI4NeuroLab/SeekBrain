@@ -25,7 +25,7 @@ describe("compact Neuro tool results", () => {
       ok: true,
       optional: { deep_research: "enabled", targeted_skill: "enabled" },
       human_review: { enabled: true, gates: { plan: true, code: false } },
-      required_spine: ["neuro_plan", "neuro_code"],
+      required_spine: ["seekbrain_formulation_generate", "seekbrain_code_execute"],
     });
 
     const compact = rendered(renderCapabilitiesResult(value, { expanded: false }, theme));
@@ -34,7 +34,7 @@ describe("compact Neuro tool results", () => {
 
     const expanded = rendered(renderCapabilitiesResult(value, { expanded: true }, theme));
     expect(expanded).toContain('"required_spine"');
-    expect(expanded).toContain('"neuro_plan"');
+    expect(expanded).toContain('"seekbrain_formulation_generate"');
   });
 
   it("shows a compact resumed-run summary", () => {
@@ -54,7 +54,7 @@ describe("compact Neuro tool results", () => {
   });
 
   it("folds research-route decisions into the start card", () => {
-    const mismatch = rendered(renderSeekBrainResult("neuro_start_research")(result({
+    const mismatch = rendered(renderSeekBrainResult("seekbrain_research_start")(result({
       ok: true,
       round_name: "round1",
       research_route: {
@@ -73,7 +73,7 @@ describe("compact Neuro tool results", () => {
     expect(mismatch).not.toContain("needs_clarification");
     expect(mismatch).not.toContain("run_id");
 
-    const expandedMismatch = rendered(renderSeekBrainResult("neuro_start_research")(result({
+    const expandedMismatch = rendered(renderSeekBrainResult("seekbrain_research_start")(result({
       ok: true,
       round_name: "round1",
       run_id: "run-1",
@@ -89,13 +89,36 @@ describe("compact Neuro tool results", () => {
     expect(expandedMismatch).toContain("Required action: Verify the metadata or revise the question.");
     expect(expandedMismatch).not.toContain('"research_route"');
 
-    const planning = rendered(renderSeekBrainResult("neuro_start_research")(result({
+    const planning = rendered(renderSeekBrainResult("seekbrain_research_start")(result({
       ok: true,
       round_name: "round1",
       research_route: { route: "research_planning", reason: "The question requires three independent evidence workstreams." },
     }), { expanded: false }, theme));
-    expect(planning).toContain("Research Planning review suggested");
+    expect(planning).toContain("Research Planning recommended");
     expect(planning).toContain("User decision required");
+
+    const explicitlyRequested = rendered(renderSeekBrainResult("seekbrain_research_start")(result({
+      ok: true,
+      round_name: "planning",
+      research_route: {
+        route: "research_planning",
+        reason: "The user requested structured research decomposition.",
+        decision: "yes",
+        needs_user_review: false,
+        planning_consent: "explicit_request",
+      },
+    }), { expanded: false }, theme));
+    expect(explicitlyRequested).toContain("Research Planning requested");
+    expect(explicitlyRequested).toContain("Continue to hierarchical research plan generation");
+
+    const textFallback = rendered(renderSeekBrainResult("seekbrain_planning_decision_review")(result({
+      ok: false,
+      needs_text_review: true,
+      next_tool: "seekbrain_planning_decision_record",
+      message: "Interactive selector is unavailable.",
+    }), { expanded: false }, theme));
+    expect(textFallback).toContain("Research Planning · decision required");
+    expect(textFallback).not.toContain("direct analysis workflow selected");
   });
 
   it("summarizes a verified code edit instead of dumping artifact checks", () => {
@@ -123,17 +146,20 @@ describe("compact Neuro tool results", () => {
   });
 
   it.each([
-    ["neuro_resolve_data", { ok: true, source: "cache", data_dir: "/data/fish", metadata_path: "/tmp/seekbrain/datasets/fish/metadata.json", warnings: [] }, "Dataset metadata reused"],
-    ["resolve_targeted_skill", { ok: true, matched: true, source: "existing_skill", skill_paths: ["/skills/fc_matrix"], reference_paths: ["/ref/a.md"] }, "Targeted skill matched · existing_skill"],
-    ["neuro_deep_research", { ok: true, rag_ok: false, source_count: 0, rag_error: "Paper RAG base URL is not configured", context_path: "/run/deep_research_context.md" }, "Deep research complete · 0 sources"],
-    ["neuro_prepare_subquestions", { ok: true, subquestion_count: 2, task_count: 3, research_plan: { planning_rationale: "Complementary branches" }, draft_plan_path: "/run/research_plan/draft_plan.json" }, "Research tree drafted · 2 subquestions · 3 tasks"],
-    ["neuro_review_research_plan", { ok: true, verdict: "revise", refined: true, subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, final_plan_path: "/run/research_plan/research_plan.json" }, "Research tree reviewed · revise · refined once"],
-    ["neuro_review_research_tree", { ok: true, decision: "revise", feedback_response: "Sharpened SQ2", final_plan_path: "/run/research_plan/research_plan.json" }, "Research tree revised · review again"],
-    ["neuro_materialize_research_tasks", { ok: true, reused: false, task_count: 3, next_task: { task_id: "SQ1-T1", question: "Test branch one" }, task_manifest_path: "/run/research_plan/task_manifest.json" }, "Research tasks prepared · 3 child runs"],
-    ["neuro_plan", { ok: true, plan_path: "/run/plan.md", result: { summary: "Compute FC matrices", warnings: [] }, human_review: { needs_user_review: true } }, "Human review required"],
-    ["neuro_code", { ok: true, result: { summary: "Generated the analysis" }, artifacts: [{ name: "figure.png" }, { name: "statistics.json" }] }, "2 artifacts: figure.png, statistics.json"],
-    ["neuro_validate", { ok: true, validation_path: "/run/validation.json", result: { pass: false, route: "retry_code", blocking_issues: ["bad labels"], overall_mismatches: [] } }, "Needs revision · retry_code · 1 issues"],
-    ["neuro_interpret", { ok: true, interpretation_path: "/run/interpretation.json", result: { summary: "Connectivity increased", conclusions: ["one", "two"] }, next_research_directions: [{ title: "next" }] }, "2 conclusions · 1 next directions"],
+    ["seekbrain_data_resolve", { ok: true, source: "cache", data_dir: "/data/fish", metadata_path: "/tmp/seekbrain/datasets/fish/metadata.json", warnings: [] }, "Dataset profile reused"],
+    ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "existing_skill", skill_paths: ["/skills/fc_matrix"], reference_paths: ["/ref/a.md"] }, "Analysis recipe retrieved from the Neuroscience Analysis Repertoire"],
+    ["seekbrain_deep_research", { ok: true, rag_ok: false, source_count: 0, rag_error: "Paper RAG base URL is not configured", context_path: "/run/deep_research_context.md" }, "Deep research complete · 0 sources"],
+    ["seekbrain_planning_generate", { ok: true, subquestion_count: 2, task_count: 3, research_plan: { planning_rationale: "Complementary branches" }, draft_plan_path: "/run/research_plan/draft_plan.json" }, "Hierarchical research plan drafted · 2 subquestions · 3 analysis tasks"],
+    ["seekbrain_planning_peer_review", { ok: true, verdict: "revise", refined: true, decision: "approve", subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, final_plan_path: "/run/research_plan/research_plan.json", next_tool: "seekbrain_analysis_tasks_prepare" }, "Hierarchical research plan reviewed and approved"],
+    ["seekbrain_planning_peer_review", { ok: true, verdict: "accept", needs_text_review: true, subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, next_tool: "seekbrain_planning_researcher_decision_record" }, "researcher decision required"],
+    ["seekbrain_planning_researcher_review", { ok: true, decision: "revise", feedback_response: "Sharpened SQ2", final_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan revised · review again"],
+    ["seekbrain_planning_researcher_review", { ok: false, needs_text_review: true, next_tool: "seekbrain_planning_researcher_decision_record", message: "Interactive selector is unavailable." }, "researcher decision required"],
+    ["seekbrain_planning_researcher_decision_record", { ok: true, decision: "approve", final_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan approved"],
+    ["seekbrain_analysis_tasks_prepare", { ok: true, reused: false, task_count: 3, next_task: { task_id: "SQ1-T1", question: "Test branch one" }, task_manifest_path: "/run/research_plan/task_manifest.json" }, "Analysis tasks prepared · 3 child runs"],
+    ["seekbrain_formulation_generate", { ok: true, plan_path: "/run/plan.md", result: { summary: "Compute FC matrices", warnings: [] }, human_review: { needs_user_review: true } }, "Researcher review required"],
+    ["seekbrain_code_execute", { ok: true, result: { summary: "Generated the analysis" }, artifacts: [{ name: "figure.png" }, { name: "statistics.json" }] }, "2 artifacts: figure.png, statistics.json"],
+    ["seekbrain_validation_run", { ok: true, validation_path: "/run/validation.json", result: { pass: false, route: "retry_code", blocking_issues: ["bad labels"], overall_mismatches: [] } }, "Needs revision · retry_code · 1 issues"],
+    ["seekbrain_interpretation_run", { ok: true, interpretation_path: "/run/interpretation.json", result: { summary: "Connectivity increased", conclusions: ["one", "two"] }, next_research_directions: [{ title: "next" }] }, "2 conclusions · 1 next directions"],
   ])("renders a compact %s result", (toolName, details, expected) => {
     const output = rendered(renderSeekBrainResult(toolName)(result(details), { expanded: false }, theme));
     expect(output).toContain(expected);
@@ -141,21 +167,21 @@ describe("compact Neuro tool results", () => {
   });
 
   it("keeps skipped and blocked states concise but explicit", () => {
-    const skipped = rendered(renderSeekBrainResult("neuro_refine_image")(result({
+    const skipped = rendered(renderSeekBrainResult("seekbrain_figure_refine")(result({
       ok: true,
       skipped: true,
       skipped_by_config: true,
-      message: "neuro_refine_image is disabled by user configuration",
+      message: "seekbrain_figure_refine is disabled by user configuration",
     }), { expanded: false }, theme));
     expect(skipped).toContain("skipped by configuration");
 
-    const blocked = rendered(renderSeekBrainResult("neuro_code")(result({
+    const blocked = rendered(renderSeekBrainResult("seekbrain_code_execute")(result({
       ok: false,
       blocked_by_human_review: true,
       message: "Plan approval is required",
-      next_tool: "neuro_code",
+      next_tool: "seekbrain_code_execute",
     }), { expanded: false }, theme));
-    expect(blocked).toContain("neuro_code blocked");
+    expect(blocked).toContain("seekbrain_code_execute blocked");
     expect(blocked).toContain("Plan approval is required");
   });
 });

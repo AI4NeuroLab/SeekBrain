@@ -37,7 +37,7 @@ export class SkillLibraryManager {
 
   async #ensureTrajectory(): Promise<string> {
     const source = join(this.packageRoot, "library", "skills", "trajectory");
-    if (!existsSync(join(source, "INDEX.md"))) throw new Error(`bundled trajectory skill index not found: ${source}`);
+    if (!existsSync(join(source, "INDEX.md"))) throw new Error(`bundled trajectory recipe index not found: ${source}`);
     const version = await this.packageVersion();
     const target = join(this.userSkillsRoot, "builtin", "trajectory", version);
     const marker = join(target, ".seekbrain-managed.json");

@@ -93,7 +93,7 @@ describe("research survey workflow", () => {
       const state = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
       expect(state.research_planning).toMatchObject({ status: "approved", survey: { status: "ready", source_count: 1 } });
       expect(state.literature_grounding_context).toBe(first.literature_grounding_context);
-      expect(events.at(-1)).toMatchObject({ event: "neuro_research_survey", ok: true, source_count: 1 });
+      expect(events.at(-1)).toMatchObject({ event: "seekbrain_research_survey", ok: true, source_count: 1 });
 
       const second = await workflow.execute(input);
       expect(second).toMatchObject({ ok: true, reused: true, source_count: 1 });

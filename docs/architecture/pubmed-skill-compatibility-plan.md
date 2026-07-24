@@ -444,7 +444,7 @@ paper_retrieval:
   sources:
     ailab:
       driver: ailab_queryfull
-      base_url: "http://127.0.0.1:21800"
+      base_url: "${SEEKBRAIN_AILAB_RAG_BASE_URL}"
       auth:
         type: none
 

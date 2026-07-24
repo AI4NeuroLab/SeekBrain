@@ -16,6 +16,17 @@ assert.equal(helpText(), expectedHelp);
 assert.deepEqual(parseArgs(["-h"]), { action: "help" });
 assert.deepEqual(parseArgs(["--help"]), { action: "help" });
 assert.deepEqual(parseArgs(["setup"]), { action: "setup" });
+assert.deepEqual(parseArgs(["resume", "session-123"]), {
+  action: "launch",
+  nonInteractive: false,
+  options: { piArgs: ["--session", "session-123"] },
+});
+assert.deepEqual(parseArgs(["--session", "session-123"]), {
+  action: "launch",
+  nonInteractive: false,
+  options: { piArgs: ["--session", "session-123"] },
+});
+assert.equal(parseArgs(["resume"]).action, "error");
 assert.equal(parseArgs(["setup", "--unknown"]).action, "error");
 assert.deepEqual(parseArgs(["run", "--query", "question", "--dataset", "data", "--work-dir", "out"]), {
   action: "launch",
@@ -28,9 +39,10 @@ assert.equal(reportArgs.nonInteractive, true);
 assert.equal(reportArgs.options.reportMode, true);
 assert.equal(reportArgs.options.reportProject, "results/project");
 assert.deepEqual(reportArgs.options.reportSelections, ["ROUND:3", "ROUND:4", "ROUND:6", "SQ1-T1:R2"]);
-assert.match(reportArgs.options.query, /Call neuro_generate_report exactly once/);
+assert.match(reportArgs.options.query, /Call seekbrain_report_generate exactly once/);
 assert.equal(parseArgs(["report", "results/project"]).action, "error");
 assert.equal(manifest.bin.seekbrain, "./bin/seekbrain.mjs");
+assert.deepEqual(manifest.piConfig, { name: "seekbrain", configDir: ".pi" });
 assert.ok(manifest.files.includes("bin"));
 assert.match(binSource, /^#!\/usr\/bin\/env node/);
 assert.equal(migration.targetVersion, "0.2.0");

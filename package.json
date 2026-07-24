@@ -31,6 +31,10 @@
       "./src/extension/index.ts"
     ]
   },
+  "piConfig": {
+    "name": "seekbrain",
+    "configDir": ".pi"
+  },
   "engines": {
     "node": ">=22.19.0"
   },

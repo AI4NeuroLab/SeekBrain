@@ -48,7 +48,7 @@ export class ReporterWorkflow {
       throw new Error(`Unable to read evidence bundle '${bundlePath}': ${String(error)}`);
     }
     if (bundle.schema_version !== 1 || bundle.selection_authoritative !== true || !Array.isArray(bundle.evidence) || !bundle.evidence.length) {
-      throw new Error("Reporter requires a non-empty authoritative evidence bundle produced by ReportEvidenceCompiler.");
+      throw new Error("Report Agent requires a non-empty authoritative evidence bundle produced by ReportEvidenceCompiler.");
     }
     const figures = bundle.evidence.flatMap((item: WorkflowJson) => Array.isArray(item.figures) ? item.figures : []);
     const supportedImages = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -82,7 +82,7 @@ export class ReporterWorkflow {
     const prompt = [
       input.rolePrompt.trim(),
       "",
-      "You are the isolated SeekBrain Reporter. Return only by calling finalize_seekbrain_report.",
+      "You are the isolated SeekBrain Report Agent. Return only by calling finalize_seekbrain_report.",
       "Each key claim must use evidence_ids: string[] and figure_refs: {figure_id, panels: string[]}[]. Use arrays even when a claim has only one source. Do not join identifiers with semicolons.",
       "",
       `Report goal:\n${String(bundle.report_goal || "Synthesize the selected findings.")}`,
@@ -101,7 +101,7 @@ export class ReporterWorkflow {
       signal: input.signal,
     });
     if (!agent.ok || !agent.result) {
-      const error = agent.error || "Reporter did not finalize.";
+      const error = agent.error || "Report Agent did not finalize.";
       const errorPath = join(reportDir, "report_error.json");
       await this.dependencies.writeJson(errorPath, {
         schema_version: 1,
@@ -132,7 +132,7 @@ export class ReporterWorkflow {
       await this.dependencies.writeJson(errorPath, {
         schema_version: 1,
         phase: "provenance_validation",
-        error: "Reporter produced an invalid evidence_ids or figure_refs provenance reference.",
+        error: "Report Agent produced an invalid evidence_ids or figure_refs provenance reference.",
         finalize_called: true,
         invalid_claims: invalidClaims,
         evidence_bundle_path: bundlePath,
@@ -140,7 +140,7 @@ export class ReporterWorkflow {
       });
       return {
         ok: false,
-        error: "Reporter produced an invalid evidence_ids or figure_refs provenance reference.",
+        error: "Report Agent produced an invalid evidence_ids or figure_refs provenance reference.",
         invalid_claims: invalidClaims,
         error_path: errorPath,
         evidence_bundle_path: bundlePath,

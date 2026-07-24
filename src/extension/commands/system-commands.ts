@@ -14,7 +14,7 @@ export interface SystemCommandDependencies {
 }
 
 export function registerSystemCommands(pi: SystemCommandAPI, dependencies: SystemCommandDependencies): void {
-  pi.registerCommand("neuro_reload_config", {
+  pi.registerCommand("seekbrain-reload-config", {
     description: "Force-reload SeekBrain config (bypasses the in-memory cache).",
     async handler(_args: string, context: Json) {
       dependencies.invalidateConfig();
@@ -27,8 +27,8 @@ export function registerSystemCommands(pi: SystemCommandAPI, dependencies: Syste
     },
   });
 
-  pi.registerCommand("neuro_tools", {
-    description: "Show SeekBrain loaded and active tools.",
+  pi.registerCommand("seekbrain-tools", {
+    description: "Show loaded and active SeekBrain tools.",
     async handler() {
       const allTools = pi.getAllTools().map((tool) => tool.name);
       const activeTools = pi.getActiveTools();
@@ -36,9 +36,9 @@ export function registerSystemCommands(pi: SystemCommandAPI, dependencies: Syste
         customType: "seekbrain-tools",
         content: JSON.stringify({
           extension: "seekbrain", all_tools: allTools, active_tools: activeTools,
-          has_neuro_start_run: allTools.includes("neuro_start_run"), active_neuro_start_run: activeTools.includes("neuro_start_run"),
-          has_neuro_start_research: allTools.includes("neuro_start_research"), active_neuro_start_research: activeTools.includes("neuro_start_research"),
-          has_neuro_continue_research: allTools.includes("neuro_continue_research"), active_neuro_continue_research: activeTools.includes("neuro_continue_research"),
+          has_seekbrain_run_start: allTools.includes("seekbrain_run_start"), active_seekbrain_run_start: activeTools.includes("seekbrain_run_start"),
+          has_seekbrain_research_start: allTools.includes("seekbrain_research_start"), active_seekbrain_research_start: activeTools.includes("seekbrain_research_start"),
+          has_seekbrain_research_continue: allTools.includes("seekbrain_research_continue"), active_seekbrain_research_continue: activeTools.includes("seekbrain_research_continue"),
         }, null, 2),
         display: true,
       });

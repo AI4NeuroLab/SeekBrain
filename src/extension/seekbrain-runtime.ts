@@ -30,6 +30,7 @@ import { toPiToolResult } from "./tool-adapter.ts";
 import {
   RunLifecycleWorkflow,
   ResearchPlanningWorkflow,
+  verifiedExplicitResearchPlanningRequest,
   ResearchSurveyWorkflow,
   ResearchTaskScheduler,
   ResearchTaskExecutionCoordinator,
@@ -166,12 +167,42 @@ function content(details: Json, text?: string) {
 
 function limitForMain(details: Json) {
   const copy = { ...details };
+  if (typeof copy.analysis_recipe === "string" && copy.analysis_recipe.length > 1200) {
+    copy.analysis_recipe_preview = copy.analysis_recipe.slice(0, 1200);
+    delete copy.analysis_recipe;
+  }
   if (typeof copy.targeted_skill === "string" && copy.targeted_skill.length > 1200) {
     copy.targeted_skill_preview = copy.targeted_skill.slice(0, 1200);
     delete copy.targeted_skill;
   }
   if (typeof copy.subagent_transcript === "string") {
     delete copy.subagent_transcript;
+  }
+  return copy;
+}
+
+function publicRecipeResult(details: Json): Json {
+  const copy = { ...details };
+  const aliases: Record<string, string> = {
+    targeted_skill: "analysis_recipe",
+    targeted_skill_preview: "analysis_recipe_preview",
+    targeted_skill_path: "analysis_recipe_path",
+    skill_paths: "recipe_paths",
+  };
+  for (const [legacy, current] of Object.entries(aliases)) {
+    if (Object.prototype.hasOwnProperty.call(copy, legacy)) copy[current] = copy[legacy];
+    delete copy[legacy];
+  }
+  if (copy.source === "generated_from_rag") copy.source = "crystallized";
+  else if (copy.source === "existing_skill") copy.source = "repertoire";
+  else if (copy.source === "none") copy.source = "no_match";
+  if (copy.details && typeof copy.details === "object") {
+    const nested = { ...copy.details };
+    if (Object.prototype.hasOwnProperty.call(nested, "generated_skill_output_dir")) nested.generated_recipe_output_dir = nested.generated_skill_output_dir;
+    if (Object.prototype.hasOwnProperty.call(nested, "reused_skill_paths")) nested.reused_recipe_paths = nested.reused_skill_paths;
+    delete nested.generated_skill_output_dir;
+    delete nested.reused_skill_paths;
+    copy.details = nested;
   }
   return copy;
 }
@@ -854,7 +885,7 @@ function effectiveMetadata(run: RunContext, requestedDataInfo?: string, requeste
 function resolveQuestion(run: RunContext, question?: string): string {
   const text = String(question || run.state.question || "").trim();
   if (!text) {
-    throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+    throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   }
   return text;
 }
@@ -1010,7 +1041,7 @@ async function appendStateEntry(pi: ExtensionAPI, event: Json) {
 }
 
 // --- transparency cards ---------------------------------------------------
-// Pure markdown builders for the compact research/skill panels. `pi.sendMessage`
+// Pure markdown builders for the compact research/recipe panels. `pi.sendMessage`
 // renders the returned string as themed markdown.
 function _firstMeaningfulLine(text: string): string {
   for (const raw of String(text || "").split("\n")) {
@@ -1047,19 +1078,18 @@ function researchCardMarkdown(state: Json): string {
   } else {
     lines.push("", "_Research ran but produced no usable background._");
   }
-  lines.push("", "→ `/neuro-show research` for the full report");
+  lines.push("", "→ `/seekbrain-show research` for the full Deep Research background");
   return lines.join("\n");
 }
 
 function _parseSkillHeaders(targeted: string): { name: string; relevance?: string }[] {
   const out: { name: string; relevance?: string }[] = [];
   let m: RegExpExecArray | null;
-  // Match only the SkillLoader header `  SKILL : <name>  (relevance: X)` (uppercase,
-  // line-start) — NOT the markdown `# Skill: <name>` title inside the body.
-  const re = /^\s*SKILL\s*:\s*(.+?)\s*(?:\(relevance:\s*([\d.]+)\))?\s*$/gm;
+  // Match the recipe-loader header while retaining compatibility with older SKILL headers.
+  const re = /^\s*(?:RECIPE|SKILL)\s*:\s*(.+?)\s*(?:\(relevance:\s*([\d.]+)\))?\s*$/gm;
   while ((m = re.exec(targeted))) out.push({ name: m[1].trim(), relevance: m[2] });
   if (!out.length) {
-    const re2 = /^###\s+Skill from:\s*(.+)$/gim;
+    const re2 = /^###\s+(?:Recipe|Skill) from:\s*(.+)$/gim;
     while ((m = re2.exec(targeted))) out.push({ name: m[1].trim() });
   }
   return out;
@@ -1076,10 +1106,10 @@ function _skillOverview(targeted: string): string {
 function skillCardMarkdown(state: Json): string {
   const targeted = String(state.targeted_skill || "");
   const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
-  const label = source === "generated_from_rag" ? "generated" : source === "existing_skill" ? "matched" : "no match";
-  const lines = [`## 🧩 Targeted Skill — ${label}`];
+  const label = source === "generated_from_rag" ? "crystallized from literature and code" : source === "existing_skill" ? "retrieved from the Neuroscience Analysis Repertoire" : "no match";
+  const lines = [`## 🧩 Analysis Recipe — ${label}`];
   if (!targeted.trim() || source === "none") {
-    lines.push("", "_No matching skill was used for this question._");
+    lines.push("", "_No matching analysis recipe was found for this question._");
     return lines.join("\n");
   }
   for (const s of _parseSkillHeaders(targeted).slice(0, 4)) {
@@ -1087,7 +1117,7 @@ function skillCardMarkdown(state: Json): string {
   }
   const overview = _skillOverview(targeted);
   if (overview) lines.push("", overview.slice(0, 300));
-  lines.push("", "→ `/neuro-show skill` for the full SKILL.md");
+  lines.push("", "→ `/seekbrain-show recipe` for the full recipe document (`SKILL.md`)");
   return lines.join("\n");
 }
 
@@ -1239,11 +1269,11 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       }),
       prompt: [
         paperOnly
-          ? "You are the isolated SeekBrain paper-only Skill author."
-          : "You are the isolated SeekBrain Paper2Skill + Repo2Skill author.",
+          ? "You are the isolated SeekBrain paper-only Recipe Crystallization Agent."
+          : "You are the isolated SeekBrain Recipe Crystallization Agent for literature and code.",
         paperOnly
           ? "Generate reusable, evidence-grounded methodological guidance from the paper only. No implementation repository was verified."
-          : "Generate a reusable, evidence-grounded neuroscience skill from the question, paper context, and verified repository files.",
+          : "Generate a reusable, evidence-grounded neuroscience analysis recipe from the question, paper context, and verified repository files.",
         paperOnly
           ? "Do not claim that paper procedures are implemented, do not invent code or dependencies, and return an empty analysis_script if the field is present."
           : "Do not invent dataset paths, schemas, functions, dependencies, or results. The analysis script must use argparse and save declared outputs.",
@@ -1260,7 +1290,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       tools: [],
       signal: input.signal,
     });
-    if (!authored.ok || !authored.result) throw new Error((authored as Json).error || "targeted skill author did not finalize");
+    if (!authored.ok || !authored.result) throw new Error((authored as Json).error || "Recipe Crystallization Agent did not finalize");
     return authored.result;
   }, async (input) => {
     const runDir = activeRunDir || PROJECT_ROOT;
@@ -1282,7 +1312,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         reproduction_plan: Type.String(),
       }),
       prompt: [
-        "You are the isolated SeekBrain Paper2Skill + Repo2Skill context analyst.",
+        "You are the isolated SeekBrain Recipe Crystallization context analyst for literature and code.",
         "Reproduce the original context-matching stages: analyze the paper method, inspect the repository, rank the exact relevant files, map paper methods to code, identify missing pieces, and produce a detailed executable reproduction plan.",
         "Use read/grep/find/ls to inspect the cloned repository. selected_files must contain exact paths relative to Repository root and at most 10 files.",
         "Never infer a function, parameter, dependency, dataset path, or output that is not supported by the supplied paper or repository.",
@@ -1297,7 +1327,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       tools: ["read", "grep", "find", "ls"],
       signal: input.signal,
     });
-    if (!context.ok || !context.result) throw new Error((context as Json).error || "targeted skill context analyst did not finalize");
+    if (!context.ok || !context.result) throw new Error((context as Json).error || "analysis-recipe context analyst did not finalize");
     return context.result as any;
   });
   const targetedSkillResolver = new TargetedSkillResolver(literatureProviderRouter, {
@@ -1317,9 +1347,9 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           selected: Type.Array(Type.Object({ name: Type.String(), path: Type.String(), score: Type.Number(), reason: Type.String() })),
         }),
         prompt: [
-          "You are the isolated SeekBrain targeted SkillLoader matcher. Carefully read the name and description of each Skill and assess its relevance to the user's question.",
-          `Assign a relevance score between 0 and 1 to each relevant Skill. Only keep scores greater than or equal to ${input.threshold}, and return at most ${input.topK}.`,
-          "If no Skill is relevant, return an empty selected array.",
+          "You are the isolated SeekBrain analysis-recipe matcher. Carefully read the name and description of each recipe and assess its relevance to the user's question.",
+          `Assign a relevance score between 0 and 1 to each relevant recipe. Only keep scores greater than or equal to ${input.threshold}, and return at most ${input.topK}.`,
+          "If no analysis recipe is relevant, return an empty selected array.",
           "Return exact candidate name and path only through finalize_targeted_skill_match.",
           `Question:\n${input.question}`,
           `Candidates:\n${candidateText}`,
@@ -1328,7 +1358,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         tools: [],
         signal: input.signal,
       });
-      if (!selected.ok || !Array.isArray(selected.result?.selected)) throw new Error((selected as Json).error || "targeted skill matcher did not finalize");
+      if (!selected.ok || !Array.isArray(selected.result?.selected)) throw new Error((selected as Json).error || "analysis-recipe matcher did not finalize");
       return selected.result.selected;
     },
   });
@@ -1338,7 +1368,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     retrievePapers: (input, cwd, signal) => literatureProviderRouter.query(input, cwd, signal),
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_deep_research",
+      agentName: "seekbrain_deep_research",
       finalizeTool: "finalize_deep_research",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1356,7 +1386,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     retrievePapers: (input, cwd, signal) => literatureProviderRouter.query(input, cwd, signal),
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_research_survey",
+      agentName: "seekbrain_research_survey",
       finalizeTool: "finalize_research_survey",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1373,10 +1403,10 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
       agentName: input.finalizeTool === "finalize_research_route"
-        ? "neuro_research_route"
+        ? "seekbrain_research_route"
         : input.finalizeTool === "finalize_research_plan_review"
-          ? "neuro_research_plan_reviewer"
-          : "neuro_research_planning",
+          ? "seekbrain_research_plan_reviewer"
+          : "seekbrain_research_planning",
       finalizeTool: input.finalizeTool,
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1395,7 +1425,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   const reporterWorkflow = new ReporterWorkflow({
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_report",
+      agentName: "seekbrain_report",
       finalizeTool: "finalize_seekbrain_report",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1441,7 +1471,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     lifecycle: runLifecycle,
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_plan",
+      agentName: "seekbrain_formulation_generate",
       finalizeTool: "finalize_plan",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1457,7 +1487,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     retryPolicy: codeRetryPolicy,
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_code",
+      agentName: "seekbrain_code_execute",
       finalizeTool: "finalize_code_result",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1475,7 +1505,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     loadImages: loadVisionImages,
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_validate",
+      agentName: "seekbrain_validation_run",
       finalizeTool: "finalize_validation",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1495,7 +1525,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     loadImages: loadVisionImages,
     runRefiner: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_refine_image",
+      agentName: "seekbrain_figure_refine",
       finalizeTool: "finalize_refinement",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1522,7 +1552,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     loadImages: loadVisionImages,
     runAgent: async (input) => runSubagent({
       runDir: input.runDir,
-      agentName: "neuro_interpret",
+      agentName: "seekbrain_interpretation_run",
       finalizeTool: "finalize_interpretation",
       finalizeSchema: input.finalizeSchema,
       prompt: input.prompt,
@@ -1633,7 +1663,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
         signal,
       });
-      if (!validation.ok) throw new Error(`Validate failed for ${task.task_id}: ${validation.error || "unknown error"}`);
+      if (!validation.ok) throw new Error(`Validation failed for ${task.task_id}: ${validation.error || "unknown error"}`);
       await publish("validation_completed", {
         validation_path: validation.validation_path,
         route: validation.result?.route,
@@ -1709,7 +1739,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         }),
         signal,
       });
-      if (!interpretation.ok) throw new Error(`Interpret failed for ${task.task_id}: ${interpretation.error || "unknown error"}`);
+      if (!interpretation.ok) throw new Error(`Result Interpretation failed for ${task.task_id}: ${interpretation.error || "unknown error"}`);
       return {
         task_id: task.task_id,
         run_id: task.run_id,
@@ -1737,7 +1767,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   // IMPORTANT: do NOT `await` here. This factory registers all commands/tools
   // below; an `await` before those registrations suspends the (async) factory
   // and defers registration past pi's command-palette snapshot, so slash
-  // commands like /neuro-show and /neuro-save-skill never appear. Fire-and-forget.
+  // Commands such as /seekbrain-show and /seekbrain-save-recipe must remain available. Fire-and-forget.
   void loadConfigCached(PROJECT_ROOT || process.cwd()).catch(() => {
     // Best-effort warm-up; real error surfaces at first tool call.
   });
@@ -1754,8 +1784,8 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         // Reload eagerly so debugDiskWritesEnabled() and other synchronous
         // reads see the new values without waiting for the next tool call.
         loadConfigCached(cwd)
-          .then(() => notify?.("neuro SeekBrain config reloaded", "info"))
-          .catch((error) => notify?.(`neuro SeekBrain config reload failed: ${String(error)}`, "warning"));
+          .then(() => notify?.("SeekBrain config reloaded", "info"))
+          .catch((error) => notify?.(`SeekBrain config reload failed: ${String(error)}`, "warning"));
       });
       configWatchedPath = path;
     } catch {
@@ -1850,20 +1880,20 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "neuro_ping",
-    label: "Neuro Ping",
+    name: "seekbrain_system_check",
+    label: "Check Extension",
     description: "Verify that the project-local SeekBrain Pi extension is loaded. Does not create or modify runs.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const { runCount } = await runLifecycle.ping(ctx.cwd);
       return content(pingResult(runCount));
     },
-    renderResult: renderSeekBrainResult("neuro_ping"),
+    renderResult: renderSeekBrainResult("seekbrain_system_check"),
   });
 
   pi.registerTool({
-    name: "neuro_capabilities",
-    label: "Neuro Capabilities",
+    name: "seekbrain_system_capabilities",
+    label: "Show Capabilities",
     description: "Diagnostic tool that reports the complete SeekBrain workflow contract and current optional capabilities. Normal start, resume, and continuation calls already return the settings needed for that run; do not call this routinely.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
@@ -1874,9 +1904,9 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "neuro_resolve_data",
-    label: "Neuro Resolve Data",
-    description: "Resolve a user-provided dataset directory into persistent factual metadata. Reuses the user-level cache for the same canonical dataset directory unless refresh=true.",
+    name: "seekbrain_data_resolve",
+    label: "Profile Dataset",
+    description: "Profile a user-provided dataset directory into persistent factual metadata. Reuses the user-level cache for the same canonical dataset directory unless refresh=true.",
     parameters: Type.Object({
       data_dir: Type.String({ description: "Dataset directory explicitly supplied by the user. It is inspected read-only." }),
       question: Type.Optional(Type.String({ description: "Research question, used only to prioritize relevant metadata details." })),
@@ -1933,7 +1963,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       if (!resolved.ok) {
         return content({
           ok: false,
-          error: (resolved as any).error || "Data Resolve agent failed to produce metadata",
+          error: (resolved as any).error || "Data Analysis Agent failed to produce a dataset profile",
           dataset_id: identity.datasetId,
           data_dir: identity.canonicalRoot,
         });
@@ -1941,7 +1971,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       const result = resolved.result as Json;
       const metadata = result.metadata as Json;
       if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-        return content({ ok: false, error: "Data Resolve agent returned invalid metadata", dataset_id: identity.datasetId });
+        return content({ ok: false, error: "Data Analysis Agent returned an invalid dataset profile", dataset_id: identity.datasetId });
       }
       metadata.root_dir = identity.canonicalRoot;
       const saved = await datasetMetadataStore.save(identity, metadata, {
@@ -1966,13 +1996,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         warnings: result.warnings,
       });
     },
-    renderResult: renderSeekBrainResult("neuro_resolve_data"),
+    renderResult: renderSeekBrainResult("seekbrain_data_resolve"),
   });
 
   pi.registerTool({
-    name: "neuro_start_research",
-    label: "Neuro Start Research",
-    description: "Start a multi-round SeekBrain project and perform the optional lightweight research-route assessment internally. The ordinary route materializes project_dir/round1; Research Planning keeps parent state under project_dir/planning and creates only child task rounds. Pass metadata_json_path when metadata already exists; the tool reads and locks its content internally.",
+    name: "seekbrain_research_start",
+    label: "Start Research",
+    description: "Start a multi-round SeekBrain project and record the main Orchestrator's lightweight Planning assessment, with an internal compatibility fallback when no assessment is supplied. The direct analysis workflow materializes project_dir/round1; Research Planning keeps parent state under project_dir/planning and creates only child analysis-task rounds. Pass metadata_json_path when metadata already exists; the tool reads and locks its content internally.",
     parameters: Type.Object({
       project_dir: Type.String({ description: "Stable project-ID directory. Round outputs are created below it as round1, round2, ..." }),
       question: Type.String({ description: "Research question for round1." }),
@@ -1980,6 +2010,18 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       data_info: Type.Optional(Type.String({ description: "Inline canonical metadata content. Omit this when metadata_json_path is available; it is inherited unchanged by later rounds." })),
       extra_path_info: Type.Optional(Type.String({ description: "Canonical path/access notes. They are inherited unchanged by later rounds." })),
       metadata_json_path: Type.Optional(Type.String({ description: "Canonical metadata JSON path for this project. The tool reads and locks the file content internally." })),
+      planning_assessment: Type.Optional(Type.Object({
+        route: Type.Union([Type.Literal("standard"), Type.Literal("research_planning"), Type.Literal("needs_clarification")]),
+        reason: Type.String(),
+        dataset_summary: Type.Optional(Type.String()),
+        question_requirements: Type.Optional(Type.String()),
+        recommended_action: Type.Optional(Type.String()),
+        evidence_dimensions: Type.Optional(Type.Array(Type.String())),
+        inferred_background: Type.Optional(Type.String()),
+        inferred_scientific_goal: Type.Optional(Type.String()),
+        literature_queries: Type.Optional(Type.Array(Type.String(), { maxItems: 3 })),
+        explicit_request_quote: Type.Optional(Type.String({ description: "Exact quote from the current user request that explicitly asks for Research Planning by name. Omit when Research Planning is only recommended or discussed." })),
+      }, { description: "Compact Planning assessment prepared by the main Orchestrator from the current question and resolved dataset metadata. Supplying it avoids a separate routing-agent call." })),
       deliverables: Type.Optional(Type.Array(Type.Object({
         path: Type.String(),
         kind: Type.Union([Type.Literal("figure"), Type.Literal("statistics"), Type.Literal("data"), Type.Literal("code"), Type.Literal("other")]),
@@ -2020,8 +2062,22 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           captured_at: new Date().toISOString(),
         });
       }
-      const researchRoute = workflowFlags.research_planning
-          ? await researchPlanningWorkflow.assess({
+      const suppliedAssessment = params.planning_assessment as Json | undefined;
+      const explicitPlanningEvidence = verifiedExplicitResearchPlanningRequest(
+        params.question,
+        suppliedAssessment?.explicit_request_quote,
+      );
+      let researchRoute = workflowFlags.research_planning
+        ? suppliedAssessment
+          ? await researchPlanningWorkflow.recordAssessment({
+            cwd: ctx.cwd,
+            runId: created.run.runId,
+            assessment: {
+              ...suppliedAssessment,
+              route: explicitPlanningEvidence ? "research_planning" : suppliedAssessment.route,
+            },
+          })
+          : await researchPlanningWorkflow.assess({
             cwd: ctx.cwd,
             runId: created.run.runId,
             literatureProvider: workflowFlags.literature_provider,
@@ -2036,8 +2092,23 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             route: "standard",
             needs_user_review: false,
             needs_user_clarification: false,
-            next_tool: "resolve_targeted_skill",
+            next_tool: "seekbrain_recipe_retrieve",
           };
+      if (researchRoute.route === "research_planning" && explicitPlanningEvidence) {
+        const reviewed = await researchPlanningWorkflow.recordDecision(
+          ctx.cwd,
+          created.run.runId,
+          "yes",
+          "explicit_user_request",
+          explicitPlanningEvidence,
+        );
+        researchRoute = {
+          ...researchRoute,
+          ...reviewed,
+          needs_user_review: false,
+          planning_consent: "explicit_request",
+        };
+      }
       const active = workflowFlags.research_planning && researchRoute.route === "standard"
         ? await runLifecycle.materializeInitialRound(ctx.cwd, created.run.runId)
         : created;
@@ -2063,22 +2134,22 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         next_tool: researchRoute.next_tool,
       };
       const mismatchAction = researchRoute.route === "needs_clarification"
-        ? String(researchRoute.recommended_action || "请检查所提供的数据集或 metadata 是否正确，或调整研究问题。").trim()
+        ? String(researchRoute.recommended_action || "Verify that the supplied dataset and metadata match the research question, or revise the question.").trim()
         : "";
       return content(startResult, mismatchAction ? [
-        "Input clarification is required; stop the workflow before Skill.",
+        "Input clarification is required; stop the workflow before Recipe.",
         `Assessment: ${String(researchRoute.reason || researchRoute.message || "").trim()}`,
         `Required user action: ${mismatchAction}`,
         "End the workflow here. In the assistant response, state the assessment once and then the required user action once, as two concise natural-language sentences. Do not mention internal route names, tools, run IDs, or artifact paths.",
       ].join("\n") : undefined);
     },
-    renderResult: renderSeekBrainResult("neuro_start_research"),
+    renderResult: renderSeekBrainResult("seekbrain_research_start"),
   });
 
   pi.registerTool({
-    name: "neuro_assess_research",
+    name: "seekbrain_planning_assess",
     label: "Assess Research Planning",
-    description: "Diagnostic and compatibility entry for rerunning the lightweight research-route assessment on an existing run. Normal new research is assessed internally by neuro_start_research when Research Planning is enabled.",
+    description: "Diagnostic and compatibility entry for rerunning the lightweight Planning assessment on an existing run. Normal new research is assessed internally by seekbrain_research_start when Research Planning is enabled.",
     parameters: Type.Object({
       run_id: Type.String(),
       background: Type.Optional(Type.String({ description: "Optional scientific background already supplied by the user." })),
@@ -2099,40 +2170,51 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_assess_research"),
+    renderResult: renderSeekBrainResult("seekbrain_planning_assess"),
   });
 
   pi.registerTool({
-    name: "neuro_review_research_planning",
+    name: "seekbrain_planning_decision_review",
     label: "Review Research Planning",
-    description: "Show the native Yes/No decision for a Research Planning recommendation. No continues the standard SeekBrain workflow and is not treated as an error.",
+    description: "Show the native Yes/No decision for a Research Planning recommendation. No continues the direct analysis workflow and is not treated as an error.",
     parameters: Type.Object({
       run_id: Type.String(),
-      decision: Type.Optional(Type.Union([Type.Literal("yes"), Type.Literal("no")], { description: "Use only after the user explicitly answered in chat; omit to show the native selector." })),
       summary: Type.Optional(Type.String({ description: "Short explanation of why Research Planning was recommended." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      let decision = params.decision as "yes" | "no" | undefined;
-      if (!decision) {
-        const run = await resolveRun(ctx.cwd, params.run_id);
-        const assessment = run.state.research_planning?.assessment || {};
-        const selection = await selectYesNoReview(ctx as any, {
-          title: researchPlanningReviewTitle(assessment, params.summary),
-          yesLabel: "Yes — initiate structured research decomposition",
-          noLabel: "No — proceed with the standard SeekBrain workflow",
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      const assessment = run.state.research_planning?.assessment || {};
+      const yesLabel = "Yes — initiate structured research decomposition";
+      const noLabel = "No — proceed with the standard SeekBrain workflow";
+      const selection = await selectYesNoReview(ctx as any, {
+        title: researchPlanningReviewTitle(assessment, params.summary),
+        yesLabel,
+        noLabel,
+      });
+      if (selection.decision === "unavailable") {
+        await runLifecycle.updateState(run, {
+          research_planning: {
+            ...(run.state.research_planning || {}),
+            status: "awaiting_text_review",
+          },
         });
-        if (selection.decision === "unavailable") {
-          return content({
-            ok: false,
-            run_id: params.run_id,
-            needs_text_review: true,
-            message: "Interactive selector is unavailable. Ask the user to answer Yes or No, then call this tool again with decision='yes' or decision='no'.",
-          });
-        }
-        if (selection.decision === "cancel") return content({ ok: false, run_id: params.run_id, decision: "cancel", message: "Research Planning review was cancelled." });
-        decision = selection.decision;
+        return content({
+          ok: false,
+          run_id: params.run_id,
+          needs_text_review: true,
+          next_tool: "seekbrain_planning_decision_record",
+          message: "Interactive selector is unavailable. Ask the user to answer Yes or No, then record that response.",
+        });
       }
-      const reviewed = await researchPlanningWorkflow.recordDecision(ctx.cwd, params.run_id, decision, params.decision ? "chat" : "planning_selector");
+      if (selection.decision === "cancel") return content({ ok: false, run_id: params.run_id, decision: "cancel", message: "Research Planning decision was cancelled." });
+      const decision = selection.decision;
+      const reviewed = await researchPlanningWorkflow.recordDecision(
+        ctx.cwd,
+        params.run_id,
+        decision,
+        "native_selector",
+        decision === "yes" ? yesLabel : noLabel,
+      );
       if (reviewed.ok && decision === "no") {
         const standard = await runLifecycle.materializeInitialRound(ctx.cwd, params.run_id);
         activeRunDir = standard.run.runDir;
@@ -2150,13 +2232,59 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       }
       return content(reviewed);
     },
-    renderResult: renderSeekBrainResult("neuro_review_research_planning"),
+    renderResult: renderSeekBrainResult("seekbrain_planning_decision_review"),
   });
 
   pi.registerTool({
-    name: "neuro_prepare_subquestions",
-    label: "Prepare Research Plan",
-    description: "Create a dataset-grounded research tree with 2–3 scientific subquestions and 1–2 hypothesis-linked analysis tasks per subquestion after the user approves Research Planning.",
+    name: "seekbrain_planning_decision_record",
+    label: "Record Research Planning Response",
+    description: "Record the user's short Yes/No chat response when the native Research Planning selector is unavailable.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      decision: Type.Union([Type.Literal("yes"), Type.Literal("no")]),
+      response_quote: Type.String({ description: "Exact short quote of the user's latest chat response." }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      if (run.state.research_planning?.status !== "awaiting_text_review") {
+        return content({
+          ok: false,
+          run_id: params.run_id,
+          message: "No text-based Research Planning decision is currently pending.",
+        });
+      }
+      const decision = params.decision as "yes" | "no";
+      const reviewed = await researchPlanningWorkflow.recordDecision(
+        ctx.cwd,
+        params.run_id,
+        decision,
+        "chat_response",
+        String(params.response_quote).trim(),
+      );
+      if (reviewed.ok && decision === "no") {
+        const standard = await runLifecycle.materializeInitialRound(ctx.cwd, params.run_id);
+        activeRunDir = standard.run.runDir;
+        return content({
+          ...reviewed,
+          planning_run_id: params.run_id,
+          run_id: standard.run.runId,
+          run_dir: standard.run.runDir,
+          state_path: standard.run.statePath,
+          round_number: standard.roundNumber,
+          round_name: standard.roundName,
+          deliverables: standard.run.state.deliverables,
+          question: standard.run.state.question,
+        });
+      }
+      return content(reviewed);
+    },
+    renderResult: renderSeekBrainResult("seekbrain_planning_decision_record"),
+  });
+
+  pi.registerTool({
+    name: "seekbrain_planning_generate",
+    label: "Generate Hierarchical Research Plan",
+    description: "Create a dataset-grounded hierarchical research plan with 2–3 scientific subquestions and 1–2 hypothesis-linked analysis tasks per subquestion after the user approves Research Planning.",
     parameters: Type.Object({
       run_id: Type.String(),
       subquestion_count: Type.Optional(Type.Integer({ minimum: 2, maximum: 3 })),
@@ -2168,8 +2296,8 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         progress: true,
         stage: "research_survey",
         message: workflow.research_survey
-          ? "Retrieving and synthesizing global literature background before generating the research tree."
-          : "Research Survey is unavailable; continuing to generate the research tree without literature grounding.",
+          ? "Retrieving and synthesizing global literature background before generating the hierarchical research plan."
+          : "Research Survey is unavailable; continuing to generate the hierarchical research plan without literature grounding.",
       }));
       const survey = await researchSurveyWorkflow.execute({
         cwd: ctx.cwd,
@@ -2181,13 +2309,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         finalizeSchema: Type.Object({ literature_grounding_context: Type.String() }),
         signal,
       });
-      if (!survey.ok) return content({ ...survey, stage: "research_survey", next_tool: "neuro_prepare_subquestions" });
+      if (!survey.ok) return content({ ...survey, stage: "research_survey", next_tool: "seekbrain_planning_generate" });
       onUpdate?.(content({
         progress: true,
         stage: "research_tree",
         message: survey.skipped
-          ? "Research Survey is disabled; generating the research tree from the question and dataset metadata."
-          : `Research Survey ${survey.reused ? "reused" : "complete"} with ${Number(survey.source_count || 0)} sources; generating the research tree.`,
+          ? "Research Survey is disabled; generating the hierarchical research plan from the question and dataset metadata."
+          : `Research Survey ${survey.reused ? "reused" : "complete"} with ${Number(survey.source_count || 0)} sources; generating the hierarchical research plan.`,
       }));
       const prepared = await researchPlanningWorkflow.prepareSubquestions({
         cwd: ctx.cwd,
@@ -2210,20 +2338,83 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         },
       });
     },
-    renderResult: renderSeekBrainResult("neuro_prepare_subquestions"),
+    renderResult: renderSeekBrainResult("seekbrain_planning_generate"),
   });
 
+  async function applyResearchTreeDecision(
+    runId: string,
+    decision: "approve" | "revise" | "cancel",
+    feedback: string | undefined,
+    source: string,
+    signal: AbortSignal | undefined,
+    ctx: Json,
+  ) {
+    const config = await loadConfigCached(PROJECT_ROOT);
+    return await researchPlanningWorkflow.recordResearchPlanDecision({
+      cwd: ctx.cwd,
+      runId,
+      decision,
+      feedback,
+      source,
+      orchestratorRolePrompt: await readPrompt("research_subquestions"),
+      orchestratorAgentConfig: pickResearchPlanningConfig(config),
+      revisionFinalizeSchema: Type.Object({
+        feedback_response: Type.String(),
+        final_plan: researchTreeSchema(),
+      }),
+      signal,
+    });
+  }
+
+  async function presentResearchTreeReview(runId: string, signal: AbortSignal | undefined, ctx: Json) {
+    const run = await resolveRun(ctx.cwd, runId);
+    const planning = run.state.research_planning || {};
+    const selection = await selectResearchTreeReview(ctx as any, {
+      title: researchTreeReviewTitle(planning.final_plan || {}, planning),
+      feedbackTitle: "Scientific feedback for the research plan",
+      feedbackPlaceholder: "Describe what should change in the subquestions, hypotheses, tasks, or synthesis strategy",
+    });
+    if (selection.decision === "unavailable") {
+      await runLifecycle.updateState(run, {
+        research_planning: { ...planning, text_review_pending: true },
+      });
+      return {
+        ok: false,
+        run_id: runId,
+        needs_text_review: true,
+        next_tool: "seekbrain_planning_researcher_decision_record",
+        message: "Interactive selector is unavailable. Ask the user to approve, revise with feedback, or cancel task execution.",
+      };
+    }
+    if (planning.text_review_pending === true) {
+      await runLifecycle.updateState(run, {
+        research_planning: { ...planning, text_review_pending: false },
+      });
+    }
+    if (selection.decision === "feedback_empty") {
+      return { ok: false, run_id: runId, message: "No scientific feedback was entered. Review the plan again." };
+    }
+    return await applyResearchTreeDecision(
+      runId,
+      selection.decision === "feedback" ? "revise" : selection.decision,
+      selection.decision === "feedback" ? selection.feedback : undefined,
+      "research_tree_selector",
+      signal,
+      ctx,
+    );
+  }
+
   pi.registerTool({
-    name: "neuro_review_research_plan",
-    label: "Review Research Plan",
-    description: "Run the single automatic Reviewer critique over the complete research tree and, only when required, one Orchestrator refinement.",
+    name: "seekbrain_planning_peer_review",
+    label: "Run Reviewer Agent",
+    description: "Run the single automatic Reviewer Agent critique over the complete hierarchical research plan and, only when required, one Orchestrator Agent refinement.",
     parameters: Type.Object({
       run_id: Type.String(),
       explicit_user_request: Type.Optional(Type.Boolean({ description: "Set true only when the user explicitly asks for another scientific Reviewer pass." })),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfigCached(PROJECT_ROOT);
-      return content(await researchPlanningWorkflow.reviewResearchPlan({
+      const peerReview = await researchPlanningWorkflow.reviewResearchPlan({
         cwd: ctx.cwd,
         runId: params.run_id,
         reviewerRolePrompt: await readPrompt("research_plan_review"),
@@ -2243,75 +2434,94 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         }),
         explicitUserRequest: params.explicit_user_request === true,
         signal,
-      }));
+      });
+      if (!peerReview.ok || peerReview.needs_user_review !== true) return content(peerReview);
+      let researcherReview = await presentResearchTreeReview(params.run_id, signal, ctx);
+      while (researcherReview.ok && researcherReview.decision === "revise" && researcherReview.needs_user_review === true) {
+        researcherReview = await presentResearchTreeReview(params.run_id, signal, ctx);
+      }
+      return content({
+        ...peerReview,
+        researcher_review: researcherReview,
+        ...(researcherReview.decision ? { decision: researcherReview.decision } : {}),
+        ...(researcherReview.status ? { status: researcherReview.status } : {}),
+        ...(researcherReview.next_tool ? { next_tool: researcherReview.next_tool } : {}),
+        ...(researcherReview.needs_text_review ? { needs_text_review: true } : {}),
+        needs_user_review: researcherReview.needs_user_review === true,
+      });
     },
-    renderResult: renderSeekBrainResult("neuro_review_research_plan"),
+    renderResult: renderSeekBrainResult("seekbrain_planning_peer_review"),
   });
 
   pi.registerTool({
-    name: "neuro_review_research_tree",
-    label: "Review Research Tree",
-    description: "Show the final research-tree review selector. User revisions are applied by the Orchestrator without automatically calling the Reviewer again.",
+    name: "seekbrain_planning_researcher_review",
+    label: "Review Research Plan",
+    description: "Show the final hierarchical research plan review selector. User revisions are applied by the Orchestrator Agent without automatically calling the Reviewer Agent again.",
     parameters: Type.Object({
       run_id: Type.String(),
-      decision: Type.Optional(Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("cancel")])),
+    }),
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      return content(await presentResearchTreeReview(params.run_id, signal, ctx));
+    },
+    renderResult: renderSeekBrainResult("seekbrain_planning_researcher_review"),
+  });
+
+  pi.registerTool({
+    name: "seekbrain_planning_researcher_decision_record",
+    label: "Record Research Plan Review Response",
+    description: "Record an approve, revise, or cancel chat response when the native final research-plan selector is unavailable.",
+    parameters: Type.Object({
+      run_id: Type.String(),
+      decision: Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("cancel")]),
+      response_quote: Type.String({ description: "Exact quote of the user's latest chat response." }),
       feedback: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      let decision = params.decision;
-      let feedback = params.feedback;
-      if (!decision) {
-        const run = await resolveRun(ctx.cwd, params.run_id);
-        const planning = run.state.research_planning || {};
-        const plan = planning.final_plan || {};
-        const selection = await selectResearchTreeReview(ctx as any, {
-          title: researchTreeReviewTitle(plan, planning),
-          feedbackTitle: "Scientific feedback for the research plan",
-          feedbackPlaceholder: "Describe what should change in the subquestions, hypotheses, tasks, or synthesis strategy",
-        });
-        if (selection.decision === "unavailable") {
-          return content({ ok: false, run_id: params.run_id, needs_text_review: true, message: "Interactive selector is unavailable. Ask the user to approve, revise with feedback, or cancel task execution." });
-        }
-        if (selection.decision === "feedback_empty") {
-          return content({ ok: false, run_id: params.run_id, message: "No scientific feedback was entered. Review the plan again or provide explicit feedback." });
-        }
-        decision = selection.decision === "feedback" ? "revise" : selection.decision;
-        feedback = selection.decision === "feedback" ? selection.feedback : feedback;
+      const run = await resolveRun(ctx.cwd, params.run_id);
+      if (run.state.research_planning?.text_review_pending !== true) {
+        return content({ ok: false, run_id: params.run_id, message: "No text-based research-plan review is currently pending." });
       }
-      const config = await loadConfigCached(PROJECT_ROOT);
-      return content(await researchPlanningWorkflow.recordResearchPlanDecision({
-        cwd: ctx.cwd,
-        runId: params.run_id,
-        decision: decision as "approve" | "revise" | "cancel",
-        feedback,
-        source: params.decision ? "chat" : "research_tree_selector",
-        orchestratorRolePrompt: await readPrompt("research_subquestions"),
-        orchestratorAgentConfig: pickResearchPlanningConfig(config),
-        revisionFinalizeSchema: Type.Object({
-          feedback_response: Type.String(),
-          final_plan: researchTreeSchema(),
-        }),
+      const responseQuote = String(params.response_quote || "").trim();
+      if (!responseQuote) {
+        return content({ ok: false, run_id: params.run_id, message: "The user's exact review response is required." });
+      }
+      if (params.decision === "revise" && !String(params.feedback || "").trim()) {
+        return content({ ok: false, run_id: params.run_id, message: "Scientific feedback is required when revising the research plan." });
+      }
+      await runLifecycle.updateState(run, {
+        research_planning: {
+          ...(run.state.research_planning || {}),
+          text_review_pending: false,
+          text_review_response_quote: responseQuote,
+        },
+      });
+      return content(await applyResearchTreeDecision(
+        params.run_id,
+        params.decision as "approve" | "revise" | "cancel",
+        params.feedback,
+        "chat_response",
         signal,
-      }));
+        ctx,
+      ));
     },
-    renderResult: renderSeekBrainResult("neuro_review_research_tree"),
+    renderResult: renderSeekBrainResult("seekbrain_planning_researcher_decision_record"),
   });
 
   pi.registerTool({
-    name: "neuro_materialize_research_tasks",
-    label: "Prepare Research Tasks",
+    name: "seekbrain_analysis_tasks_prepare",
+    label: "Prepare Analysis Tasks",
     description: "Create independently traceable child runs for every approved terminal analysis task, inheriting locked metadata and parent scientific context.",
     parameters: Type.Object({ run_id: Type.String() }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       return content(await researchPlanningWorkflow.materializeResearchTasks({ cwd: ctx.cwd, runId: params.run_id }));
     },
-    renderResult: renderSeekBrainResult("neuro_materialize_research_tasks"),
+    renderResult: renderSeekBrainResult("seekbrain_analysis_tasks_prepare"),
   });
 
   pi.registerTool({
-    name: "neuro_initialize_research_execution",
-    label: "Initialize Research Execution",
-    description: "Initialize the durable parallel scheduler for an approved, materialized Research Planning tree. This is not used by the ordinary SeekBrain workflow.",
+    name: "seekbrain_execution_initialize",
+    label: "Initialize Analysis Execution",
+    description: "Initialize the durable parallel scheduler for an approved, materialized hierarchical research plan. This is not used by the ordinary SeekBrain workflow.",
     parameters: Type.Object({ run_id: Type.String() }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const config = await loadConfigCached(PROJECT_ROOT);
@@ -2323,13 +2533,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         executionConcurrency: execution.execution_concurrency,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_initialize_research_execution"),
+    renderResult: renderSeekBrainResult("seekbrain_execution_initialize"),
   });
 
   pi.registerTool({
-    name: "neuro_prepare_task_plans",
-    label: "Run Research Task Pipeline",
-    description: "Canonical start-or-resume entry point for the complete Research Task Pipeline. Show every task, reconcile interrupted child stages, prepare pending Skills/context/Plans with bounded concurrency, serialize Plan review, and continue approved tasks through Code, Validate, optional Refine, and Interpret as slots become available.",
+    name: "seekbrain_execution_run",
+    label: "Run Analysis Execution Engine",
+    description: "Canonical start-or-resume entry point for the complete Analysis Execution Engine. Show every analysis task, reconcile interrupted child stages, prepare pending recipes, Deep Research context, and methodological schemas with bounded concurrency, serialize researcher review, and continue approved tasks through Code Generation & Execution, Validation, optional Figure Refinement, and Result Interpretation as slots become available.",
     parameters: Type.Object({ run_id: Type.String() }),
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       const config = await loadConfigCached(PROJECT_ROOT);
@@ -2457,7 +2667,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       const prepareTask = async (task: Json): Promise<Json> => {
         const taskId = String(task.task_id);
         try {
-          updateProgress(taskId, { skill: "running", deep_research: "running" }, `${taskId} · resolving Skill and Deep Research`);
+          updateProgress(taskId, { skill: "running", deep_research: "running" }, `${taskId} · retrieving analysis recipe and running Deep Research`);
           await Promise.all([
             researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "skill_started" }),
             researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "deep_research_started" }),
@@ -2468,9 +2678,11 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             }).then(async (skill) => {
               const names = (skill.skill_paths || []).map((path: unknown) => basename(String(path))).filter(Boolean);
               const skillSummary = skill.matched
-                ? `Matched ${names.join(", ") || String(skill.source || "targeted skill")}`
-                : String(skill.warnings?.[0] || "No targeted Skill matched");
-              updateProgress(taskId, { skill: skill.matched ? "matched" : "not_found", skill_summary: skillSummary }, `${taskId} · Skill ${skill.matched ? "matched" : "not found"}`);
+                ? skill.source === "generated_from_rag"
+                  ? `Crystallized ${names.join(", ") || "analysis recipe"} from literature and code`
+                  : `Retrieved ${names.join(", ") || "analysis recipe"} from the Neuroscience Analysis Repertoire`
+                : String(skill.warnings?.[0] || "No matching analysis recipe found");
+              updateProgress(taskId, { skill: skill.matched ? "matched" : "not_found", skill_summary: skillSummary }, `${taskId} · Recipe ${skill.matched ? "ready" : "not found"}`);
               await researchTaskScheduler.publishEvent({
                 cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "skill_resolved",
                 payload: { skill_summary: skillSummary, skill_source: skill.source, skill_paths: skill.skill_paths || [] },
@@ -2496,7 +2708,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
               return { research, researchSummary };
             });
           const [{ skill, skillSummary }, { research, researchSummary }] = await Promise.all([skillPromise, researchPromise]);
-          updateProgress(taskId, { plan: "running" }, `${taskId} · preparing Plan`);
+          updateProgress(taskId, { plan: "running" }, `${taskId} · generating methodological schema`);
           await researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "plan_started" });
           const plan = await planWorkflow.execute({
             cwd: ctx.cwd,
@@ -2512,25 +2724,25 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             humanReviewRequired: false,
             signal,
           });
-          if (!plan.ok) throw new Error(String(plan.error || "Task Plan generation failed."));
+          if (!plan.ok) throw new Error(String(plan.error || "Methodological schema generation failed."));
           const planSummary = String(plan.result?.review_summary || plan.result?.summary || "");
           if (initiallyAutoApprove) {
             await approveChildPlan(task, planGateEnabled
               ? "approved by the current Research Planning approve-remaining policy"
-              : "Plan review gate is disabled");
+              : "Methodological schema review gate is disabled");
           }
           await researchTaskScheduler.publishEvent({
             cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "plan_ready",
             payload: { plan_path: plan.plan_path, plan_summary: planSummary, skill_summary: skillSummary, deep_research_summary: researchSummary },
           });
-          updateProgress(taskId, { plan: "ready", plan_summary: planSummary, review: initiallyAutoApprove ? "approved" : "queued" }, `${taskId} · Plan ready`);
+          updateProgress(taskId, { plan: "ready", plan_summary: planSummary, review: initiallyAutoApprove ? "approved" : "queued" }, `${taskId} · Methodological schema ready`);
           return { task_id: task.task_id, run_id: task.run_id, ok: true, plan_path: plan.plan_path, plan_summary: planSummary, skill_summary: skillSummary, deep_research_summary: researchSummary };
         } catch (error) {
           await researchTaskScheduler.publishEvent({
             cwd: ctx.cwd, parentRunId: params.run_id, taskId: task.task_id, type: "task_failed",
             payload: { failed_stage: "planning", error: String(error) },
           });
-          updateProgress(taskId, { plan: "failed", error: String(error) }, `${taskId} · Plan preparation failed`);
+          updateProgress(taskId, { plan: "failed", error: String(error) }, `${taskId} · Analytical Formulation failed`);
           return { task_id: task.task_id, run_id: task.run_id, ok: false, error: String(error) };
         }
       };
@@ -2554,14 +2766,14 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           for (const affectedTask of affected) {
             const child = await resolveRun(ctx.cwd, affectedTask.run_id);
             if (decision === "revise") await reviewWorkflow.feedback(child, "plan", feedback, { source: "research_task_review_queue", action: "revise" });
-            else await approveChildPlan(affectedTask, decision === "approve_remaining" ? "approved with all remaining task Plans" : "approved via Research Planning task queue");
+            else await approveChildPlan(affectedTask, decision === "approve_remaining" ? "approved with all remaining methodological schemas" : "approved via Research Planning analysis-task queue");
             updateProgress(String(affectedTask.task_id), { review: decision === "revise" ? "revision_required" : "approved" });
           }
           await researchTaskScheduler.recordPlanReview({
             cwd: ctx.cwd, runId: params.run_id, taskId: String(queue.current.task_id),
             decision: decision as "approve" | "revise" | "approve_remaining", feedback,
           });
-          emitProgress(`${queue.current.task_id} · Plan ${decision === "revise" ? "revision requested" : "approved"}`);
+          emitProgress(`${queue.current.task_id} · Methodological schema ${decision === "revise" ? "revision requested" : "approved"}`);
           if (decision !== "revise") await startApprovedTasks();
         }
       };
@@ -2572,11 +2784,11 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           if (!queue.current) return;
           const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
           const task = scheduler.tasks.find((item: Json) => String(item.task_id) === String(queue.current.task_id));
-          if (task) await approveChildPlan(task, "Plan review gate is disabled");
+          if (task) await approveChildPlan(task, "Methodological schema review gate is disabled");
           await researchTaskScheduler.recordPlanReview({
             cwd: ctx.cwd, runId: params.run_id, taskId: String(queue.current.task_id), decision: "approve",
           });
-          updateProgress(String(queue.current.task_id), { review: "approved" }, `${queue.current.task_id} · Plan approved`);
+          updateProgress(String(queue.current.task_id), { review: "approved" }, `${queue.current.task_id} · Methodological schema approved`);
         }
       };
       const results: Json[] = [];
@@ -2594,14 +2806,14 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         enqueuePlanningTasks((next.tasks || []).filter((task: Json) => nextIds.has(String(task.task_id))));
       };
       enqueuePlanningTasks(initiallyClaimedTasks);
-      emitProgress("Preparing task Skills, Deep Research, and Plans in parallel");
+      emitProgress("Preparing analysis recipes, Deep Research, and methodological schemas in parallel");
       while (remaining.size) {
         const settled: { index: number; result: Json } = await Promise.race(remaining.values());
         remaining.delete(settled.index);
         results.push(settled.result);
         const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
         // A ready Plan frees one planning slot. Fill it immediately so queued
-        // tasks are visible from the start but do not begin Skill/Plan work
+        // tasks are visible from the start but do not begin Recipe/Formulation work
         // until the configured planning concurrency allows it.
         await claimAndEnqueuePlanningTasks();
         for (const scheduled of scheduler.tasks.filter((item: Json) => item.status === "approved" && item.plan_path)) {
@@ -2646,13 +2858,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         review_queue_length: queue.queue_length,
       });
     },
-    renderResult: renderSeekBrainResult("neuro_prepare_task_plans"),
+    renderResult: renderSeekBrainResult("seekbrain_execution_run"),
   });
 
   pi.registerTool({
-    name: "neuro_review_task_plan",
-    label: "Review Task Plan",
-    description: "Present one serialized Research Planning task-Plan review. Supports approval, revision feedback, or approval of this and all remaining valid task Plans.",
+    name: "seekbrain_execution_schema_review",
+    label: "Review Methodological Schema",
+    description: "Present one serialized methodological-schema review for an analysis task. Supports approval, revision feedback, or approval of this and all remaining valid methodological schemas.",
     parameters: Type.Object({
       run_id: Type.String(),
       decision: Type.Optional(Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("approve_remaining")])),
@@ -2660,7 +2872,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const queue = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
-      if (!queue.current) return content({ ok: true, parent_run_id: params.run_id, queue_empty: true, message: "No task Plan is waiting for review." });
+      if (!queue.current) return content({ ok: true, parent_run_id: params.run_id, queue_empty: true, message: "No methodological schema is waiting for review." });
       let decision = params.decision;
       let feedback = String(params.feedback || "").trim();
       if (!decision) {
@@ -2670,9 +2882,9 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           feedbackTitle: `Changes for ${queue.current.task_id}`,
           feedbackPlaceholder: "Describe the scientific or analytical changes required before execution",
         });
-        if (selection.decision === "unavailable") return content({ ok: false, parent_run_id: params.run_id, needs_text_review: true, message: "Interactive task Plan review is unavailable." });
-        if (selection.decision === "feedback_empty") return content({ ok: false, parent_run_id: params.run_id, message: "No Plan revision feedback was entered." });
-        if (selection.decision === "cancel") return content({ ok: false, parent_run_id: params.run_id, message: "Task Plan review was cancelled." });
+        if (selection.decision === "unavailable") return content({ ok: false, parent_run_id: params.run_id, needs_text_review: true, message: "Interactive methodological-schema review is unavailable." });
+        if (selection.decision === "feedback_empty") return content({ ok: false, parent_run_id: params.run_id, message: "No methodological-schema revision feedback was entered." });
+        if (selection.decision === "cancel") return content({ ok: false, parent_run_id: params.run_id, message: "Methodological-schema review was cancelled." });
         decision = selection.decision === "feedback" ? "revise" : selection.decision;
         feedback = selection.decision === "feedback" ? selection.feedback : feedback;
       }
@@ -2683,7 +2895,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       for (const task of affected) {
         const child = await resolveRun(ctx.cwd, task.run_id);
         if (decision === "revise") await reviewWorkflow.feedback(child, "plan", feedback, { source: "research_task_review_queue", action: "revise" });
-        else await reviewWorkflow.approve(child, "plan", decision === "approve_remaining" ? "approved with all remaining task Plans" : "approved via Research Planning task queue", { source: "research_task_review_queue" });
+        else await reviewWorkflow.approve(child, "plan", decision === "approve_remaining" ? "approved with all remaining methodological schemas" : "approved via Research Planning analysis-task queue", { source: "research_task_review_queue" });
       }
       return content(await researchTaskScheduler.recordPlanReview({
         cwd: ctx.cwd,
@@ -2693,13 +2905,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         feedback,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_review_task_plan"),
+    renderResult: renderSeekBrainResult("seekbrain_execution_schema_review"),
   });
 
   pi.registerTool({
-    name: "neuro_compile_report_evidence",
+    name: "seekbrain_report_evidence_compile",
     label: "Compile Report Evidence",
-    description: "Compile an immutable report input bundle from exactly the completed rounds or Research Planning task rounds explicitly selected by the user. Does not call the Reporter model.",
+    description: "Compile an immutable report input bundle from exactly the completed rounds or Research Planning analysis-task rounds explicitly selected by the user. Does not call the Report Agent.",
     parameters: Type.Object({
       project_path: Type.String(),
       selected_evidence: Type.Array(Type.String({ description: "ROUND:<n> or <task-id>:R<n>, for example ROUND:3 or SQ1-T1:R2." }), { minItems: 1 }),
@@ -2712,13 +2924,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         reportGoal: params.report_goal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_compile_report_evidence"),
+    renderResult: renderSeekBrainResult("seekbrain_report_evidence_compile"),
   });
 
   pi.registerTool({
-    name: "neuro_execute_research_tasks",
-    label: "Execute Research Tasks",
-    description: "Low-level manual execution of one approved-task batch. Do not use this to start or resume the complete Research Planning pipeline; use neuro_prepare_task_plans, which restores and continues every task in one live view.",
+    name: "seekbrain_execution_tasks_run",
+    label: "Execute Analysis Tasks",
+    description: "Low-level manual execution of one approved-task batch. Do not use this to start or resume the complete Research Planning pipeline; use seekbrain_execution_run, which restores and continues every task in one live view.",
     parameters: Type.Object({ run_id: Type.String() }),
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       await researchTaskScheduler.recoverInterruptedTasks(ctx.cwd, params.run_id);
@@ -2762,13 +2974,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       });
       return content({ ...result, task_progress: [...progress.values()] });
     },
-    renderResult: renderSeekBrainResult("neuro_execute_research_tasks"),
+    renderResult: renderSeekBrainResult("seekbrain_execution_tasks_run"),
   });
 
   pi.registerTool({
-    name: "neuro_generate_report",
-    label: "Generate Scientific Report",
-    description: "On explicit user request, compile exactly the selected completed rounds/task rounds and call the scientific Reporter once. Unselected evidence is not loaded into the Reporter context.",
+    name: "seekbrain_report_generate",
+    label: "Generate Report",
+    description: "On explicit user request, compile exactly the selected completed rounds/task rounds and call the Report Agent once. Unselected evidence is not loaded into the Report Agent context.",
     parameters: Type.Object({
       project_path: Type.String(),
       selected_evidence: Type.Array(Type.String({ description: "ROUND:<n> or <task-id>:R<n>." }), { minItems: 1 }),
@@ -2783,13 +2995,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         onProgress: (progress) => onUpdate?.(content({ progress: true, ...progress })),
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_generate_report"),
+    renderResult: renderSeekBrainResult("seekbrain_report_generate"),
   });
 
   pi.registerTool({
-    name: "neuro_control_research_task",
-    label: "Control Research Task",
-    description: "Apply an explicit user decision to one failed, blocked, or unwanted Research Planning task without affecting unrelated tasks.",
+    name: "seekbrain_analysis_task_control",
+    label: "Control Analysis Task",
+    description: "Apply an explicit user decision to one failed, blocked, or unwanted Research Planning analysis task without affecting unrelated tasks.",
     parameters: Type.Object({
       run_id: Type.String(),
       task_id: Type.String(),
@@ -2801,12 +3013,12 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         cwd: ctx.cwd, runId: params.run_id, taskId: params.task_id, action: params.action, reason: params.reason,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_control_research_task"),
+    renderResult: renderSeekBrainResult("seekbrain_analysis_task_control"),
   });
 
   pi.registerTool({
-    name: "neuro_continue_research",
-    label: "Neuro Continue Research",
+    name: "seekbrain_research_continue",
+    label: "Continue Research",
     description: "Create the next independent round in an existing multi-round SeekBrain project. Accepts a project directory or any round directory, works across sessions/days, inherits locked metadata, and exposes prior conclusions/data/code as read-only reusable context.",
     parameters: Type.Object({
       source_path: Type.String({ description: "Existing project directory or a roundN directory supplied by the user." }),
@@ -2845,12 +3057,12 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         guidance: "Continue the normal SeekBrain stages using this new run_id. Reuse prior round artifacts only through inherited_context; write every new output inside the new round directory.",
       });
     },
-    renderResult: renderSeekBrainResult("neuro_continue_research"),
+    renderResult: renderSeekBrainResult("seekbrain_research_continue"),
   });
 
   pi.registerTool({
-    name: "neuro_start_run",
-    label: "Neuro Start Run",
+    name: "seekbrain_run_start",
+    label: "Start Analysis Run",
     description: "Create a new SeekBrain run at the required work_dir. The main agent must choose fallback paths such as results/default/{timestamp}. Returns run_id for all subsequent tools. Optionally pass question to persist the task text in state.json. Optionally pass deliverables to declare expected output artifacts (path/kind/role); if omitted, a default set (generated_code.py, figure.png, figure.pdf, statistics.json) is injected. code and statistics infrastructure artifacts are always ensured.",
     parameters: Type.Object({
       work_dir: Type.String({ description: "Run directory. Prefer relative fallback paths such as results/default/{timestamp}; preserve explicit user-provided absolute paths." }),
@@ -2878,12 +3090,12 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         workflow_config: workflowConfigResult(config as SeekBrainConfig),
       });
     },
-    renderResult: renderSeekBrainResult("neuro_start_run"),
+    renderResult: renderSeekBrainResult("seekbrain_run_start"),
   });
 
   pi.registerTool({
-    name: "neuro_resume_run",
-    label: "Neuro Resume Run",
+    name: "seekbrain_run_resume",
+    label: "Resume Analysis Run",
     description: "Resume an existing SeekBrain run without creating a new run. Reads run_id from work_dir/state.json. Optionally pass question to replace the persisted task text; the previous question is appended to question_history. After resuming, read state.json for full run status. Use for recovery/continuation or interactive follow-up on an existing work_dir.",
     parameters: Type.Object({
       work_dir: Type.String({ description: "Existing run directory to resume. Preserve explicit absolute paths." }),
@@ -2907,39 +3119,39 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "neuro_approve_stage",
-    label: "Neuro Approve Stage",
-    description: "Record human approval for a SeekBrain workflow stage gate. Use only after the user explicitly approves the stage output.",
+    name: "seekbrain_review_approve",
+    label: "Approve Stage",
+    description: "Record researcher approval for a SeekBrain workflow stage gate. Use only after the user explicitly approves the stage output.",
     parameters: Type.Object({
       run_id: Type.String(),
       stage: Type.String({ description: "Stage name to approve, e.g. plan." }),
-      notes: Type.Optional(Type.String({ description: "Optional short human approval note." })),
+      notes: Type.Optional(Type.String({ description: "Optional short researcher approval note." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       return content(await reviewWorkflow.approveStage(ctx.cwd, params.run_id, params.stage, params.notes));
     },
-    renderResult: renderSeekBrainResult("neuro_approve_stage"),
+    renderResult: renderSeekBrainResult("seekbrain_review_approve"),
   });
 
   pi.registerTool({
-    name: "neuro_record_feedback",
-    label: "Neuro Record Feedback",
-    description: "Record human revision feedback for a SeekBrain workflow stage gate. Use when the user rejects or modifies a stage output.",
+    name: "seekbrain_review_feedback",
+    label: "Record Researcher Feedback",
+    description: "Record researcher revision feedback for a SeekBrain workflow stage gate. Use when the user rejects or modifies a stage output.",
     parameters: Type.Object({
       run_id: Type.String(),
       stage: Type.String({ description: "Stage name receiving feedback, e.g. plan." }),
-      feedback: Type.String({ description: "Human feedback or requested changes." }),
+      feedback: Type.String({ description: "Researcher feedback or requested changes." }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       return content(await reviewWorkflow.recordStageFeedback(ctx.cwd, params.run_id, params.stage, params.feedback));
     },
-    renderResult: renderSeekBrainResult("neuro_record_feedback"),
+    renderResult: renderSeekBrainResult("seekbrain_review_feedback"),
   });
 
   pi.registerTool({
-    name: "neuro_review_plan",
-    label: "Neuro Review Plan",
-    description: "Show the native two-option plan review selector after the main agent has summarized the current plan in chat.",
+    name: "seekbrain_formulation_researcher_review",
+    label: "Review Methodological Schema",
+    description: "Show the native two-option methodological-schema review selector after the main agent has summarized the current schema in chat.",
     parameters: Type.Object({
       run_id: Type.String(),
       summary: Type.Optional(Type.String({ description: "Short main-agent summary already shown to the user. Used only as compact selector context." })),
@@ -2949,14 +3161,14 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       const planPath = join(run.runDir, "plan.md");
       try {
         const title = [
-          "Review the plan?",
-          `Plan: ${planPath}`,
+          "Review the methodological schema?",
+          `Schema: ${planPath}`,
           params.summary ? `Summary: ${String(params.summary).slice(0, 360)}` : "",
         ].filter(Boolean).join("\n");
         const selection = await selectBinaryReview(ctx as any, {
           title,
           approveLabel: "Yes, code",
-          feedbackTitle: "Feedback for plan",
+          feedbackTitle: "Feedback for methodological schema",
           feedbackPlaceholder: "Describe what should change before code generation",
         });
         if (selection.decision === "unavailable") {
@@ -2970,7 +3182,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             plan_path: planPath,
             decision: "approve",
             review,
-            guidance: "Proceed to neuro_code.",
+            guidance: "Proceed to seekbrain_code_execute.",
           });
         }
         if (selection.decision === "feedback_empty") {
@@ -2979,7 +3191,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
               run_id: run.runId,
               plan_path: planPath,
               decision: "cancel",
-              message: "No feedback was entered. Summarize the plan again or call neuro_review_plan again.",
+              message: "No feedback was entered. Summarize the methodological schema again or call seekbrain_formulation_researcher_review again.",
             });
         }
         if (selection.decision === "feedback") {
@@ -2991,7 +3203,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             decision: "feedback",
             feedback: selection.feedback,
             review,
-            guidance: "Revise plan_markdown yourself for local changes, call neuro_update_plan with the complete updated plan, then summarize the revised plan and call neuro_review_plan again. Rerun neuro_plan only for broad redesigns.",
+            guidance: "Revise plan_markdown yourself for local changes, call seekbrain_formulation_update with the complete updated methodological schema, then summarize the revised schema and call seekbrain_formulation_researcher_review again. Rerun seekbrain_formulation_generate only for broad redesigns.",
           });
         }
         return content({
@@ -2999,7 +3211,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           run_id: run.runId,
           plan_path: planPath,
           decision: "cancel",
-          message: "Plan review was cancelled. Call neuro_review_plan again when ready.",
+          message: "Methodological-schema review was cancelled. Call seekbrain_formulation_researcher_review again when ready.",
         });
       } catch (error) {
         return content({
@@ -3007,21 +3219,21 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           run_id: run.runId,
           plan_path: planPath,
           error: String(error),
-          message: "Plan review selector failed. Ask the user to approve, reject, or provide feedback in chat.",
+          message: "Methodological-schema review selector failed. Ask the user to approve, reject, or provide feedback in chat.",
         });
       }
     },
-    renderResult: renderSeekBrainResult("neuro_review_plan"),
+    renderResult: renderSeekBrainResult("seekbrain_formulation_researcher_review"),
   });
 
   pi.registerTool({
-    name: "neuro_update_plan",
-    label: "Neuro Update Plan",
-    description: "Persist a human-feedback revision to the current SeekBrain plan without rerunning the planning subagent.",
+    name: "seekbrain_formulation_update",
+    label: "Update Methodological Schema",
+    description: "Persist a researcher-feedback revision to the current methodological schema without rerunning the Formulation Agent.",
     parameters: Type.Object({
       run_id: Type.String(),
-      plan_markdown: Type.String({ description: "Complete updated Markdown plan to write to plan.md and state.json." }),
-      summary: Type.Optional(Type.String({ description: "Short summary of what changed or what the updated plan does." })),
+      plan_markdown: Type.String({ description: "Complete updated Markdown methodological schema to write to plan.md and state.json." }),
+      summary: Type.Optional(Type.String({ description: "Short summary of what changed or what the updated schema does." })),
       confidence: Type.Optional(Type.Number({ description: "Optional updated confidence score. Defaults to the prior confidence if omitted." })),
       warnings: Type.Optional(Type.Array(Type.String({ description: "Optional updated warning list. Defaults to the prior warnings if omitted." }))),
       revision_note: Type.Optional(Type.String({ description: "Optional short note describing the user-requested edit." })),
@@ -3037,12 +3249,12 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         revisionNote: params.revision_note,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_update_plan"),
+    renderResult: renderSeekBrainResult("seekbrain_formulation_update"),
   });
 
   pi.registerTool({
-    name: "neuro_review_code_edit",
-    label: "Neuro Review Code Edit",
+    name: "seekbrain_code_edit_review",
+    label: "Review Code Edit",
     description: "Prepare exact localized code edits, show a diff for approval, then apply and optionally regenerate in one tool call.",
     renderShell: "self",
     parameters: Type.Object({
@@ -3121,7 +3333,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         edits: editResult.appliedEdits,
         created_at: new Date().toISOString(),
       };
-      await reviewWorkflow.proposeCodeEdit(run, pendingEntry, "neuro_review_code_edit_proposed");
+      await reviewWorkflow.proposeCodeEdit(run, pendingEntry, "seekbrain_code_edit_proposed");
 
       const diffRenderer = await diffWarmup;
       const reviewDetails = createCodeReviewDetails({
@@ -3163,7 +3375,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         await writeText(targetPath, editResult.updatedCode);
         const appliedAt = new Date().toISOString();
         const appliedEntry = { ...pendingEntry, status: "applied", applied_at: appliedAt, snapshot };
-        await reviewWorkflow.applyCodeEdit(run, editId, appliedEntry, validationInvalidationForScope(scope), "neuro_apply_code_edit");
+        await reviewWorkflow.applyCodeEdit(run, editId, appliedEntry, validationInvalidationForScope(scope), "seekbrain_code_edit_apply");
 
         if (!rerun) {
           return content({
@@ -3222,7 +3434,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         await writeJson(executionPath, executionRecord);
         const finalEntry = { ...appliedEntry, status, execution_path: executionPath, executed_at: executionRecord.finished_at };
         await reviewWorkflow.finalizeCodeEdit(run, editId, finalEntry, {
-          event: "neuro_execute_code_edit",
+          event: "seekbrain_code_edit_execute",
           ok: verified,
           status,
           exit_code: executionRecord.exit_code,
@@ -3248,14 +3460,14 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           return content({ ok: false, run_id: run.runId, edit_id: editId, decision: "cancel", message: "No feedback was entered." });
       }
       if (selection.decision === "feedback") {
-        await reviewWorkflow.requestCodeChanges(run, editId, selection.feedback, "code_edit_selector", "neuro_code_edit_feedback");
+        await reviewWorkflow.requestCodeChanges(run, editId, selection.feedback, "code_edit_selector", "seekbrain_code_edit_feedback");
         return content({
           ok: true,
           run_id: run.runId,
           edit_id: editId,
           decision: "feedback",
           feedback: selection.feedback,
-          guidance: "Prepare corrected exact replacements and call neuro_review_code_edit again.",
+          guidance: "Prepare corrected exact replacements and call seekbrain_code_edit_review again.",
         });
       }
 
@@ -3266,8 +3478,8 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "neuro_propose_code_update",
-    label: "Neuro Propose Code Update",
+    name: "seekbrain_code_update_propose",
+    label: "Propose Code Update",
     description: "Create a pending code edit and diff for post-run user feedback. Does not modify the active code artifact.",
     parameters: Type.Object({
       run_id: Type.String(),
@@ -3311,7 +3523,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         summary,
         created_at: new Date().toISOString(),
       };
-      await reviewWorkflow.proposeCodeEdit(run, pendingEntry, "neuro_propose_code_update");
+      await reviewWorkflow.proposeCodeEdit(run, pendingEntry, "seekbrain_code_update_propose");
       return content({
         ok: true,
         run_id: run.runId,
@@ -3321,15 +3533,15 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         diff_path: diffPath,
         summary_path: summaryPath,
         summary,
-        guidance: "Show the user the summary, then call neuro_review_code_update. Do not apply or execute the proposed code before approval.",
+        guidance: "Show the user the summary, then call seekbrain_code_update_review. Do not apply or execute the proposed code before approval.",
       });
     },
-    renderResult: renderSeekBrainResult("neuro_propose_code_update"),
+    renderResult: renderSeekBrainResult("seekbrain_code_update_propose"),
   });
 
   pi.registerTool({
-    name: "neuro_review_code_update",
-    label: "Neuro Review Code Update",
+    name: "seekbrain_code_update_review",
+    label: "Review Code Update",
     description: "Display a pending code diff and ask for approval before applying post-run code changes.",
     renderShell: "self",
     parameters: Type.Object({
@@ -3389,7 +3601,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
           status: "applied",
           applied_at: new Date().toISOString(),
         };
-        await reviewWorkflow.applyCodeEdit(run, entry.edit_id, appliedEntry, { validation_invalidated_by_code_edit: true }, "neuro_apply_code_update");
+        await reviewWorkflow.applyCodeEdit(run, entry.edit_id, appliedEntry, { validation_invalidated_by_code_edit: true }, "seekbrain_code_update_apply");
         return content({
           ok: true,
           run_id: run.runId,
@@ -3407,18 +3619,18 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
             run_id: run.runId,
             edit_id: entry.edit_id,
             decision: "cancel",
-            message: "No feedback was entered. Revise the proposal or call neuro_review_code_update again.",
+            message: "No feedback was entered. Revise the proposal or call seekbrain_code_update_review again.",
           });
       }
       if (selection.decision === "feedback") {
-        await reviewWorkflow.requestCodeChanges(run, entry.edit_id, selection.feedback, "code_update_selector", "neuro_code_update_feedback");
+        await reviewWorkflow.requestCodeChanges(run, entry.edit_id, selection.feedback, "code_update_selector", "seekbrain_code_update_feedback");
         return content({
           ok: true,
           run_id: run.runId,
           edit_id: entry.edit_id,
           decision: "feedback",
           feedback: selection.feedback,
-          guidance: "Revise the proposed code, call neuro_propose_code_update again, then call neuro_review_code_update again. Do not apply or execute code until approved.",
+          guidance: "Revise the proposed code, call seekbrain_code_update_propose again, then call seekbrain_code_update_review again. Do not apply or execute code until approved.",
         });
       }
       return content({
@@ -3426,7 +3638,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         run_id: run.runId,
         edit_id: entry.edit_id,
         decision: "cancel",
-        message: "Code update review was cancelled. Call neuro_review_code_update again when ready.",
+        message: "Code update review was cancelled. Call seekbrain_code_update_review again when ready.",
       });
     },
     renderCall: renderCodeUpdateCall,
@@ -3434,17 +3646,17 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "resolve_targeted_skill",
-    label: "Resolve Targeted Skill",
-    description: "Resolve a SeekBrain trajectory skill, then fall back to repository-backed Paper RAG skill generation and reuse.",
+    name: "seekbrain_recipe_retrieve",
+    label: "Retrieve Analysis Recipe",
+    description: "Retrieve a validated trajectory recipe from the Neuroscience Analysis Repertoire, then fall back to literature-and-code Recipe Crystallization and reuse.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
       root_dir: Type.Optional(Type.String()),
-      skill_dir: Type.Optional(Type.String()),
+      recipe_dir: Type.Optional(Type.String()),
       project_dir: Type.Optional(Type.String()),
-      skill_enable: Type.Optional(Type.Boolean()),
-      generate_skill_enable: Type.Optional(Type.Boolean()),
+      recipe_enabled: Type.Optional(Type.Boolean()),
+      recipe_crystallization_enabled: Type.Optional(Type.Boolean()),
       model: Type.Optional(Type.String()),
       top_k: Type.Optional(Type.Number()),
       relevance_threshold: Type.Optional(Type.Number()),
@@ -3453,22 +3665,29 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfigCached(ctx.cwd);
       const workflow = seekbrainWorkflowConfig(config);
-      return content(await researchSkillWorkflow.resolveTargetedSkill({
+      const recipeParams = {
+        ...params,
+        skill_dir: params.recipe_dir,
+        skill_enable: params.recipe_enabled,
+        generate_skill_enable: params.recipe_crystallization_enabled,
+      };
+      const resolved = await researchSkillWorkflow.resolveTargetedSkill({
         cwd: ctx.cwd,
         workflowRoot: PROJECT_ROOT,
         runId: params.run_id,
         question: params.question,
-        params,
+        params: recipeParams,
         config,
         flags: workflow,
         signal,
-      }));
+      });
+      return content(publicRecipeResult(resolved));
     },
-    renderResult: renderSeekBrainResult("resolve_targeted_skill"),
+    renderResult: renderSeekBrainResult("seekbrain_recipe_retrieve"),
   });
   pi.registerTool({
-    name: "neuro_deep_research",
-    label: "Neuro Deep Research",
+    name: "seekbrain_deep_research",
+    label: "Deep Research",
     description: "Query Paper RAG and synthesize bounded neuroscience background context for downstream agents.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
@@ -3501,19 +3720,19 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_deep_research"),
+    renderResult: renderSeekBrainResult("seekbrain_deep_research"),
   });
 
   pi.registerTool({
-    name: "neuro_plan",
-    label: "Neuro Plan",
-    description: "Run the isolated planning subagent and persist plan.md.",
+    name: "seekbrain_formulation_generate",
+    label: "Generate Methodological Schema",
+    description: "Run the isolated Formulation Agent and persist the methodological schema to plan.md.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
       data_info: Type.Optional(Type.String()),
       extra_path_info: Type.Optional(Type.String()),
-      targeted_skill: Type.Optional(Type.String()),
+      analysis_recipe: Type.Optional(Type.String()),
       deep_research_context: Type.Optional(Type.String()),
       additional_context: Type.Optional(Type.String()),
     }),
@@ -3525,7 +3744,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         question: params.question,
         dataInfo: params.data_info,
         extraPathInfo: params.extra_path_info,
-        targetedSkill: params.targeted_skill,
+        targetedSkill: params.analysis_recipe,
         deepResearchContext: params.deep_research_context,
         additionalContext: params.additional_context,
         rolePrompt: await readPrompt("plan"),
@@ -3541,20 +3760,20 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_plan"),
+    renderResult: renderSeekBrainResult("seekbrain_formulation_generate"),
   });
 
   pi.registerTool({
-    name: "neuro_code",
-    label: "Neuro Code",
-    description: "Run the isolated code subagent, persist generated artifacts, and apply deterministic checks.",
+    name: "seekbrain_code_execute",
+    label: "Run Code Agent",
+    description: "Run the isolated Code Agent, persist generated artifacts, and apply deterministic checks.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
-      plan: Type.Optional(Type.String()),
+      methodological_schema: Type.Optional(Type.String()),
       data_info: Type.Optional(Type.String()),
       extra_path_info: Type.Optional(Type.String()),
-      targeted_skill: Type.Optional(Type.String()),
+      analysis_recipe: Type.Optional(Type.String()),
       validation_feedback: Type.Optional(Type.String()),
       additional_context: Type.Optional(Type.String()),
     }),
@@ -3564,10 +3783,10 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         cwd: ctx.cwd,
         runId: params.run_id,
         question: params.question,
-        plan: params.plan,
+        plan: params.methodological_schema,
         dataInfo: params.data_info,
         extraPathInfo: params.extra_path_info,
-        targetedSkill: params.targeted_skill,
+        targetedSkill: params.analysis_recipe,
         validationFeedback: params.validation_feedback,
         additionalContext: params.additional_context,
         rolePrompt: await readPrompt("code"),
@@ -3594,13 +3813,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_code"),
+    renderResult: renderSeekBrainResult("seekbrain_code_execute"),
   });
 
   pi.registerTool({
-    name: "neuro_validate",
-    label: "Neuro Validate",
-    description: "Run the isolated semantics validator over actual vision figure artifacts and store validation.json. Pass figure_path to validate only one figure.",
+    name: "seekbrain_validation_run",
+    label: "Run Validation Agent",
+    description: "Run the isolated Validation Agent over actual scientific figure artifacts and store validation.json. Pass figure_path to validate only one figure.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
@@ -3640,13 +3859,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_validate"),
+    renderResult: renderSeekBrainResult("seekbrain_validation_run"),
   });
 
   pi.registerTool({
-    name: "neuro_refine_image",
-    label: "Neuro Refine Image",
-    description: "Run the isolated image refinement subagent; outer loop stays in this extension/tool boundary.",
+    name: "seekbrain_figure_refine",
+    label: "Refine Figure",
+    description: "Run the isolated Figure Refinement stage; the outer loop stays in this extension/tool boundary.",
     parameters: Type.Object({
       question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
@@ -3677,13 +3896,13 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_refine_image"),
+    renderResult: renderSeekBrainResult("seekbrain_figure_refine"),
   });
 
   pi.registerTool({
-    name: "neuro_interpret",
-    label: "Neuro Interpret",
-    description: "Analyze the single canonical validated figure and synthesize final scientific conclusions in one isolated vision-agent call.",
+    name: "seekbrain_interpretation_run",
+    label: "Run Interpretation Agent",
+    description: "Analyze the single canonical validated figure and synthesize final scientific conclusions in one isolated Interpretation Agent call.",
     parameters: Type.Object({
       run_id: Type.String(),
       additional_context: Type.Optional(Type.String()),
@@ -3720,6 +3939,6 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         signal,
       }));
     },
-    renderResult: renderSeekBrainResult("neuro_interpret"),
+    renderResult: renderSeekBrainResult("seekbrain_interpretation_run"),
   });
 }

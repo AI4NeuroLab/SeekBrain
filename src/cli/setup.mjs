@@ -48,7 +48,7 @@ const LITERATURE_PROVIDERS = {
   },
   ailab_rag: {
     label: "Shanghai AI Lab Paper RAG",
-    defaultBaseUrl: "http://127.0.0.1:21800",
+    defaultBaseUrl: "",
     requiresKey: false,
   },
 };
@@ -99,7 +99,9 @@ function atomicWrite(path, content, mode) {
 }
 
 function normalizeUrl(value) {
-  const url = new URL(String(value).trim());
+  const normalized = String(value).trim();
+  if (!normalized) throw new Error("Base URL is required");
+  const url = new URL(normalized);
   if (!/^https?:$/.test(url.protocol)) throw new Error("Base URL must use http:// or https://");
   return url.toString().replace(/\/$/, "");
 }
@@ -207,18 +209,19 @@ async function collectProvider(prompter, runtime) {
   };
 }
 
-export async function collectLiteratureProvider(prompter) {
+export async function collectLiteratureProvider(prompter, env = process.env) {
   const source = await prompter.select("Choose a literature provider", [
     { id: "semantic_scholar", label: "Semantic Scholar - https://api.semanticscholar.org/graph/v1" },
     { id: "pubmed", label: "PubMed/PMC - https://eutils.ncbi.nlm.nih.gov/entrez/eutils" },
     { id: "ailab_rag", label: "Shanghai AI Lab Paper RAG" },
-    { id: "none", label: "None", description: "Disable Survey, Deep Research, and RAG Skill generation" },
+    { id: "none", label: "None", description: "Disable Research Survey, Deep Research, and Recipe Crystallization" },
   ], { defaultId: "none" });
   if (source === "none") return { source: "none", label: "None" };
   const provider = LITERATURE_PROVIDERS[source];
   if (!provider) throw new Error(`Unsupported literature provider: ${source}`);
+  const deploymentBaseUrl = source === "ailab_rag" ? String(env.SEEKBRAIN_AILAB_RAG_BASE_URL || "").trim() : "";
   const baseUrl = source === "ailab_rag"
-    ? normalizeUrl(String(await prompter.text(`${provider.label} base URL (default: ${provider.defaultBaseUrl})`) || provider.defaultBaseUrl))
+    ? normalizeUrl(String(await prompter.text(`${provider.label} base URL`, { required: !deploymentBaseUrl }) || deploymentBaseUrl))
     : provider.defaultBaseUrl;
   const credentialRef = provider.requiresKey ? `${source}_default` : undefined;
   const apiKey = provider.requiresKey ? String(await prompter.secret(`${provider.label} API key`)).trim() : "";
@@ -324,6 +327,7 @@ function existingLiteratureConfiguration(config, credentialsPath, env = process.
   if (!provider) return undefined;
   const configured = config.literature?.providers?.[source] || {};
   const baseUrl = String(configured.base_url || provider.defaultBaseUrl).trim();
+  if (!baseUrl) return undefined;
   const credentialRef = String(configured.credential_ref || `${source}_default`).trim();
   let apiKey = "";
   if (provider.requiresKey) {
@@ -512,7 +516,7 @@ export async function runSetup(options = {}) {
     output.write(`  Literature: ${literature.label}\n`);
     output.write(`  Research Survey: ${literature.source === "none" ? "disabled" : "enabled"}\n`);
     output.write("  Deep Research: disabled (enable manually in config if needed)\n");
-    output.write(`  RAG Skill generation: ${literature.source === "none" ? "disabled" : "enabled"}\n`);
+    output.write(`  Recipe Crystallization: ${literature.source === "none" ? "disabled" : "enabled"}\n`);
     output.write(`  User config: ${userConfigPath}\n`);
     output.write(`  Pi agent dir: ${agentDir}\n`);
     return { ok: true, core, fast, literature_provider: literature.source, userConfigPath, agentDir };

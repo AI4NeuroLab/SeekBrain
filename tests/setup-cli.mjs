@@ -7,6 +7,7 @@ import { applyLiteratureConfiguration, applyModelRouting, collectLiteratureProvi
 
 let shanghaiOption;
 let literatureOptions;
+let shanghaiUrlPrompt;
 const shanghaiLiterature = await collectLiteratureProvider({
   async select(message, options) {
     assert.equal(message, "Choose a literature provider");
@@ -14,16 +15,25 @@ const shanghaiLiterature = await collectLiteratureProvider({
     shanghaiOption = options.find((item) => item.id === "ailab_rag");
     return "ailab_rag";
   },
-  async text() { return ""; },
-});
+  async text(message) { shanghaiUrlPrompt = message; return ""; },
+}, { SEEKBRAIN_AILAB_RAG_BASE_URL: "https://paper-rag.example" });
 assert.equal(shanghaiOption.label, "Shanghai AI Lab Paper RAG");
 assert.deepEqual(literatureOptions.map((item) => item.id), ["semantic_scholar", "pubmed", "ailab_rag", "none"]);
 assert.equal(literatureOptions[0].label, "Semantic Scholar - https://api.semanticscholar.org/graph/v1");
 assert.equal(literatureOptions[1].label, "PubMed/PMC - https://eutils.ncbi.nlm.nih.gov/entrez/eutils");
 assert.ok(literatureOptions.slice(0, 3).every((item) => item.description === undefined));
-assert.equal(literatureOptions[3].description, "Disable Survey, Deep Research, and RAG Skill generation");
+assert.equal(literatureOptions[3].description, "Disable Research Survey, Deep Research, and Recipe Crystallization");
 assert.equal(shanghaiLiterature.label, "Shanghai AI Lab Paper RAG");
-assert.equal(shanghaiLiterature.baseUrl, "http://127.0.0.1:21800");
+assert.equal(shanghaiLiterature.baseUrl, "https://paper-rag.example");
+assert.equal(shanghaiUrlPrompt, "Shanghai AI Lab Paper RAG base URL");
+assert.doesNotMatch(shanghaiUrlPrompt, /https?:\/\//);
+await assert.rejects(
+  collectLiteratureProvider({
+    async select() { return "ailab_rag"; },
+    async text() { return ""; },
+  }, {}),
+  /Base URL is required/,
+);
 
 const pubmedLiterature = await collectLiteratureProvider({
   async select() { return "pubmed"; },

@@ -30,7 +30,7 @@ function dependencies(item: Awaited<ReturnType<typeof fixture>>) {
   return {
     lifecycle: item.lifecycle,
     currentArtifactsValidated: () => true,
-    nextStep: () => ({ tool: "neuro_code" }),
+    nextStep: () => ({ tool: "seekbrain_code_execute" }),
     loadImages: async () => ({ images: [{ type: "image", data: "mock" }], warnings: [] }),
     runAgent: async () => ({ ok: false }),
     writeJson: atomicWriteJson,
@@ -106,7 +106,7 @@ describe("Interpret workflow", () => {
       expect(state.interpretation.summary).toContain("positive group-level effect");
       expect(state.image_analyses).toHaveLength(1);
       expect(state.conclusions.conclusions).toHaveLength(1);
-      expect(events).toEqual([expect.objectContaining({ event: "neuro_interpret", ok: true })]);
+      expect(events).toEqual([expect.objectContaining({ event: "seekbrain_interpretation_run", ok: true })]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
     }
@@ -123,7 +123,7 @@ describe("Interpret workflow", () => {
       });
       const result = await workflow.execute({ cwd: item.cwd, runId: item.research.run.runId, rolePrompt: "role", agentConfig: { vision: true }, finalizeSchema: {} });
       expect(invoked).toBe(false);
-      expect(result).toMatchObject({ ok: false, next_step: { tool: "neuro_validate" } });
+      expect(result).toMatchObject({ ok: false, next_step: { tool: "seekbrain_validation_run" } });
     } finally {
       await rm(item.cwd, { recursive: true, force: true });
     }

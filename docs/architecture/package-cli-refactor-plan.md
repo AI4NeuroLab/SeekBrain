@@ -82,7 +82,7 @@ pi_run_seekbrain.sh
 
 - `workflow/seekbrain.sh`：主 launcher。
 - `workflow/summarize_usage.py`：运行结束后的 usage 汇总。
-- `modules/targeted_skill/resolve_targeted_skill.py`：技能解析和生成入口。
+- `modules/targeted_skill/seekbrain_recipe_retrieve.py`：技能解析和生成入口。
 - `modules/targeted_skill/rag_paper.py`：Paper RAG HTTP client。
 - `modules/targeted_skill/save_skill.py`：技能落盘、taxonomy 和索引更新。
 
@@ -446,7 +446,7 @@ SEEKBRAIN_PYTHON=/path/to/python
 - 主 package 发布 resolver、taxonomy 和 trajectory 只读种子。
 - 官方技能库未来独立发布为可选 package，例如 `@<org>/seekbrain-skills`。
 - 未安装技能库时返回结构化 `no_match`，主工作流继续执行。
-- `/neuro-save-skill` 默认写入用户目录，不写入 npm 安装目录。
+- `/seekbrain-save-recipe` 默认写入用户目录，不写入 npm 安装目录。
 
 ## 9. 仓库清理清单
 

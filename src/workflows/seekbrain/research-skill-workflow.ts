@@ -88,7 +88,7 @@ function skippedWithoutLiterature(runId: string, tool: string): WorkflowJson {
 function question(run: WorkflowRunContext, requested?: string): string {
   const value = String(requested || run.state.question || "").trim();
   if (!value) {
-    throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+    throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   }
   return value;
 }
@@ -105,7 +105,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
     "",
-    "You are the isolated SeekBrain deep research subagent.",
+    "You are the isolated SeekBrain Deep Research agent.",
     "Return only by calling the finalize tool. Do not expose scratch reasoning.",
     "Required final tool: finalize_deep_research",
     "",
@@ -119,7 +119,7 @@ export class ResearchSkillWorkflow {
   async resolveTargetedSkill(input: TargetedSkillInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     if (!input.flags.targeted_skill_match && !input.flags.targeted_skill_generate) {
-      return skipped(run.runId, "resolve_targeted_skill", "targeted_skill_match/targeted_skill_generate");
+      return skipped(run.runId, "seekbrain_recipe_retrieve", "targeted_skill_match/targeted_skill_generate");
     }
     const configured = literatureQueryConfig(
       input.config,
@@ -156,7 +156,7 @@ export class ResearchSkillWorkflow {
     });
     await this.dependencies.appendEvent({
       run_id: run.runId,
-      event: "resolve_targeted_skill",
+      event: "seekbrain_recipe_retrieve",
       ok: result.ok,
       matched: result.matched,
       source: result.source,
@@ -174,8 +174,8 @@ export class ResearchSkillWorkflow {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     if (!input.flags.deep_research) {
       return input.flags.has_literature_provider === false
-        ? skippedWithoutLiterature(run.runId, "neuro_deep_research")
-        : skipped(run.runId, "neuro_deep_research", "deep_research");
+        ? skippedWithoutLiterature(run.runId, "seekbrain_deep_research")
+        : skipped(run.runId, "seekbrain_deep_research", "deep_research");
     }
     const researchQuestion = question(run, input.question);
     const rag = input.agentConfig.rag || {};
@@ -235,7 +235,7 @@ export class ResearchSkillWorkflow {
     }
     await this.dependencies.appendEvent({
       run_id: run.runId,
-      event: "neuro_deep_research",
+      event: "seekbrain_deep_research",
       ok: agent.ok,
       source_count: sources.length,
     });

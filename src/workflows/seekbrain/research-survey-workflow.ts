@@ -139,7 +139,7 @@ export class ResearchSurveyWorkflow {
         literature_grounding_sources: [],
         research_planning: { ...current, survey },
       });
-      await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_research_survey", ok: true, skipped: true, reason });
+      await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_research_survey", ok: true, skipped: true, reason });
       return { ok: true, run_id: run.runId, skipped: true, reason, survey };
     }
 
@@ -229,7 +229,7 @@ export class ResearchSurveyWorkflow {
             },
           },
         });
-        await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_research_survey", ok: false, source_count: sources.length });
+        await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_research_survey", ok: false, source_count: sources.length });
         return { ok: false, run_id: run.runId, error: agent.error || "Research Survey synthesis did not complete.", sources_path: sourcesPath };
       }
       status = "ready";
@@ -249,7 +249,7 @@ export class ResearchSurveyWorkflow {
             },
           },
         });
-        await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_research_survey", ok: false, source_count: sources.length, reason: "empty_context" });
+        await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_research_survey", ok: false, source_count: sources.length, reason: "empty_context" });
         return { ok: false, run_id: run.runId, error: "Research Survey returned an empty literature_grounding_context.", sources_path: sourcesPath };
       }
       if (!background.startsWith("[Literature Grounding Background]")) {
@@ -287,7 +287,7 @@ export class ResearchSurveyWorkflow {
     });
     await this.dependencies.appendEvent({
       run_id: run.runId,
-      event: "neuro_research_survey",
+      event: "seekbrain_research_survey",
       ok: true,
       status,
       source_count: metadata.length,

@@ -111,7 +111,7 @@ describe("Phase 5 external Skill selection", () => {
   it("never duplicates a sole usable paper and generates nothing without usable evidence", async () => {
     const single = await resolveExternal([paper("one")], validate);
     expect(single.generator.calls).toHaveLength(1);
-    expect(single.result.warnings).toContain("Only one usable paper was retrieved; one Skill was generated without duplication");
+    expect(single.result.warnings).toContain("Only one usable paper was retrieved; one analysis recipe was crystallized without duplication");
     const empty = await resolveExternal([], validate);
     expect(empty.generator.calls).toHaveLength(0);
     expect(empty.result).toMatchObject({ ok: true, matched: false, generated: false });

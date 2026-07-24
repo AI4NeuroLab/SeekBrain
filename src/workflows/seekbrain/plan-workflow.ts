@@ -34,7 +34,7 @@ export interface PlanWorkflowInput {
 function resolveQuestion(run: WorkflowRunContext, requested?: string): string {
   const value = String(requested || run.state.question || "").trim();
   if (!value) {
-    throw new Error("question is required. Pass it to the tool, or persist it first via neuro_start_run/neuro_resume_run.");
+    throw new Error("question is required. Pass it to the tool, or persist it first via seekbrain_run_start/seekbrain_run_resume.");
   }
   return value;
 }
@@ -68,7 +68,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
     "",
-    "You are the isolated SeekBrain planner subagent.",
+    "You are the isolated SeekBrain Formulation Agent.",
     "Return only by calling the finalize tool. Do not expose scratch reasoning.",
     "Required final tool: finalize_plan",
     "",
@@ -93,11 +93,11 @@ export class PlanWorkflow {
       `Data info:\n${metadata.data_info}`,
       `Extra path info:\n${metadata.extra_path_info}`,
       run.state.inherited_context ? `Prior-round reusable context (read-only):\n${JSON.stringify(run.state.inherited_context, null, 2)}` : "",
-      `Targeted skill:\n${input.targetedSkill || run.state.targeted_skill || ""}`,
+      `Analysis recipe:\n${input.targetedSkill || run.state.targeted_skill || ""}`,
       `Deep research context:\n${input.deepResearchContext || run.state.deep_research_context || ""}`,
-      humanFeedback ? `Human review feedback for the plan:\n${humanFeedback}` : "",
+      humanFeedback ? `Researcher feedback for the methodological schema:\n${humanFeedback}` : "",
       additionalContextBlock(input.additionalContext),
-      "Finalize with: { plan_markdown, review_summary, summary, confidence, warnings }. review_summary is the concise text shown to the human approval UI; do not make it a copy of the full plan.",
+      "Finalize with: { plan_markdown, review_summary, summary, confidence, warnings }. review_summary is the concise text shown to the researcher approval UI; do not make it a copy of the full methodological schema.",
     ].join("\n\n"));
     const agent = await this.dependencies.runAgent({
       runDir: run.runDir,
@@ -115,7 +115,7 @@ export class PlanWorkflow {
         extra_path_info: metadata.extra_path_info,
       });
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "neuro_plan", ok: agent.ok });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_formulation_generate", ok: agent.ok });
 
     const feedbackAfter = feedbackText(run);
     const approvedAfter = reviewEntry(run).status === "approved";
@@ -141,7 +141,7 @@ export class PlanWorkflow {
         review_owner: "main_agent",
       },
       guidance: needsUserReview
-        ? "Summarize plan_markdown yourself in chat, show plan_path, then call neuro_review_plan to present the native two-option selector. Do not replace the selector with a plain chat approval request. If feedback is returned, revise locally with neuro_update_plan when appropriate; rerun neuro_plan only for broad redesigns. Do not call neuro_code until plan approval is recorded."
+        ? "Summarize the methodological schema in plan_markdown yourself in chat, show plan_path, then call seekbrain_formulation_researcher_review to present the native two-option selector. Do not replace the selector with a plain chat approval request. If feedback is returned, revise locally with seekbrain_formulation_update when appropriate; rerun seekbrain_formulation_generate only for broad redesigns. Do not call seekbrain_code_execute until schema approval is recorded."
         : undefined,
       debug: { subagent_dir: agent.subagent_dir, snapshot_dir: agent.snapshot_dir },
     };

@@ -290,7 +290,7 @@ notification and resumes the queue on user interaction.
 
 ```text
 2 completed rounds are available for synthesis.
-Type "generate a report" or run /neuro-report when needed.
+Type "generate a report" or run /seekbrain-report when needed.
 ```
 
 The hint performs no model call and does not create report files. A user may
@@ -309,7 +309,7 @@ Supported entry points:
 
 ```text
 generate a report
-/neuro-report
+/seekbrain-report
 seekbrain report <project-path> --rounds 3,4,6
 ```
 
@@ -450,7 +450,7 @@ project history or entire Research Planning tree.
 The Reporter prompt should reasonably adapt the useful rules from:
 
 ```text
-/mnt/shared-storage-user/zhuyuqing-p/SeekBrain-main/extensions/neuro/level2/prompts/paper_report.md
+prompts/report.md
 ```
 
 It must not copy the old Level 2 workflow assumptions wholesale.
@@ -596,7 +596,7 @@ Status: complete.
 
 Status: complete.
 
-- Add `/neuro-report`, conversational tooling, and CLI selection.
+- Add `/seekbrain-report`, conversational tooling, and CLI selection.
 - Implement normal-round and task-round selectors.
 - Build the normalized evidence bundle from selected results only.
 - Snapshot selected assets with stable figure numbering.

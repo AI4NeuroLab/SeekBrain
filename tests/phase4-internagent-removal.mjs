@@ -16,7 +16,7 @@ for (const path of [
 
 const runtime = await readFile(join(root, "src/extension/seekbrain-runtime.ts"), "utf8");
 const saveCommand = await readFile(join(root, "src/extension/commands/save-skill-command.ts"), "utf8");
-assert.doesNotMatch(runtime, /internagent\/|runPythonScript|resolve_targeted_skill\.py|rag_paper\.py/);
+assert.doesNotMatch(runtime, /internagent\/|runPythonScript|seekbrain_recipe_retrieve\.py|rag_paper\.py/);
 assert.doesNotMatch(saveCommand, /internagent\/|save_skill\.py|runPython/);
 assert.match(runtime, /TargetedSkillResolver/);
 assert.match(runtime, /PaperRagClient/);

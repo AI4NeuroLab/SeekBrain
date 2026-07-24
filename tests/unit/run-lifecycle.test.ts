@@ -105,7 +105,7 @@ describe("Phase 4 lifecycle workflows", () => {
     const capabilities = capabilitiesResult(DEFAULT_SEEKBRAIN_CONFIG);
     expect(capabilities).toMatchObject({
       ok: true,
-      continuation_tool: "neuro_continue_research",
+      continuation_tool: "seekbrain_research_continue",
       optional: { deep_research: "disabled_no_literature_provider", image_refine: "enabled" },
       literature: { provider: "none", available: false },
     });

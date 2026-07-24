@@ -59,14 +59,26 @@ seekbrain run \
 Run `seekbrain -h` for SeekBrain options. Pass advanced Pi options after `--`,
 for example `seekbrain -- --model provider/model`.
 
+Resume a saved SeekBrain conversation with either form:
+
+```bash
+seekbrain resume <session-id-or-path>
+seekbrain --session <session-id-or-path>
+```
+
+The exit hint uses the same SeekBrain command, so resuming preserves the
+SeekBrain extensions, prompts, tool allowlist, and project configuration.
+
 ## Workflow
 
 The main workflow follows these evidence dependencies:
 
 ```text
-data resolve (when given a directory) → research/skill → plan → code
-                                      → validate → optional image refinement
-                                      → interpret
+dataset profiling (when given a directory) → Deep Research → recipe
+                                            → analytical formulation
+                                            → code generation and execution
+                                            → validation → optional figure refinement
+                                            → result interpretation
 ```
 
 ## First-time setup
@@ -110,8 +122,8 @@ Setup requires one vision-capable Core model and optionally asks for a separate
 vision-capable Fast model. The routing preserves the research workflow split:
 
 ```text
-Core: main, targeted skill, deep research, plan, code, validate, interpret
-Fast: image refinement, default helpers
+Core: main, analysis recipe, Deep Research, analytical formulation, Code Agent, Validation Agent, Interpretation Agent
+Fast: figure refinement, default helpers
 ```
 
 Choosing no Fast model routes every stage through Core. A first interactive
@@ -131,9 +143,9 @@ Useful interactive commands include:
 
 ```text
 /seekbrain                 activate/reset the workflow widget
-/neuro-show research      inspect the full research report
-/neuro-show skill         inspect the selected skill
-/neuro-save-skill         save a completed run as a reusable skill
+/seekbrain-show research  inspect the full Deep Research background
+/seekbrain-show recipe    inspect the selected analysis recipe
+/seekbrain-save-recipe    save a validated run as an analysis recipe
 ```
 
 ## Configuration
@@ -179,30 +191,30 @@ An explicit launch such as `seekbrain -- --model provider/model` overrides the
 configured main model for that invocation.
 
 Users may provide either existing metadata JSON or just a dataset directory.
-For a directory, the Data Resolve agent inspects only that explicit root,
-creates factual metadata, and stores it under
+For a directory, the Data Analysis Agent profiles only that explicit root,
+creates factual metadata, and stores the dataset profile under
 `~/.seekbrain/datasets/<dataset-id>/metadata.json`. Later runs using the same
 canonical directory reuse that metadata instead of invoking the agent again.
 Each research round also records `dataset_meta_snapshot.json` for provenance.
 Set `paths.dataset_cache` in SeekBrain YAML or
 `SEEKBRAIN_DATASET_CACHE_ROOT` to relocate the cache. Regeneration is available
-through the `neuro_resolve_data` tool's explicit `refresh` option.
+through the `seekbrain_data_resolve` tool's explicit `refresh` option.
 
 SeekBrain does not ship a literature service. Select Semantic Scholar,
 PubMed/PMC, Shanghai AI Lab Paper RAG, or None during setup. With None, trajectory
-and expert Skill matching remains available, while Research Survey, Deep
-Research, and literature-backed Skill generation are disabled; the scientific
+and expert recipe matching remains available, while Research Survey, Deep
+Research, and Recipe Crystallization are disabled; the scientific
 workflow continues without global literature context.
 
 Semantic Scholar and PubMed/PMC results are enriched from PMC when possible.
-Associated paper repositories can produce repository-backed Skills. When no
-valid paper repository exists, SeekBrain may generate a paper-only Skill with no
+Associated paper repositories can produce repository-backed analysis recipes. When no
+valid paper repository exists, SeekBrain may crystallize a paper-only recipe with no
 `scripts/` directory; dependencies and merely cited repositories are excluded.
 Shanghai AI Lab keeps its existing `/queryfull` behavior. Project-local and user
-skills are discovered under `.seekbrain/skills`.
+analysis recipes are discovered under `.seekbrain/skills`.
 
-The package bundles the trajectory skill library and materializes it lazily on
-the first skill-resolution call. Skill storage is unified under:
+The package bundles the trajectory recipe library and materializes it lazily on
+the first recipe-retrieval call. Analysis Recipe storage is unified under:
 
 ```text
 ~/.seekbrain/skills/
@@ -211,12 +223,12 @@ the first skill-resolution call. Skill storage is unified under:
 └── from_expert/
 ```
 
-The resolver first performs model-assisted matching against trajectory skills
-and loads the selected `SKILL.md` plus filtered script resources. Only a miss
-queries the selected literature provider. Generated literature Skills are
+The resolver first performs model-assisted matching against trajectory recipes
+and loads the selected recipe document (`SKILL.md`) plus filtered script resources. Only a miss
+queries the selected literature provider. Crystallized literature recipes are
 persisted in `from_rag`, so the same question/evidence folder is reused on later
 runs. Set
-`SEEKBRAIN_SKILLS_ROOT` to relocate this user-owned skill root.
+`SEEKBRAIN_SKILLS_ROOT` to relocate this user-owned recipe root.
 
 External literature responses use a restart-safe cache at
 `~/.cache/seekbrain/literature-cache.json`. Set

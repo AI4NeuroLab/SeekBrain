@@ -61,25 +61,25 @@ implementation were intentionally removed from the standalone product.
 
 The current SeekBrain implementation registers 21 tools:
 
-1. `neuro_ping`
-2. `neuro_capabilities`
-3. `neuro_start_research`
-4. `neuro_continue_research`
-5. `neuro_start_run`
-6. `neuro_resume_run`
-7. `neuro_approve_stage`
-8. `neuro_record_feedback`
-9. `neuro_review_plan`
-10. `neuro_update_plan`
-11. `neuro_review_code_edit`
-12. `neuro_propose_code_update`
-13. `neuro_review_code_update`
-14. `resolve_targeted_skill`
-15. `neuro_deep_research`
-16. `neuro_plan`
-17. `neuro_code`
-18. `neuro_validate`
-19. `neuro_refine_image`
+1. `seekbrain_system_check`
+2. `seekbrain_system_capabilities`
+3. `seekbrain_research_start`
+4. `seekbrain_research_continue`
+5. `seekbrain_run_start`
+6. `seekbrain_run_resume`
+7. `seekbrain_review_approve`
+8. `seekbrain_review_feedback`
+9. `seekbrain_formulation_researcher_review`
+10. `seekbrain_formulation_update`
+11. `seekbrain_code_edit_review`
+12. `seekbrain_code_update_propose`
+13. `seekbrain_code_update_review`
+14. `seekbrain_recipe_retrieve`
+15. `seekbrain_deep_research`
+16. `seekbrain_formulation_generate`
+17. `seekbrain_code_execute`
+18. `seekbrain_validation_run`
+19. `seekbrain_figure_refine`
 20. `neuro_analyze_image`
 21. `neuro_conclude`
 
@@ -89,7 +89,7 @@ and be reviewed as a compatibility change.
 
 ## Initial run state and layout
 
-Calling `neuro_start_run` creates:
+Calling `seekbrain_run_start` creates:
 
 ```text
 <work_dir>/

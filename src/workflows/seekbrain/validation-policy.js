@@ -78,13 +78,13 @@ export function validationNextStep(validation, runId, figurePath = "") {
   switch (validation?.route) {
     case "retry_code":
       return {
-        tool: "neuro_code",
+        tool: "seekbrain_code_execute",
         args: { run_id: runId, validation_feedback: validation.next_code_feedback },
         reason: "Blocking validation issues require a Code repair.",
       };
     case "refine_image":
       return {
-        tool: "neuro_refine_image",
+        tool: "seekbrain_figure_refine",
         args: {
           run_id: runId,
           figure_path: validation.refine_target?.figure_path,
@@ -94,13 +94,13 @@ export function validationNextStep(validation, runId, figurePath = "") {
       };
     case "conclude_with_limitations":
       return {
-        tool: "neuro_interpret",
+        tool: "seekbrain_interpretation_run",
         args: { run_id: runId },
         reason: "The Code-attempt limit was reached; continue with tentative evidence and explicit limitations.",
       };
     default:
       return {
-        tool: "neuro_interpret",
+        tool: "seekbrain_interpretation_run",
         args: { run_id: runId },
         reason: "Validation passed; continue to scientific interpretation.",
       };

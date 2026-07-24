@@ -154,7 +154,7 @@ async function loadExistingSkill(candidate: SkillCandidate, resourceFilter: Json
       }
     }
   }
-  const header = `${"=".repeat(60)}\n  SKILL : ${candidate.name}  (relevance: ${candidate.score.toFixed(4)})\n${"=".repeat(60)}`;
+  const header = `${"=".repeat(60)}\n  RECIPE : ${candidate.name}  (relevance: ${candidate.score.toFixed(4)})\n${"=".repeat(60)}`;
   return [header, `[SKILL.md]\n${candidate.text}`, ...resources.map((item) => `[${item.path}]\n${item.content}`)].join("\n\n");
 }
 
@@ -188,7 +188,7 @@ export class TargetedSkillResolver {
     const warnings: string[] = [];
     const base = { matched: false, source: "none", targeted_skill: "", skill_paths: [], reference_paths: [], generated: false, warnings, trace_id: traceId };
     if (!question) return { ok: false, ...base, warnings: ["question is required"], error: "question is required" };
-    if (!bool(input.skill_enable, true)) return { ok: true, ...base, warnings: ["skill module disabled"], artifacts: await traceArtifacts(input.trace_dir, { trace_id: traceId, question, skill_enable: false }, "") };
+    if (!bool(input.skill_enable, true)) return { ok: true, ...base, warnings: ["analysis recipe module disabled"], artifacts: await traceArtifacts(input.trace_dir, { trace_id: traceId, question, skill_enable: false }, "") };
 
     const projectRoot = resolve(input.root_dir || cwd);
     const managedTrajectory = !input.skill_dir && this.options.ensureTrajectoryDir ? await this.options.ensureTrajectoryDir() : undefined;
@@ -198,7 +198,7 @@ export class TargetedSkillResolver {
     const directories = uniquePaths([primary, ...extras], projectRoot);
     const matchEnabled = bool(input.match_skill_enable, true);
     const generateEnabled = bool(input.generate_skill_enable, true);
-    if (!matchEnabled) warnings.push("existing targeted skill matching disabled by workflow.seekbrain.targeted_skill_match");
+    if (!matchEnabled) warnings.push("existing analysis recipe matching disabled by workflow.seekbrain.targeted_skill_match");
 
     if (matchEnabled) {
       const all = (await Promise.all(directories.map((directory) => candidates(directory, question)))).flat();
@@ -214,7 +214,7 @@ export class TargetedSkillResolver {
             const candidate = all.find((item) => selection.path === item.path || selection.name === item.name);
             return candidate ? { ...candidate, score: Number(selection.score) } : undefined;
           }).filter((item): item is SkillCandidate => item !== undefined && item.score >= threshold).slice(0, topK);
-        } catch (error) { warnings.push(`model skill matching failed; deterministic fallback used: ${String(error)}`); }
+        } catch (error) { warnings.push(`model recipe matching failed; deterministic fallback used: ${String(error)}`); }
       }
       if (!this.options.selectSkills || !selectorSucceeded) matched = all.filter((item) => item.score >= threshold).sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, topK);
       if (matched.length) {
@@ -246,10 +246,10 @@ export class TargetedSkillResolver {
       for (const source of usable) {
         const repoLink = String(source.github_links[0]);
         const result = await this.generator.generate({ question, title: String(source.title || ""), paperText: String(source.text || ""), repoLink, outputDir: generatedDir, signal });
-        if (!result.ok || !result.skill_path) { warnings.push(result.error || `failed to generate skill for ${repoLink}`); continue; }
+        if (!result.ok || !result.skill_path) { warnings.push(result.error || `failed to crystallize analysis recipe for ${repoLink}`); continue; }
         warnings.push(...(result.warnings || []));
         generatedPaths.push(result.skill_path);
-        loaded.push(`### Skill from: ${source.title} (${repoLink})\n\n${await loadGeneratedSkill(result.skill_path)}`);
+        loaded.push(`### Recipe from: ${source.title} (${repoLink})\n\n${await loadGeneratedSkill(result.skill_path)}`);
         if (result.reused) reusedSkillPaths.push(result.skill_path);
       }
     } else {
@@ -285,7 +285,7 @@ export class TargetedSkillResolver {
           selected.push({ paper, evidenceLevel: "paper_only" });
         }
       }
-      if (!papers.length) warnings.push("No usable paper was retrieved; no Skill was generated");
+      if (!papers.length) warnings.push("No usable paper was retrieved; no analysis recipe was crystallized");
       let repositorySkillCount = 0;
       let paperOnlySkillCount = 0;
       for (const item of selected) {
@@ -304,15 +304,15 @@ export class TargetedSkillResolver {
           signal,
         });
         const label = item.repoLink || "paper-only";
-        if (!result.ok || !result.skill_path) { warnings.push(result.error || `failed to generate skill for ${label}`); continue; }
+        if (!result.ok || !result.skill_path) { warnings.push(result.error || `failed to crystallize analysis recipe for ${label}`); continue; }
         warnings.push(...(result.warnings || []));
         generatedPaths.push(result.skill_path);
         if (item.evidenceLevel === "repository_backed") repositorySkillCount += 1;
         else paperOnlySkillCount += 1;
-        loaded.push(`### Skill from: ${item.paper.title} (${label})\n\n${await loadGeneratedSkill(result.skill_path)}`);
+        loaded.push(`### Recipe from: ${item.paper.title} (${label})\n\n${await loadGeneratedSkill(result.skill_path)}`);
         if (result.reused) reusedSkillPaths.push(result.skill_path);
       }
-      if (papers.length === 1 && generatedPaths.length === 1) warnings.push("Only one usable paper was retrieved; one Skill was generated without duplication");
+      if (papers.length === 1 && generatedPaths.length === 1) warnings.push("Only one usable paper was retrieved; one analysis recipe was crystallized without duplication");
       compatibilityMetrics = {
         paper_source: provider,
         retrieved_count: papers.length,
@@ -327,7 +327,7 @@ export class TargetedSkillResolver {
     const trace = { trace_id: traceId, question, source, skills_dir: directories[0], generated_skill_output_dir: generatedDir, generated_paths: generatedPaths, reference_paths: references, ...(compatibilityMetrics ? { compatibility_metrics: compatibilityMetrics } : {}), warnings };
     const artifacts = await traceArtifacts(input.trace_dir, trace, targetedSkill);
     if (targetedSkill) return { ok: true, matched: true, source, targeted_skill: targetedSkill, skill_paths: generatedPaths, reference_paths: references, generated: true, warnings, trace_id: traceId, artifacts, details: { generated_skill_output_dir: generatedDir, reused_skill_paths: reusedSkillPaths, ...(compatibilityMetrics || {}) } };
-    warnings.push(...(rag.warnings || []), "SkillLoader missed and RAG did not produce usable generated skills");
+    warnings.push(...(rag.warnings || []), "No repertoire recipe matched and Recipe Crystallization did not produce a usable analysis recipe");
     return { ok: true, ...base, warnings: [...new Set(warnings)], artifacts, ...(compatibilityMetrics ? { details: compatibilityMetrics } : {}), ...(rag.error ? { error: rag.error } : {}) };
   }
 }

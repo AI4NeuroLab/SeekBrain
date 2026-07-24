@@ -22,8 +22,8 @@ Model credentials remain in Pi auth storage. Semantic Scholar and PubMed keys
 are written atomically to
 `~/.config/seekbrain/literature-credentials.json` with mode `0600`; SeekBrain
 YAML stores only a credential reference. Selecting None disables Research
-Survey, Deep Research, and RAG Skill generation while preserving trajectory
-Skill matching.
+Survey, Deep Research, and Recipe Crystallization while preserving trajectory
+recipe matching.
 
 Setup validates the chosen provider before writing credentials. It retries a
 Semantic Scholar `429` once according to `Retry-After`; a continued `429` is a
@@ -84,7 +84,7 @@ workflow:
 
 `candidate_pool_size` controls retrieval breadth independently from
 `skill_top_k`. For Semantic Scholar and PubMed, valid associated repositories
-are preferred; remaining slots may use real paper-only Skills without a
+are preferred; remaining slots may use real paper-only analysis recipes without a
 `scripts/` directory. Dependencies and cited repositories are not treated as
 paper code. Shanghai AI Lab continues to use its existing `/queryfull` contract.
 With `paper_source: none`, runtime capability gates override literature features
@@ -119,7 +119,7 @@ override at `<project>/seekbrain.config.yaml`; the latter wins only for fields
 it defines. The legacy unscoped `seekbrain config init` remains an alias for
 project scope.
 
-Dataset metadata generated from raw dataset directories is cached separately at
+Dataset profiles generated from raw dataset directories are cached separately at
 `~/.seekbrain/datasets/`. Override it with `paths.dataset_cache` (or
 `SEEKBRAIN_DATASET_CACHE_ROOT`) when the home filesystem is unsuitable.
 
@@ -136,9 +136,9 @@ agents:
 Explicit Pi arguments passed after `--` have the highest priority. Provider
 credentials remain in Pi auth storage or environment variables.
 
-## Skill storage
+## Analysis Recipe storage
 
-SeekBrain uses one user-owned skill root by default:
+SeekBrain uses one user-owned analysis recipe root by default:
 
 ```text
 ~/.seekbrain/skills/
@@ -147,13 +147,13 @@ SeekBrain uses one user-owned skill root by default:
 └── from_expert/
 ```
 
-The bundled trajectory library is copied atomically on first skill resolution;
+The bundled trajectory library is copied atomically on first recipe retrieval;
 help and version commands do not write it. Set `SEEKBRAIN_SKILLS_ROOT` to move
-the unified user skill root. A project may additionally keep expert skills in
+the unified user recipe root. A project may additionally keep expert recipes in
 `<project>/.seekbrain/skills/from_expert`.
 
 The resolution flow remains trajectory matching first, followed by Paper RAG
-and persistent repository-backed generation only when no trajectory skill
+and persistent repository-backed Recipe Crystallization only when no trajectory recipe
 matches. `modules.targeted_skill.resource_filter` controls which trajectory
 resources are loaded; the public default matches the historical loader by
 including `.md` and `.py` files with a maximum of five resources.

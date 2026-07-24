@@ -77,7 +77,7 @@ describe("validate workflow", () => {
           normalizedContext = context;
           return { ...result, route: "proceed", validated_code_attempt: context.codeAttempt };
         },
-        nextStep: (_validation, runId) => ({ tool: "neuro_interpret", args: { run_id: runId } }),
+        nextStep: (_validation, runId) => ({ tool: "seekbrain_interpretation_run", args: { run_id: runId } }),
         snapshot: async (_run, label) => { snapshots.push(label); },
         appendEvent: async (event) => { events.push(event); },
       });
@@ -101,8 +101,8 @@ describe("validate workflow", () => {
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
       expect(state.validation_invalidated_by_code_edit).toBe(false);
       expect(state.refinement_pending_validation).toBe(false);
-      expect(result).toMatchObject({ ok: true, next_step: { tool: "neuro_interpret" } });
-      expect(events[0]).toMatchObject({ event: "neuro_validate", pass: true, route: "proceed" });
+      expect(result).toMatchObject({ ok: true, next_step: { tool: "seekbrain_interpretation_run" } });
+      expect(events[0]).toMatchObject({ event: "seekbrain_validation_run", pass: true, route: "proceed" });
       expect(snapshots).toEqual(["after_validate"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });

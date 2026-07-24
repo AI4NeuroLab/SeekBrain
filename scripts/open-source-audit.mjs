@@ -32,6 +32,7 @@ const contentRules = [
 
 const findings = [];
 for (const path of files) {
+  const vendoredReference = /^library\/skills\/trajectory\/[^/]+\/references\/matched_files\//.test(path);
   for (const pattern of forbiddenFiles) {
     if (pattern.test(path)) findings.push({ path, rule: "sensitive file name" });
   }
@@ -46,6 +47,9 @@ for (const path of files) {
   if (buffer.includes(0)) continue;
   const source = buffer.toString("utf8");
   for (const [rule, pattern] of contentRules) {
+    // Matched repository files are verbatim upstream evidence. Author-local
+    // example paths are expected there and are not SeekBrain deployment paths.
+    if (vendoredReference && (rule === "personal shared-storage path" || rule === "personal home path")) continue;
     if (pattern.test(source)) findings.push({ path, rule });
   }
 }

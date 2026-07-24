@@ -31,8 +31,8 @@ try {
     sendMessage() {},
   });
 
-  const resolveTool = tools.find((tool) => tool.name === "neuro_resolve_data");
-  assert.ok(resolveTool, "neuro_resolve_data must be registered");
+  const resolveTool = tools.find((tool) => tool.name === "seekbrain_data_resolve");
+  assert.ok(resolveTool, "seekbrain_data_resolve must be registered");
   const resolved = await resolveTool.execute(
     "resolve-cache-hit",
     { data_dir: dataDir, question: "test" },
@@ -46,7 +46,7 @@ try {
   assert.equal(resolved.details.metadata.description, "cached test dataset");
   assert.equal(resolved.details.metadata_path, identity.metadataPath);
 
-  const startTool = tools.find((tool) => tool.name === "neuro_start_research");
+  const startTool = tools.find((tool) => tool.name === "seekbrain_research_start");
   const started = await startTool.execute(
     "start-with-resolved-data",
     {
