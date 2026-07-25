@@ -71,4 +71,58 @@ describe("ExistingPiAgentAdapter", () => {
     expect(result).toMatchObject({ ok: false, error: "Error: subagent aborted by caller" });
     expect(disposed).toBe(true);
   });
+
+  it("composes a caller tool-result interceptor after Pi's existing hook", async () => {
+    let finalTool: any;
+    let effectiveResult: any;
+    const agent: any = {
+      afterToolCall: async () => ({
+        content: [{ type: "text", text: "existing hook output" }],
+        details: { existing: true },
+        isError: true,
+      }),
+    };
+    const sdk = {
+      defineTool(definition: any) { finalTool = definition; return definition; },
+      SessionManager: { inMemory: () => ({}) },
+      async createAgentSession() {
+        return { session: {
+          agent,
+          subscribe: () => () => {},
+          async prompt() {
+            effectiveResult = await agent.afterToolCall({
+              toolCall: { id: "bash-1", name: "bash" },
+              args: { command: "python analysis.py" },
+              result: { content: [{ type: "text", text: "raw" }], details: {} },
+              isError: true,
+            });
+            await finalTool.execute("call", { answer: 1 });
+          },
+          getSessionStats: () => ({}),
+          async dispose() {},
+        } };
+      },
+    };
+    const adapter = new ExistingPiAgentAdapter({ codingSdkLoader: async () => sdk });
+    const result = await adapter.run({
+      runDir: "/tmp/run",
+      finalizeTool: "finish",
+      finalizeSchema: {},
+      prompt: "work",
+      afterToolCall: async (event) => ({
+        content: [...event.content, { type: "text", text: "dependency approval output" }],
+        details: { ...(event.details as any), intercepted: true },
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(effectiveResult).toMatchObject({
+      content: [
+        { type: "text", text: "existing hook output" },
+        { type: "text", text: "dependency approval output" },
+      ],
+      details: { existing: true, intercepted: true },
+      isError: true,
+    });
+  });
 });

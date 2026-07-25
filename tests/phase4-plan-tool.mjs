@@ -3,11 +3,13 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const toolSource = await readFile(new URL("src/extension/runtime/stages/formulation-tools.ts", root), "utf8");
 const workflowSource = await readFile(new URL("src/workflows/seekbrain/plan-workflow.ts", root), "utf8");
 const promptSource = await readFile(new URL("prompts/plan.md", root), "utf8");
 
-assert.match(extensionSource, /planWorkflow\.execute/);
-assert.match(extensionSource, /humanReviewRequired: humanGateEnabled\(config, "plan"\)/);
+assert.match(toolSource, /planWorkflow\.execute/);
+assert.match(toolSource, /humanReviewRequired: humanGateEnabled\(config, "plan"\)/);
+assert.doesNotMatch(toolSource, /pi\.registerTool|createAgentSession|spawn\(/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 assert.match(workflowSource, /plan\.md/);
 assert.match(workflowSource, /seekbrain_formulation_researcher_review/);

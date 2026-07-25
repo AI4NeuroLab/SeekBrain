@@ -15,15 +15,17 @@ for (const path of [
 ]) await access(join(root, path));
 
 const runtime = await readFile(join(root, "src/extension/seekbrain-runtime.ts"), "utf8");
+const runtimeServices = await readFile(join(root, "src/extension/runtime/create-runtime-services.ts"), "utf8");
+const codeEditService = await readFile(join(root, "src/extension/runtime/shared/code-edit-service.ts"), "utf8");
 const saveCommand = await readFile(join(root, "src/extension/commands/save-skill-command.ts"), "utf8");
 assert.doesNotMatch(runtime, /internagent\/|runPythonScript|seekbrain_recipe_retrieve\.py|rag_paper\.py/);
 assert.doesNotMatch(saveCommand, /internagent\/|save_skill\.py|runPython/);
-assert.match(runtime, /TargetedSkillResolver/);
-assert.match(runtime, /PaperRagClient/);
-assert.match(runtime, /SkillLibraryManager/);
-assert.match(runtime, /RagSkillGenerator/);
+assert.match(runtimeServices, /TargetedSkillResolver/);
+assert.match(runtimeServices, /PaperRagClient/);
+assert.match(runtimeServices, /SkillLibraryManager/);
+assert.match(runtimeServices, /RagSkillGenerator/);
 assert.match(saveCommand, /writeSkill/);
-assert.match(runtime, /SEEKBRAIN_PYTHON/);
+assert.match(codeEditService, /SEEKBRAIN_PYTHON/);
 
 await assert.rejects(access(join(root, "internagent")), (error) => error?.code === "ENOENT", "internagent/ must be removed after the TypeScript contracts pass");
 

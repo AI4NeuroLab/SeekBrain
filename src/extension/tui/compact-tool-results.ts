@@ -356,7 +356,7 @@ export function renderSeekBrainResult(toolName: string) {
         || toolName === "seekbrain_planning_researcher_decision_record"
       )
     ) return researchPlanningResult(toolName, details, theme);
-    if (details.ok !== true) return failureResult(toolName, details, theme);
+    if (details.progress !== true && details.ok !== true) return failureResult(toolName, details, theme);
     switch (toolName) {
       case "seekbrain_system_check":
         return textComponent([`✓ SeekBrain extension ready · ${Number(details.run_count || 0)} indexed runs`, "Ctrl+O for details"], theme);

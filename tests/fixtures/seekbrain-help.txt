@@ -1,4 +1,4 @@
-SeekBrain 0.1.5
+SeekBrain 0.1.1
 
 Usage:
   seekbrain [options] [-- <pi-args...>]

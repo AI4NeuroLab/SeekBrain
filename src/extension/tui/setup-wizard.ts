@@ -88,7 +88,6 @@ export async function runPiSetupWizard(ctx: any) {
 	return await runSetup({
 		prompter: createPiSetupPrompter(ctx),
 		userConfigPath: process.env.SEEKBRAIN_USER_CONFIG,
-		userTemplate: "workflow:\n  seekbrain: {}\nagents: {}\n",
 		output: { write() {} },
 	});
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCodeReviewDetails, parsedDiff } from "../../src/extension/tui/code-review-tui.ts";
-import { researchPlanningReviewTitle, researchTreeReviewTitle, selectBinaryReview, selectResearchTreeReview, selectYesNoReview, taskPlanReviewTitle } from "../../src/extension/tui/review-selectors.ts";
+import { dependencyInstallReviewTitle, researchPlanningReviewTitle, researchTreeReviewTitle, selectBinaryReview, selectDependencyInstallReview, selectResearchTreeReview, selectYesNoReview, taskPlanReviewTitle } from "../../src/extension/tui/review-selectors.ts";
 import { registerTransparencyCardRenderers } from "../../src/extension/tui/transparency-card.ts";
 
 describe("review TUI adapters", () => {
@@ -32,6 +32,44 @@ describe("review TUI adapters", () => {
     expect(await selectYesNoReview({ ui: { select: async () => "No, continue normally" } }, { title: "Use Research Planning?", yesLabel: "Yes, use Research Planning", noLabel: "No, continue normally" })).toEqual({ decision: "no" });
     expect(await selectYesNoReview({ ui: { confirm: async () => true } }, { title: "Use Research Planning?" })).toEqual({ decision: "yes" });
     expect(await selectYesNoReview({ ui: { confirm: async () => false } }, { title: "Use Research Planning?" })).toEqual({ decision: "no" });
+  });
+
+  it("uses explicit package-install permission labels", async () => {
+    let options: string[] = [];
+    const context = { ui: { select: async (_title: string, values: string[]) => { options = values; return values[1]; } } };
+    expect(await selectDependencyInstallReview(context, { title: "Install scipy?", yesLabel: "Yes, run pip install scipy" })).toEqual({ decision: "yes_to_all" });
+    expect(options).toEqual([
+      "Yes, run pip install scipy",
+      "Yes, allow all pip installs for this run",
+      "No, use installed packages only",
+    ]);
+    expect(await selectDependencyInstallReview(
+      { ui: { select: async () => "Yes, run pip install scipy" } },
+      { title: "Install scipy?", yesLabel: "Yes, run pip install scipy" },
+    )).toEqual({ decision: "yes" });
+    expect(await selectDependencyInstallReview({ ui: { select: async () => "No, use installed packages only" } }, { title: "Install scipy?" })).toEqual({ decision: "no" });
+    expect(await selectDependencyInstallReview(
+      { ui: { select: async () => "Yes, allow all pip installs for all remaining tasks" } },
+      { title: "Install scipy?", yesToAllLabel: "Yes, allow all pip installs for all remaining tasks" },
+    )).toEqual({ decision: "yes_to_all" });
+  });
+
+  it("shows the exact package, environment and serialized queue position", () => {
+    const title = dependencyInstallReviewTitle({
+      moduleName: "sklearn",
+      packageName: "scikit-learn",
+      taskId: "SQ1-T1",
+      parentRunId: "planning-run",
+      environment: { description: "conda environment InternAgent (/envs/InternAgent)" },
+      installCommand: "/envs/InternAgent/bin/python -m pip install scikit-learn",
+      evidence: "ModuleNotFoundError: No module named 'sklearn'",
+      queueLength: 2,
+    });
+    expect(title).toContain("Install missing Python package 'scikit-learn'?");
+    expect(title).toContain("Analysis task: SQ1-T1");
+    expect(title).toContain("every remaining analysis task in this Research Planning run");
+    expect(title).toContain("conda environment InternAgent");
+    expect(title).toContain("Install review queue: 1 of 2");
   });
 
   it("offers approve, revise and retain choices for the final research tree", async () => {

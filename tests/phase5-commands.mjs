@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
-const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const extensionSource = await readFile(new URL("src/extension/runtime/index.ts", root), "utf8");
 const systemSource = await readFile(new URL("src/extension/commands/system-commands.ts", root), "utf8");
 const showSource = await readFile(new URL("src/extension/commands/show-command.ts", root), "utf8");
 const saveSource = await readFile(new URL("src/extension/commands/save-skill-command.ts", root), "utf8");

@@ -16,6 +16,22 @@ export interface ExistingPiAgentRequest {
   signal?: AbortSignal;
   onEvent?: (event: JsonObject) => void;
   onFinalize?: (payload: JsonObject) => Promise<void> | void;
+  afterToolCall?: (
+    event: {
+      toolName: string;
+      toolCallId?: string;
+      args: unknown;
+      content: unknown[];
+      details?: unknown;
+      isError: boolean;
+    },
+    signal?: AbortSignal,
+  ) => Promise<{
+    content?: unknown[];
+    details?: unknown;
+    isError?: boolean;
+    terminate?: boolean;
+  } | undefined>;
 }
 
 export interface ExistingPiAgentResult {
@@ -87,6 +103,30 @@ export class ExistingPiAgentAdapter {
         ...modelOptions,
         ...(request.agentConfig?.thinking ? { thinkingLevel: request.agentConfig.thinking } : {}),
       }));
+      if (request.afterToolCall && session.agent) {
+        const previousAfterToolCall = session.agent.afterToolCall?.bind(session.agent);
+        session.agent.afterToolCall = async (context: any, signal?: AbortSignal) => {
+          const previous = await previousAfterToolCall?.(context, signal);
+          const content = previous?.content ?? context.result?.content ?? [];
+          const details = previous?.details ?? context.result?.details;
+          const isError = previous?.isError ?? context.isError;
+          const next = await request.afterToolCall?.({
+            toolName: String(context.toolCall?.name || ""),
+            toolCallId: context.toolCall?.id,
+            args: context.args,
+            content,
+            details,
+            isError,
+          }, signal);
+          if (!next) return previous;
+          return {
+            content: next.content ?? content,
+            details: next.details ?? details,
+            isError: next.isError ?? isError,
+            terminate: next.terminate ?? previous?.terminate,
+          };
+        };
+      }
       unsubscribe = session.subscribe((event: JsonObject) => request.onEvent?.(event));
 
       const promptPromise = request.images?.length

@@ -40,6 +40,9 @@ const { InteractiveMode } = await import(pathToFileURL(join(piRoot, "dist", "mod
 InteractiveMode.prototype.checkForPackageUpdates = async function skipSeekBrainPackageUpdateBanner() {
   return [];
 };
+InteractiveMode.prototype.getChangelogForDisplay = function skipSeekBrainPiChangelog() {
+  return undefined;
+};
 
 const { main } = await import(pathToFileURL(join(piRoot, "dist", "main.js")).href);
 

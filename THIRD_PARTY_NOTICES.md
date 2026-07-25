@@ -1,7 +1,7 @@
 # Third-party notices
 
 SeekBrain depends on third-party packages distributed under their own terms.
-The direct runtime dependency metadata installed for the `0.1.5` release is:
+The direct runtime dependency metadata installed for the `0.1.1` release is:
 
 | Package | Version | Declared license |
 | --- | --- | --- |

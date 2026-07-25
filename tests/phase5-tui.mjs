@@ -3,15 +3,17 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const codeReviewSource = await readFile(new URL("src/extension/runtime/stages/code-review-tools.ts", root), "utf8");
 const diffSource = await readFile(new URL("src/extension/tui/code-review-tui.ts", root), "utf8");
 const selectorSource = await readFile(new URL("src/extension/tui/review-selectors.ts", root), "utf8");
 const transparencySource = await readFile(new URL("src/extension/tui/transparency-card.ts", root), "utf8");
 
-assert.match(extensionSource, /createCodeReviewDetails/);
-assert.match(extensionSource, /selectBinaryReview/);
-assert.match(extensionSource, /renderCall: renderCodeEditCall/);
-assert.match(extensionSource, /renderResult: renderCodeUpdateResult/);
+assert.match(codeReviewSource, /createCodeReviewDetails/);
+assert.match(codeReviewSource, /selectBinaryReview/);
+assert.match(codeReviewSource, /renderCall: renderCodeEditCall/);
+assert.match(codeReviewSource, /renderResult: renderCodeUpdateResult/);
 assert.doesNotMatch(extensionSource, /ui\.(select|input)|new Box|new Spacer|LazyDiffComponent|structuredPatch/);
+assert.doesNotMatch(codeReviewSource, /ui\.(select|input)|new Box|new Spacer|LazyDiffComponent|structuredPatch/);
 assert.match(diffSource, /class SeekBrainDiffComponent/);
 assert.match(diffSource, /truncateToWidth/);
 assert.doesNotMatch(diffSource, /@pi-archimedes\/diff|class LazyDiffComponent|import\([^)]*diff/);

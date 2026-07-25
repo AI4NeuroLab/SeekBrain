@@ -1,6 +1,6 @@
 {
   "name": "seekbrain",
-  "version": "0.1.5",
+  "version": "0.1.1",
   "type": "module",
   "description": "SeekBrain scientific research agent",
   "license": "MIT",

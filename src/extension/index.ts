@@ -38,6 +38,13 @@ interface StageState {
 const EXT_DIR = dirname(fileURLToPath(import.meta.url));
 const ENTRY_PROMPT = join(EXT_DIR, "..", "..", "prompts", "entry.md");
 const STAGE_NAMES = ["Recipe", "Analytical Formulation", "Code Generation & Execution", "Validation", "Result Interpretation"];
+const CLASSIC_STAGE_LABELS: Record<string, { full: string; compact: string; short: string }> = {
+	Recipe: { full: "Recipe", compact: "Recipe", short: "R" },
+	"Analytical Formulation": { full: "Analytical Formulation", compact: "Formulate", short: "F" },
+	"Code Generation & Execution": { full: "Code & Execution", compact: "Execute", short: "C" },
+	Validation: { full: "Validation", compact: "Validate", short: "V" },
+	"Result Interpretation": { full: "Interpretation", compact: "Interpret", short: "I" },
+};
 const TOOL_STAGES: Record<string, string> = {
 	seekbrain_recipe_retrieve: "Recipe",
 	seekbrain_formulation_generate: "Analytical Formulation",
@@ -67,20 +74,27 @@ function promptText() {
 }
 
 function renderPipeline(stages: StageState[], width: number, theme: any, roundLabel: string): string[] {
-	const parts = stages.map((stage) => {
+	const labelMode = width >= 120 ? "full" : width >= 72 ? "compact" : "short";
+	const parts = stages.map((stage, index) => {
 		const icon = stage.status === "pending" ? "○"
-			: stage.status === "running" ? "●"
-			: stage.status === "done" ? "✓" : "✗";
+			: stage.status === "running" ? "◉"
+			: stage.status === "done" ? "✓" : "×";
 		const color = stage.status === "pending" ? "dim"
 			: stage.status === "running" ? "accent"
 			: stage.status === "done" ? "success" : "error";
-		const elapsed = stage.status === "pending" ? "" : `${Math.round(stage.elapsed / 1000)}s`;
-		return theme.fg(color, `${stage.name} ${icon}${elapsed}`);
+		const elapsed = stage.status === "pending" ? "" : theme.fg("dim", ` ${Math.round(stage.elapsed / 1000)}s`);
+		const label = CLASSIC_STAGE_LABELS[stage.name]?.[labelMode] || stage.name;
+		const stageText = theme.fg(color, `${icon} ${label}`) + elapsed;
+		if (index === 0) return stageText;
+		const previous = stages[index - 1];
+		const connectorColor = previous.status === "done" ? "success"
+			: previous.status === "running" ? "accent" : "dim";
+		return theme.fg(connectorColor, " ── ") + stageText;
 	});
-	const pipeline = parts.join(theme.fg("dim", "  "));
-	if (!roundLabel) return [truncateToWidth(pipeline, width)];
+	const pipeline = parts.join("");
+	if (!roundLabel) return [truncateToWidth(` ${pipeline}`, width, "")];
 	const round = theme.fg("accent", theme.bold(roundLabel));
-	return [truncateToWidth(`${round}${theme.fg("dim", "  ───  ")}${pipeline}`, width)];
+	return [truncateToWidth(` ${round}${theme.fg("dim", "  │  ")}${pipeline}`, width, "")];
 }
 
 function summary(stages: StageState[]) {

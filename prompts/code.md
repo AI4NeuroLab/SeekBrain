@@ -86,8 +86,17 @@ manifests, or other infrastructure that the methodological schema did not reques
 - Do not modify input data or environment state. Writing to `work_dir` and
   explicit deliverable paths is allowed, even when they are absolute paths or
   outside the project directory; do not write anywhere else.
-- Do not install dependencies. If a missing dependency blocks execution, switch
-  to an implementation using available packages.
+- Never run `pip`, `conda install`, or another package manager directly. When a
+  Python command fails with `ModuleNotFoundError`, `No module named`, or a
+  missing optional dependency, do not switch implementations yet. SeekBrain
+  intercepts the failed shell result and asks the researcher whether to install
+  the inferred package into the Python environment that launched SeekBrain.
+  If installation succeeds, rerun the exact failing command before changing
+  code. Only when the intercepted result explicitly says the researcher chose
+  `No` may you retry with packages already available in the environment. If
+  approval is unavailable or an approved install fails, report or resolve that
+  installation problem; do not treat it as a refusal and silently substitute a
+  different package.
 - Use only the file paths and data roots provided by the user, metadata,
   methodological schema, or main-agent probe. If an expected file is missing,
   any search for similar

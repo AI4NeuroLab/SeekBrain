@@ -600,6 +600,7 @@ export class ResearchTaskScheduler {
     await this.dependencies.lifecycle.updateState(parent, {
       research_planning: { ...planning, status: planningStatus, task_runs: taskRuns },
       research_execution: {
+        ...(parent.state.research_execution || {}),
         status: scheduler.status,
         scheduler_path: paths.schedulerPath,
         review_queue_path: paths.reviewQueuePath,

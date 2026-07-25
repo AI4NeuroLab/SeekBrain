@@ -145,11 +145,23 @@ describe("ResearchTaskScheduler", () => {
       expect(snapshot.limits).toEqual({ planning_concurrency: 2, execution_concurrency: 1 });
       expect(snapshot.task_status_counts).toMatchObject({ executing: 1, approved: 1, queued: 1 });
 
+      const currentParent = await lifecycle.resolveRun(cwd, parent.runId);
+      await lifecycle.updateState(currentParent, {
+        research_execution: {
+          ...currentParent.state.research_execution,
+          dependency_install_approve_all: true,
+          dependency_install_approve_all_at: "2026-07-24T00:00:00.000Z",
+        },
+      });
+      await recovered.claimExecutionTasks(cwd, parent.runId);
+
       const persistedParent = JSON.parse(await readFile(parent.statePath, "utf8"));
       expect(persistedParent.research_execution).toMatchObject({
         status: "running",
         planning_concurrency: 2,
         execution_concurrency: 1,
+        dependency_install_approve_all: true,
+        dependency_install_approve_all_at: "2026-07-24T00:00:00.000Z",
       });
       expect(persistedParent.research_planning.task_runs.map((item: any) => item.status)).toEqual(["executing", "approved", "queued"]);
       expect((await readFile(join(projectDir, "execution", "events.jsonl"), "utf8")).trim().split("\n")).toHaveLength(5);

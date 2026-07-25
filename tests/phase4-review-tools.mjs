@@ -6,15 +6,22 @@ import { createJiti } from "jiti";
 
 const root = new URL("../", import.meta.url);
 const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const researchPlanningSource = await readFile(new URL("src/extension/runtime/stages/research-planning-tools.ts", root), "utf8");
+const reviewToolsSource = await readFile(new URL("src/extension/runtime/stages/review-tools.ts", root), "utf8");
+const codeReviewToolsSource = await readFile(new URL("src/extension/runtime/stages/code-review-tools.ts", root), "utf8");
 const workflowSource = await readFile(new URL("src/workflows/seekbrain/review-workflow.ts", root), "utf8");
 const selectorSource = await readFile(new URL("src/extension/tui/review-selectors.ts", root), "utf8");
-assert.match(extensionSource, /reviewWorkflow\.approveStage/);
-assert.match(extensionSource, /reviewWorkflow\.recordStageFeedback/);
-assert.match(extensionSource, /reviewWorkflow\.updatePlan/);
-assert.match(extensionSource, /reviewWorkflow\.(proposeCodeEdit|applyCodeEdit|requestCodeChanges)/);
-assert.match(extensionSource, /selectBinaryReview/);
-assert.match(extensionSource, /let researcherReview = await presentResearchTreeReview\(params\.run_id, signal, ctx\)/);
+assert.match(reviewToolsSource, /workflow\.approveStage/);
+assert.match(reviewToolsSource, /workflow\.recordStageFeedback/);
+assert.match(reviewToolsSource, /workflow\.updatePlan/);
+assert.match(codeReviewToolsSource, /workflow\.(proposeCodeEdit|applyCodeEdit|requestCodeChanges)/);
+assert.match(reviewToolsSource, /selectBinaryReview/);
+assert.match(codeReviewToolsSource, /selectBinaryReview/);
+assert.match(researchPlanningSource, /let researcherReview = await presentResearchTreeReview\(params\.run_id, signal, ctx\)/);
 assert.doesNotMatch(extensionSource, /ui\.(select|input)/);
+assert.doesNotMatch(researchPlanningSource, /ui\.(select|input)/);
+assert.doesNotMatch(reviewToolsSource, /ui\.(select|input)/);
+assert.doesNotMatch(codeReviewToolsSource, /ui\.(select|input)/);
 assert.match(selectorSource, /ui\.select/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|ui\.select|LazyDiffComponent/);
 

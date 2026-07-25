@@ -1,6 +1,6 @@
 # Phase 6: open-source readiness
 
-Phase 6 prepares the `0.1.5` source tree for external review and repeatable
+Phase 6 prepares the `0.1.1` source tree for external review and repeatable
 validation. It does not publish an npm package, create a tag, or push changes.
 
 ## Completed controls
@@ -21,9 +21,9 @@ validation. It does not publish an npm package, create a tag, or push changes.
 
 ## Release policy
 
-The repository version remains `0.1.5`. The root package remains private until
+The repository version remains `0.1.1`. The root package remains private until
 maintainers explicitly choose an npm package name and support contract. A source
-release may use `v0.1.5`; prerelease validation must use `v0.1.5-rc.1`.
+release may use `v0.1.1`; prerelease validation must use `v0.1.1-rc.1`.
 
 External publication, tag creation, and remote pushes require an explicit
 maintainer action after reviewing the generated pack manifest.

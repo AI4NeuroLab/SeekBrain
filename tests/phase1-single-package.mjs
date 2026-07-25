@@ -35,11 +35,14 @@ for (const path of [
 }
 
 const bin = await readFile(new URL("bin/seekbrain.mjs", root), "utf8");
-const runtime = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const runtime = [
+  await readFile(new URL("src/extension/runtime/index.ts", root), "utf8"),
+  await readFile(new URL("src/extension/runtime/create-runtime-services.ts", root), "utf8"),
+].join("\n");
 const workflow = await readFile(new URL("src/workflows/seekbrain/run-lifecycle.ts", root), "utf8");
 assert.match(bin, /\.\.\/src\/cli\/cli\.mjs/);
-assert.match(runtime, /from "\.\.\/core\/index\.ts"/);
-assert.match(runtime, /from "\.\.\/workflows\/index\.ts"/);
+assert.match(runtime, /from "\.\.\/\.\.\/core\/index\.ts"/);
+assert.match(runtime, /from "\.\.\/\.\.\/workflows\/index\.ts"/);
 assert.doesNotMatch(runtime, /@seekbrain\//);
 assert.doesNotMatch(workflow, /@seekbrain\//);
 

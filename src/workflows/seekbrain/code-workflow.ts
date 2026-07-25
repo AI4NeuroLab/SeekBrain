@@ -13,6 +13,27 @@ export interface CodeRetryDecision {
   feedback: string;
 }
 
+export interface CodeAgentToolResultEvent {
+  toolName: string;
+  toolCallId?: string;
+  args: unknown;
+  content: unknown[];
+  details?: unknown;
+  isError: boolean;
+}
+
+export interface CodeAgentToolResultOverride {
+  content?: unknown[];
+  details?: unknown;
+  isError?: boolean;
+  terminate?: boolean;
+}
+
+export type CodeAgentToolResultHandler = (
+  event: CodeAgentToolResultEvent,
+  signal?: AbortSignal,
+) => Promise<CodeAgentToolResultOverride | undefined>;
+
 export interface CodeWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
   retryPolicy(state: WorkflowJson, feedback: string | undefined, maxAttempts: number): CodeRetryDecision;
@@ -22,6 +43,7 @@ export interface CodeWorkflowDependencies {
     agentConfig: WorkflowJson;
     finalizeSchema: unknown;
     signal?: AbortSignal;
+    afterToolCall?: CodeAgentToolResultHandler;
   }): Promise<StageAgentResult>;
   writeText(path: string, value: string): Promise<void>;
   writeJson(path: string, value: WorkflowJson): Promise<void>;
@@ -45,6 +67,7 @@ export interface CodeWorkflowInput {
   planReviewRequired: boolean;
   maxAttempts: number;
   signal?: AbortSignal;
+  afterToolCall?: CodeAgentToolResultHandler;
 }
 
 function resolveQuestion(run: WorkflowRunContext, requested?: string): string {
@@ -197,7 +220,14 @@ export class CodeWorkflow {
       retryContext,
       "Generate, write, and execute the analysis code. After one compact non-visual verification, finalize with: { code_files, exec_log, statistics, artifacts, summary, warnings }. code_files must list every code artifact you wrote as { path } only; do not copy source code into the finalize payload. Do not open/read generated images because seekbrain_validation_run owns visual review. artifacts must list every artifact actually generated, with name/path/kind/role/description; each figure/data artifact must include produced_by pointing to its code artifact. For every pdf figure, also produce a same-stem png.",
     ].join("\n\n"));
-    const agent = await this.dependencies.runAgent({ runDir: run.runDir, prompt, agentConfig: input.agentConfig, finalizeSchema: input.finalizeSchema, signal: input.signal });
+    const agent = await this.dependencies.runAgent({
+      runDir: run.runDir,
+      prompt,
+      agentConfig: input.agentConfig,
+      finalizeSchema: input.finalizeSchema,
+      signal: input.signal,
+      afterToolCall: input.afterToolCall,
+    });
     const codeFiles = (Array.isArray(agent.result?.code_files) ? agent.result.code_files : []).filter((entry: WorkflowJson) => entry?.path).map((entry: WorkflowJson) => ({ path: String(entry.path) }));
     const codeReadWarnings: WorkflowJson[] = [];
     const returnedCodeParts: string[] = [];

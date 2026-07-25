@@ -48,11 +48,14 @@ describe("code workflow", () => {
       const events: any[] = [];
       const snapshots: string[] = [];
       let capturedPrompt = "";
+      let capturedAfterToolCall: unknown;
+      const afterToolCall = async () => undefined;
       const workflow = new CodeWorkflow({
         lifecycle: item.lifecycle,
         retryPolicy: () => ({ allowed: true, reason: "initial_attempt", previousAttempt: 0, feedback: "" }),
-        runAgent: async ({ runDir, prompt }) => {
+        runAgent: async ({ runDir, prompt, afterToolCall: handler }) => {
           capturedPrompt = prompt;
+          capturedAfterToolCall = handler;
           await writeFile(join(runDir, "generated_code.py"), "print('real data')\n");
           await writeFile(join(runDir, "figure.png"), "png");
           await writeFile(join(runDir, "statistics.json"), JSON.stringify({ n_neurons: 120, detailed_metric: 3.5 }));
@@ -82,10 +85,12 @@ describe("code workflow", () => {
         finalizeSchema: {},
         planReviewRequired: false,
         maxAttempts: 3,
+        afterToolCall,
       });
 
       expect(capturedPrompt).toContain("Question:\ncompare 120 neurons");
       expect(capturedPrompt).toContain("Required final tool: finalize_code_result");
+      expect(capturedAfterToolCall).toBe(afterToolCall);
       expect(await readFile(join(item.run.runDir, "exec.log"), "utf8")).toBe("completed");
       const statistics = JSON.parse(await readFile(join(item.run.runDir, "statistics.json"), "utf8"));
       expect(statistics.n_neurons).toBe(120);

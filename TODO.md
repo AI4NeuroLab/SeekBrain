@@ -65,6 +65,6 @@
 
 - [ ] Review the generated pack manifest.
 - [ ] Decide whether the release target is a source release or an npm package.
-- [ ] Create `v0.1.5-rc.1` for prerelease validation if needed.
-- [ ] Create `v0.1.5` only after all release blockers are closed.
+- [ ] Create `v0.1.1-rc.1` for prerelease validation if needed.
+- [ ] Create `v0.1.1` only after all release blockers are closed.
 - [ ] Push tags or publish packages only with explicit maintainer approval.

@@ -1,7 +1,11 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
+
+const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const DEFAULT_USER_CONFIG_TEMPLATE = readFileSync(join(PACKAGE_ROOT, "config", "default.yaml"), "utf8");
 
 async function defaultRuntimeFactory(runtimeOptions) {
   const { ModelRuntime } = await import("@earendil-works/pi-coding-agent");
@@ -429,7 +433,9 @@ export function writeLiteratureCredentials(path, literature) {
 }
 
 function writeSeekBrainConfig(userConfigPath, userTemplate, core, fast, literature, credentialStorePath) {
-  const source = existsSync(userConfigPath) ? readFileSync(userConfigPath, "utf8") : userTemplate;
+  const source = existsSync(userConfigPath)
+    ? readFileSync(userConfigPath, "utf8")
+    : userTemplate || DEFAULT_USER_CONFIG_TEMPLATE;
   const document = parseDocument(source);
   if (document.errors.length) throw new Error(`Invalid SeekBrain user config: ${document.errors[0].message}`);
   applyModelRouting(document, core, fast);

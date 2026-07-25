@@ -10,7 +10,7 @@ const root = new URL("../", import.meta.url);
 const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
 const defaultConfigText = await readFile(new URL("config/default.yaml", root), "utf8");
 const defaultConfig = parseYaml(defaultConfigText);
-const runtimeSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const runtimeSource = await readFile(new URL("src/extension/runtime/index.ts", root), "utf8");
 const entrySource = await readFile(new URL("src/extension/index.ts", root), "utf8");
 
 assert.doesNotMatch(defaultConfigText, /neuro-proxy|claude-opus|gemini-3|deepseek-v4|glm-5/i);

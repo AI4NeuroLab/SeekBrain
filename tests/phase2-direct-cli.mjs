@@ -18,6 +18,7 @@ assert.match(piLauncherSource, /process\.env\.PI_PACKAGE_DIR = packageRoot/);
 assert.match(piLauncherSource, /process\.title = config\.APP_NAME/);
 assert.match(piLauncherSource, /getQuietStartup/);
 assert.match(piLauncherSource, /checkForPackageUpdates/);
+assert.match(piLauncherSource, /getChangelogForDisplay/);
 
 const paths = resolveRuntimePaths();
 assert.match(paths.piCli, /src\/cli\/pi-launcher\.mjs$/);

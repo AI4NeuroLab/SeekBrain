@@ -111,7 +111,7 @@ describe("Phase 4 lifecycle workflows", () => {
     });
     expect(workflowConfigResult(DEFAULT_SEEKBRAIN_CONFIG)).toMatchObject({
       optional: { research_planning: "enabled", research_survey: "disabled_no_literature_provider", deep_research: "disabled_no_literature_provider", targeted_skill: "enabled" },
-      human_review: { enabled: false },
+      human_review: { enabled: true, gates: { plan: true } },
     });
   });
 });

@@ -184,4 +184,29 @@ describe("compact Neuro tool results", () => {
     expect(blocked).toContain("seekbrain_code_execute blocked");
     expect(blocked).toContain("Plan approval is required");
   });
+
+  it("renders partial progress as running instead of failed", () => {
+    const planning = rendered(renderSeekBrainResult("seekbrain_planning_generate")(result({
+      progress: true,
+      stage: "research_tree",
+      message: "Generating the hierarchical research plan.",
+    }), { expanded: false, isPartial: true }, theme));
+    expect(planning).toContain("Research Planning · generating hierarchical research plan");
+    expect(planning).not.toContain("failed");
+
+    const report = rendered(renderSeekBrainResult("seekbrain_report_generate")(result({
+      progress: true,
+      stage: "generating",
+      message: "Synthesizing selected evidence.",
+    }), { expanded: false, isPartial: true }, theme));
+    expect(report).toContain("Scientific report · generating");
+    expect(report).not.toContain("failed");
+
+    const failure = rendered(renderSeekBrainResult("seekbrain_planning_generate")(result({
+      ok: false,
+      error: "Research-tree preparation did not complete.",
+    }), { expanded: false, isPartial: false }, theme));
+    expect(failure).toContain("seekbrain_planning_generate failed");
+    expect(failure).toContain("Research-tree preparation did not complete.");
+  });
 });

@@ -1,0 +1,72 @@
+import { defineTool } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
+import type { ValidateWorkflow } from "../../../workflows/index.ts";
+import { renderSeekBrainResult } from "../../tui/compact-tool-results.ts";
+import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
+
+export interface ValidationToolDependencies {
+  workflow: ValidateWorkflow;
+  loadConfig(cwd: string): Promise<Json>;
+  readPrompt(name: string): Promise<string>;
+  pickAgentConfig(config: Json, name: string): Json;
+  defaultMaxCodeAttempts: number;
+  content(details: Json): any;
+}
+
+export function createValidationTools(deps: ValidationToolDependencies): SeekBrainToolDefinition[] {
+  const {
+    workflow: validateWorkflow,
+    loadConfig: loadConfigCached,
+    readPrompt,
+    pickAgentConfig,
+    defaultMaxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
+    content,
+  } = deps;
+  return [
+    defineTool({
+    name: "seekbrain_validation_run",
+    label: "Run Validation Agent",
+    description: "Run the isolated Validation Agent over actual scientific figure artifacts and store validation.json. Pass figure_path to validate only one figure.",
+    parameters: Type.Object({
+      question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
+      run_id: Type.String(),
+      figure_path: Type.Optional(Type.String()),
+      statistics: Type.Optional(Type.Any()),
+      additional_context: Type.Optional(Type.String()),
+    }),
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      const config = await loadConfigCached(ctx.cwd);
+      return content(await validateWorkflow.execute({
+        cwd: ctx.cwd,
+        runId: params.run_id,
+        question: params.question,
+        figurePath: params.figure_path,
+        statistics: params.statistics,
+        additionalContext: params.additional_context,
+        rolePrompt: await readPrompt("validate"),
+        agentConfig: pickAgentConfig(config, "seekbrain_validate"),
+        finalizeSchema: Type.Object({
+          pass: Type.Boolean(),
+          per_figure: Type.Array(Type.Object({
+            path: Type.String(),
+            pass: Type.Boolean(),
+            issues: Type.Array(Type.String()),
+          })),
+          overall_mismatches: Type.Array(Type.String()),
+          blocking_issues: Type.Array(Type.String()),
+          methodological_caveats: Type.Array(Type.String()),
+          visual_issues: Type.Array(Type.Object({
+            figure_path: Type.String(),
+            feedback: Type.String(),
+          }), { maxItems: 1 }),
+          confidence: Type.Number(),
+          summary: Type.String(),
+        }),
+        maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
+        signal,
+      }));
+    },
+    renderResult: renderSeekBrainResult("seekbrain_validation_run"),
+    }),
+  ];
+}

@@ -21,6 +21,13 @@ export type TaskPlanReviewSelection =
   | { decision: "feedback_empty" }
   | { decision: "cancel" };
 
+export type DependencyInstallSelection =
+  | { decision: "unavailable" }
+  | { decision: "yes" }
+  | { decision: "yes_to_all" }
+  | { decision: "no" }
+  | { decision: "cancel" };
+
 export function researchPlanningReviewTitle(assessment: Json, summary?: string): string {
   const reason = String(assessment.reason || summary || "SeekBrain identified multiple evidence workstreams.").slice(0, 520);
   const planningEffect = /[\u3400-\u9fff]/.test(reason)
@@ -77,6 +84,24 @@ export function taskPlanReviewTitle(item: Json, queueLength: number): string {
     item.deep_research_summary ? `Deep Research: ${compactReviewLine(item.deep_research_summary, 160)}` : "",
     "",
     `Review queue: 1 of ${queueLength}`,
+  ].filter(Boolean).join("\n");
+}
+
+export function dependencyInstallReviewTitle(request: Json): string {
+  const scope = request.taskId
+    ? `Analysis task: ${String(request.taskId)}`
+    : request.runId ? `Run: ${String(request.runId)}` : "";
+  return [
+    `Install missing Python package '${String(request.packageName || "")}'?`,
+    "",
+    `Missing module: ${String(request.moduleName || "")}`,
+    `Target: ${String(request.environment?.description || "current Python environment")}`,
+    `Command: ${String(request.installCommand || "")}`,
+    scope,
+    request.evidence ? `Detected from: ${compactReviewLine(request.evidence, 260)}` : "",
+    request.parentRunId ? "Allow-all scope: every remaining analysis task in this Research Planning run." : "",
+    "",
+    `Install review queue: 1 of ${Math.max(1, Number(request.queueLength || 1))}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -152,5 +177,21 @@ export async function selectTaskPlanReview(context: Json, input: {
     const feedback = String(await context.ui.input(input.feedbackTitle, input.feedbackPlaceholder) || "").trim();
     return feedback ? { decision: "feedback", feedback } : { decision: "feedback_empty" };
   }
+  return { decision: "cancel" };
+}
+
+export async function selectDependencyInstallReview(context: Json, input: {
+  title: string;
+  yesLabel?: string;
+  yesToAllLabel?: string;
+}): Promise<DependencyInstallSelection> {
+  if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
+  const yes = input.yesLabel || "Yes, run pip install";
+  const yesToAll = input.yesToAllLabel || "Yes, allow all pip installs for this run";
+  const no = "No, use installed packages only";
+  const choice = await context.ui.select(input.title, [yes, yesToAll, no]);
+  if (choice === yesToAll) return { decision: "yes_to_all" };
+  if (choice === yes) return { decision: "yes" };
+  if (choice === no) return { decision: "no" };
   return { decision: "cancel" };
 }

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createJiti } from "jiti";
 
 const root = new URL("../", import.meta.url);
-const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const extensionSource = await readFile(new URL("src/extension/runtime/index.ts", root), "utf8");
 const workflowSource = await readFile(new URL("src/workflows/seekbrain/run-lifecycle.ts", root), "utf8");
 assert.match(extensionSource, /new RunLifecycleWorkflow\(runRepository\)/);
 assert.doesNotMatch(extensionSource, /function startResearchProject|function continueResearch/);

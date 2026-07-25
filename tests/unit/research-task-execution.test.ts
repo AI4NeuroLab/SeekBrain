@@ -1,9 +1,55 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { atomicWriteJson, FileRunRepository } from "../../src/core/index.ts";
 import { ResearchTaskExecutionCoordinator, ResearchTaskScheduler, RunLifecycleWorkflow } from "../../src/workflows/index.ts";
+import { createResearchTaskExecutor } from "../../src/extension/runtime/create-research-task-executor.ts";
+
+describe("Research Task runtime executor", () => {
+  it("publishes and reuses an already interpreted child result without rerunning stages", async () => {
+    const publish = vi.fn(async () => {});
+    const codeWorkflow = { execute: vi.fn() };
+    const validateWorkflow = { execute: vi.fn() };
+    const imageWorkflow = { refine: vi.fn() };
+    const interpretWorkflow = { execute: vi.fn() };
+    const execute = createResearchTaskExecutor({
+      projectRoot: "/project",
+      loadConfig: vi.fn(async () => ({})),
+      workflowConfig: vi.fn(() => ({ image_refine: true })),
+      readPrompt: vi.fn(async (name) => name),
+      resolveRun: vi.fn(async () => ({
+        runDir: "/project/child",
+        state: {
+          interpretation: { summary: "existing interpretation" },
+          conclusions: { summary: "existing conclusions" },
+        },
+      })) as any,
+      pickAgentConfig: vi.fn(() => ({})),
+      humanGateEnabled: vi.fn(() => true),
+      defaultMaxCodeAttempts: 3,
+      codeWorkflow: codeWorkflow as any,
+      validateWorkflow: validateWorkflow as any,
+      imageWorkflow: imageWorkflow as any,
+      interpretWorkflow: interpretWorkflow as any,
+    });
+
+    await expect(execute({
+      cwd: "/project",
+      parentRunId: "parent",
+      task: { task_id: "T1", run_id: "child" },
+      publish,
+    })).resolves.toMatchObject({ ok: true, recovered_existing_result: true });
+    expect(publish).toHaveBeenCalledWith("task_completed", expect.objectContaining({
+      summary: "existing conclusions",
+      recovered_existing_result: true,
+    }));
+    expect(codeWorkflow.execute).not.toHaveBeenCalled();
+    expect(validateWorkflow.execute).not.toHaveBeenCalled();
+    expect(imageWorkflow.refine).not.toHaveBeenCalled();
+    expect(interpretWorkflow.execute).not.toHaveBeenCalled();
+  });
+});
 
 describe("ResearchTaskExecutionCoordinator", () => {
   it("runs only the bounded approved batch concurrently and isolates one worker failure", async () => {
@@ -32,9 +78,11 @@ describe("ResearchTaskExecutionCoordinator", () => {
       let maxActive = 0;
       const startedTasks: string[] = [];
       const attempts = new Map<string, number>();
+      const afterCodeToolCall = async () => undefined;
       const coordinator = new ResearchTaskExecutionCoordinator({
         scheduler,
-        executeTask: async ({ task, publish }) => {
+        executeTask: async ({ task, publish, afterCodeToolCall: handler }) => {
+          expect(handler).toBe(afterCodeToolCall);
           active += 1;
           maxActive = Math.max(maxActive, active);
           startedTasks.push(task.task_id);
@@ -52,14 +100,14 @@ describe("ResearchTaskExecutionCoordinator", () => {
         },
       });
 
-      const first = await coordinator.execute({ cwd, runId: parent.runId });
+      const first = await coordinator.execute({ cwd, runId: parent.runId, afterCodeToolCallForTask: () => afterCodeToolCall });
       expect(first).toMatchObject({ ok: false, executed_count: 1, failed_count: 1, status: "attention_required" });
       expect(startedTasks).toEqual(["T1", "T2"]);
       expect(maxActive).toBe(2);
       expect(first.task_status_counts).toMatchObject({ complete: 1, failed: 1, approved: 1 });
 
       expect(await scheduler.controlTask({ cwd, runId: parent.runId, taskId: "T2", action: "retry_execution" })).toMatchObject({ ok: true, task: { status: "approved" } });
-      const second = await coordinator.execute({ cwd, runId: parent.runId });
+      const second = await coordinator.execute({ cwd, runId: parent.runId, afterCodeToolCallForTask: () => afterCodeToolCall });
       expect(second).toMatchObject({ ok: true, executed_count: 2, failed_count: 0, status: "complete" });
       expect(startedTasks).toEqual(["T1", "T2", "T2", "T3"]);
       const state = JSON.parse(await readFile(parent.statePath, "utf8"));

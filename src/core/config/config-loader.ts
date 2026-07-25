@@ -43,8 +43,8 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
       save_skill: true,
       transparency: true,
       human_review: {
-        enabled: false,
-        gates: { plan: false, code: false, validate: false, interpret: false },
+        enabled: true,
+        gates: { plan: true, code: false, validate: false, interpret: false },
       },
     },
   },

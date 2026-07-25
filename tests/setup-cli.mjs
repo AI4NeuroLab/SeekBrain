@@ -172,7 +172,6 @@ const result = await runSetup({
   prompter,
   output: { write(value) { output += value; } },
   runtimeFactory: async () => fakeRuntime,
-  userTemplate: "workflow:\n  seekbrain:\n    deep_research: true\nagents: {}\n",
 });
 assert.equal(result.ok, true);
 assert.deepEqual(selected, [{ provider: "openai", type: "api_key", key: "test-key" }]);
@@ -194,6 +193,22 @@ assert.equal(userConfig.workflow.seekbrain.research_survey, false);
 assert.equal(userConfig.workflow.seekbrain.deep_research, false);
 assert.equal(userConfig.workflow.seekbrain.targeted_skill_match, true);
 assert.equal(userConfig.workflow.seekbrain.targeted_skill_generate, false);
+assert.deepEqual(userConfig.workflow.seekbrain.human_review, {
+  enabled: true,
+  gates: { plan: true, code: false, validate: false, interpret: false },
+});
+assert.deepEqual(userConfig.workflow.seekbrain.research_execution, {
+  planning_concurrency: 3,
+  execution_concurrency: 2,
+});
+assert.deepEqual(userConfig.workflow.seekbrain.report.pdf, {
+  enabled: false,
+  command: "seekbrain-pdf",
+  timeout_seconds: 120,
+});
+assert.equal(userConfig.modules.targeted_skill.relevance_threshold, 0.3);
+assert.equal(userConfig.agents.seekbrain_code.timeout_seconds, 1800);
+assert.equal(userConfig.agents.seekbrain_validate.vision, true);
 await rm(work, { recursive: true, force: true });
 
 const literatureWork = await mkdtemp(join(tmpdir(), "seekbrain-literature-setup-test-"));

@@ -1,9 +1,23 @@
 # SeekBrain Runtime 阶段化拆分计划
 
-状态：Proposed implementation plan
+状态：Completed（Phase 0–8 complete）
 日期：2026-07-23
 范围：`src/extension/seekbrain-runtime.ts` 及其直接 Extension 适配层依赖
 核心约束：重构期间不改变 SeekBrain 的科学工作流、工具契约、状态语义和用户交互
+
+实施进度（2026-07-25）：Phase 0–8 已完成。36 个工具的顺序和参数 schema
+继续由 contract baseline 冻结；已建立 `runtime/tool-registry.ts` 和公共 runtime
+类型；Research Planning 的八个工具、schema、原生选择器适配和文字兜底状态机已迁入
+`runtime/stages/research-planning-tools.ts`。共享 file、run access、artifact、observability、
+config 和 subagent runner 已迁入 `runtime/shared/` 并具有独立单元测试。System、Dataset、
+Lifecycle、Reporting、Recipe/Research、Review 和 Code Review 工具已迁入独立 stage
+factory；approved Python rerun 与 edit id 生成已收敛到 `runtime/shared/code-edit-service.ts`。
+Research Task executor 已迁入 `runtime/create-research-task-executor.ts`，五个 Research
+Execution 工具已迁入 `runtime/stages/research-execution-tools.ts`。普通分析主链的
+Formulation、Code Execution、Validation、Figure Refinement 和 Interpretation 工具也已
+迁入各自 stage factory。`seekbrain-runtime.ts` 已由 4014 行收敛为 2 行兼容导出；
+`runtime/index.ts` 是约 480 行的 Composition Root，Workflow/provider 创建和注册期可变
+状态分别位于 `create-runtime-services.ts` 与 `create-runtime-session.ts`。
 
 ## 1. 背景
 
@@ -538,6 +552,8 @@ runtime/create-research-task-executor.ts
 
 ### Phase 5 — Review 和代码编辑拆分
 
+状态：已完成（2026-07-25）。
+
 迁移：
 
 1. `review-tools.ts`
@@ -551,7 +567,14 @@ runtime/create-research-task-executor.ts
 - Artifact stamps 和 validation invalidation 语义不变。
 - diff renderer 的 compact/expanded 行为不变。
 
+实施结果：四个 Review 工具迁入 `review-tools.ts`，三个代码审查工具迁入
+`code-review-tools.ts`；Python 解释器选择、1,000,000 字符输出上限和 abort 处理迁入
+`code-edit-service.ts`。Review/Code Review 仍只通过 TUI selector adapter 访问原生 UI，
+工具 schema、注册顺序、Artifact 核验和 validation invalidation contract baseline 均未变化。
+
 ### Phase 6 — Research Execution 拆分
+
+状态：已完成（2026-07-25）。
 
 目标：拆分复杂的 Research Task Pipeline，但不改变并发行为。
 
@@ -571,7 +594,16 @@ runtime/create-research-task-executor.ts
 - retry、blocked、cancel 和 recovered execution 行为不变。
 - Reporter 仍能发现相同 child result。
 
+实施结果：Code → Validation → optional Figure Refinement → Interpretation 的 child task
+适配器迁入 `create-research-task-executor.ts`；initialize、canonical run、serialized schema
+review、manual task batch 和 task control 五个工具迁入 `research-execution-tools.ts`。
+Scheduler/Coordinator 仍由组合入口单例创建并注入；planning/execution concurrency、事件名称
+与 payload、Approve Remaining、dependency-install approval queue 和逐任务 progress board
+语义保持不变。
+
 ### Phase 7 — 普通分析主链拆分
+
+状态：已完成（2026-07-25）。
 
 迁移：
 
@@ -589,7 +621,15 @@ runtime/create-research-task-executor.ts
 - Figure Refinement 失败仍能安全回滚并继续解释。
 - Result Interpretation 仍只消费已验证 Artifact。
 
+实施结果：五个公开工具分别迁入 `formulation-tools.ts`、`code-execution-tools.ts`、
+`validation-tools.ts`、`figure-refinement-tools.ts` 和 `interpretation-tools.ts`。Workflow
+实例仍由组合入口单例创建和注入；plan human-review gate、dependency-install approval、
+code attempt 上限、validation route、presentation-only refinement guard/rollback 和
+Interpretation 的 validated Artifact 前置条件均保持原 contract。
+
 ### Phase 8 — 收敛 Composition Root
+
+状态：已完成（2026-07-25）。
 
 目标：删除旧 runtime 中已经迁移的实现，使入口保持清晰。
 
@@ -614,6 +654,12 @@ export { registerSeekBrainRuntime } from "./runtime/index.ts";
 - 不存在 stage → composition root 的反向依赖。
 - 不存在重复 Workflow/service 实例。
 - 全量测试通过。
+
+实施结果：`seekbrain-runtime.ts` 仅 re-export `runtime/index.ts`；所有 Workflow、Scheduler、
+Coordinator、literature provider 和 skill provider 的创建集中在
+`create-runtime-services.ts`，active run 与 config watcher 由单一 RuntimeSession 管理。
+Composition Root 只负责共享 adapter、commands/hooks、stage factory 注入和冻结顺序注册，
+注册前配置预热仍为 fire-and-forget，没有新增 awaited I/O、模型调用或网络请求。
 
 ## 11. 测试策略
 
@@ -725,15 +771,13 @@ refactor(runtime): reduce legacy runtime to compatibility entry
 - TypeScript、unit、contract 和 diff checks 全部通过。
 - 文档中的目标结构与最终源码一致。
 
-## 15. 推荐的首个实施批次
+## 15. 后续维护原则
 
-首个批次只实施 Phase 0–2：
+阶段化拆分已经完成。后续新增或修改工具时：
 
-1. 冻结当前契约。
-2. 建立 ordered tool registry。
-3. 抽取 `research-planning-tools.ts`。
-4. 保持所有共享 services 暂时由旧 runtime 注入。
-5. 跑完整 typecheck、unit 和 contract tests。
-
-该批次能够验证整体架构，同时把改动限制在近期已充分测试的 Research Planning
-区域。确认稳定后，再开始共享 services 和 Research Execution 等高耦合区域的拆分。
+1. 工具实现进入所属 `runtime/stages/*-tools.ts`，不得重新堆入 Composition Root。
+2. 新的跨阶段运行能力进入 `runtime/shared/` 或独立 factory，不允许 stage 反向依赖
+   `runtime/index.ts`。
+3. 公开工具变更必须同步冻结顺序、schema hash、automation/interactive 集合和契约测试。
+4. Workflow/provider/session 仍由 Composition Root 单例创建并通过窄接口注入。
+5. 每次架构调整继续运行完整 typecheck、unit、contract 和 diff checks。

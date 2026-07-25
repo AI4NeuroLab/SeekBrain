@@ -43,6 +43,10 @@ describe("ConfigLoader", () => {
       expect(config.modules.targeted_skill).toMatchObject({ relevance_threshold: 0.3, top_k: 1 });
       expect((config.modules.targeted_skill as any).compatibility).toMatchObject({ candidate_pool_size: 10, skill_top_k: 2, prefer_repository: true, paper_only_fallback: true });
       expect(config.workflow.seekbrain.report.pdf).toMatchObject({ enabled: false, command: "seekbrain-pdf", timeout_seconds: 120 });
+      expect(config.workflow.seekbrain.human_review).toEqual({
+        enabled: true,
+        gates: { plan: true, code: false, validate: false, interpret: false },
+      });
       expect(Object.isFrozen(config.workflow.seekbrain.human_review.gates)).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });

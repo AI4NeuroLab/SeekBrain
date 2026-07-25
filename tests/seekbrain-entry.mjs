@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createJiti } from "jiti";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 const jiti = createJiti(import.meta.url);
 const { default: registerSeekBrain } = await jiti.import("../src/extension/index.ts");
@@ -23,6 +24,10 @@ const statuses = [];
 const notifications = [];
 const widgets = [];
 let headerFactory;
+const testTheme = {
+  fg(_style, value) { return value; },
+  bold(value) { return value; },
+};
 const ctx = {
   cwd: process.cwd(),
   hasUI: true,
@@ -43,16 +48,27 @@ assert.equal(typeof beforeAgentStart, "function");
 
 await sessionStart({}, ctx);
 assert.equal(typeof headerFactory, "function");
-const header = headerFactory({}, {
-  fg(_style, value) { return value; },
-  bold(value) { return value; },
-});
-assert.match(header.render(160).join("\n"), /seekbrain v0\.1\.5/);
-assert.match(header.render(160).join("\n"), /Press ctrl\+o to show full startup help and loaded resources/);
-assert.doesNotMatch(header.render(160).join("\n"), /\[Prompts\]/);
+const header = headerFactory({}, testTheme);
+const compactHeader = header.render(160).join("\n");
+assert.match(compactHeader, /╭─ SeekBrain v0\.1\.1/);
+assert.match(compactHeader, /█▀▀ █▀▀ █▀▀ █▄▀/);
+assert.match(compactHeader, /READY FOR RESEARCH/);
+assert.match(compactHeader, /SCIENTIFIC RESEARCH AGENT/);
+assert.match(compactHeader, /QUESTION.*PLAN.*ANALYZE.*VALIDATE.*INSIGHT/);
+assert.match(compactHeader, /Type below to begin.*ctrl\+o guide.*\/seekbrain-setup models/);
+assert.doesNotMatch(compactHeader, /\/entry/);
+assert.doesNotMatch(compactHeader, /LOADED/);
+for (const width of [1, 8, 48, 80, 160]) {
+  assert.ok(header.render(width).every((line) => visibleWidth(line) <= width), `header must fit ${width} columns`);
+}
 header.setExpanded(true);
-assert.match(header.render(160).join("\n"), /\[Prompts\].*\/entry/s);
-assert.match(header.render(160).join("\n"), /\[Extensions\].*SeekBrain workflow, usage footer/s);
+const expandedHeader = header.render(160).join("\n");
+assert.match(expandedHeader, /START.*Type your research question directly/s);
+assert.match(expandedHeader, /DATA.*start with only a question/s);
+assert.match(expandedHeader, /MODELS.*\/seekbrain-setup/s);
+assert.match(expandedHeader, /LOADED.*research workflow.*adaptive stage tracker.*usage footer/s);
+assert.doesNotMatch(expandedHeader, /\/entry/);
+
 let prompt = await beforeAgentStart({}, ctx);
 assert.match(prompt.systemPrompt, /running SeekBrain's research workflow/);
 assert.deepEqual(statuses.at(-1), ["seekbrain", undefined]);
@@ -71,11 +87,9 @@ await toolEnd({
 }, ctx);
 assert.equal(typeof widgets.at(-1)[1], "function");
 assert.deepEqual(statuses.at(-1), ["seekbrain", "SeekBrain: 0/5 stages"]);
-const pipeline = widgets.at(-1)[1](
-  {},
-  { fg(_style, value) { return value; }, bold(value) { return value; } },
-);
-assert.match(pipeline.render(160).join("\n"), /Round 1.*Recipe ○.*Analytical Formulation ○.*Result Interpretation ○/);
+const pipeline = widgets.at(-1)[1]({}, testTheme);
+assert.match(pipeline.render(160).join("\n"), /Round 1.*○ Recipe.*○ Analytical Formulation.*○ Interpretation/);
+assert.match(pipeline.render(80).join("\n"), /Round 1.*○ Recipe.*○ Formulate.*○ Interpret/);
 
 const seekBrainCommand = commands.get("seekbrain");
 assert.ok(seekBrainCommand, "/seekbrain command must be registered");

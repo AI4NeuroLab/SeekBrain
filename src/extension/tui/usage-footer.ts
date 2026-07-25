@@ -7,11 +7,31 @@ function finiteNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
-
 export function formatTokens(value: number): string {
   if (value < 1_000) return String(value);
   if (value < 1_000_000) return `${(value / 1_000).toFixed(1)}k`;
   return `${(value / 1_000_000).toFixed(1)}m`;
+}
+
+function renderFooter(
+  theme: any,
+  width: number,
+  model: string,
+  contextPercent: number,
+  inputTokens: number,
+  outputTokens: number,
+  costLabel: string,
+): string {
+  const line = theme.fg("dim", ` ${model}  `)
+    + theme.fg("accent", `ctx ${contextPercent}%`)
+    + theme.fg("dim", "  |  ")
+    + theme.fg("success", `${formatTokens(inputTokens)} in`)
+    + theme.fg("dim", " / ")
+    + theme.fg("accent", `${formatTokens(outputTokens)} out`)
+    + theme.fg("dim", "  |  ")
+    + theme.fg("warning", costLabel)
+    + theme.fg("dim", " ");
+  return truncateToWidth(line, width, "");
 }
 
 export default function registerUsageFooter(pi: ExtensionAPI) {
@@ -35,16 +55,9 @@ export default function registerUsageFooter(pi: ExtensionAPI) {
             if (message.usage?.cost?.total !== undefined) { cost += finiteNumber(message.usage.cost.total); costReported = true; }
           }
           const contextPercent = Math.max(0, Math.min(100, Math.round(finiteNumber(ctx.getContextUsage()?.percent))));
-          const line = theme.fg("dim", ` ${ctx.model?.id || "no-model"}  `)
-            + theme.fg("accent", `ctx ${contextPercent}%`)
-            + theme.fg("dim", "  |  ")
-            + theme.fg("success", `${formatTokens(inputTokens)} in`)
-            + theme.fg("dim", " / ")
-            + theme.fg("accent", `${formatTokens(outputTokens)} out`)
-            + theme.fg("dim", "  |  ")
-            + theme.fg("warning", costReported ? `$${cost.toFixed(4)}` : "cost n/a")
-            + theme.fg("dim", " ");
-          return [truncateToWidth(line, width, "")];
+          const model = ctx.model?.id || "no-model";
+          const costLabel = costReported ? `$${cost.toFixed(4)}` : "cost n/a";
+          return [renderFooter(theme, width, model, contextPercent, inputTokens, outputTokens, costLabel)];
         },
       };
     });

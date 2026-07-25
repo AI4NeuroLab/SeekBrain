@@ -6,9 +6,11 @@ import { createJiti } from "jiti";
 
 const root = new URL("../", import.meta.url);
 const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const recipeResearchSource = await readFile(new URL("src/extension/runtime/stages/recipe-research-tools.ts", root), "utf8");
 const workflowSource = await readFile(new URL("src/workflows/seekbrain/research-skill-workflow.ts", root), "utf8");
-assert.match(extensionSource, /researchSkillWorkflow\.resolveTargetedSkill/);
-assert.match(extensionSource, /researchSkillWorkflow\.deepResearch/);
+assert.match(recipeResearchSource, /deps\.workflow\.resolveTargetedSkill/);
+assert.match(recipeResearchSource, /deps\.workflow\.deepResearch/);
+assert.doesNotMatch(recipeResearchSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 
 const cwd = await mkdtemp(join(tmpdir(), "seekbrain-research-tool-contract-"));

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
-const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.ts", root), "utf8");
+const extensionSource = await readFile(new URL("src/extension/runtime/index.ts", root), "utf8");
 const hooksSource = await readFile(new URL("src/extension/runtime-hooks.ts", root), "utf8");
 
 assert.match(extensionSource, /registerSeekBrainRuntimeHooks\(pi/);

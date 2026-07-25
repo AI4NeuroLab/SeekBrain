@@ -1,5 +1,6 @@
 import type { WorkflowJson } from "./run-lifecycle.ts";
 import type { ResearchTaskScheduler, ResearchTaskEventType } from "./research-task-scheduler.ts";
+import type { CodeAgentToolResultHandler } from "./code-workflow.ts";
 
 export interface ResearchTaskExecutionDependencies {
   scheduler: ResearchTaskScheduler;
@@ -9,6 +10,7 @@ export interface ResearchTaskExecutionDependencies {
     task: WorkflowJson;
     publish(type: ResearchTaskEventType, payload?: WorkflowJson): Promise<void>;
     signal?: AbortSignal;
+    afterCodeToolCall?: CodeAgentToolResultHandler;
   }): Promise<WorkflowJson>;
 }
 
@@ -17,6 +19,7 @@ export interface ExecuteResearchTasksInput {
   runId: string;
   signal?: AbortSignal;
   onProgress?: (event: { task_id: string; type: ResearchTaskEventType; payload: WorkflowJson }) => void;
+  afterCodeToolCallForTask?: (task: WorkflowJson) => CodeAgentToolResultHandler | undefined;
 }
 
 /**
@@ -61,6 +64,7 @@ export class ResearchTaskExecutionCoordinator {
           task,
           publish,
           signal: input.signal,
+          afterCodeToolCall: input.afterCodeToolCallForTask?.(task),
         });
       } catch (error) {
         await publish("task_failed", { failed_stage: "execution", error: String(error) });
