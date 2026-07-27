@@ -47,6 +47,15 @@ research question + multimodal data
 
 At its core, a co-evolving **Neuroscience Analysis Repertoire** crystallizes reusable methods from scientific papers and their associated open-source code, as well as researcher-validated execution trajectories. This grounds planning and execution in neuroscience-specific expertise while preserving researcher control and inspectable evidence.
 
+### Distill Recipes
+
+When SeekBrain run produces a processing method / preprocessing flow / whole pipeline worth reusing, distill it into a reusable **recipe** . In the interactive session, after a run finishes:
+
+```bash
+/seekbrain-save-recipe
+```
+
+
 ## Paper
 
 **SeekBrain: An Autonomous Multi-Agent Framework for Accelerating Neuroscience Discovery**
