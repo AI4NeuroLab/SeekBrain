@@ -244,7 +244,9 @@ export class RagSkillGenerator {
     const evidenceLevel = input.evidenceLevel ?? "repository_backed";
     if (evidenceLevel === "paper_only") return await this.generatePaperOnly({ ...input, evidenceLevel, outputDir });
     if (!input.repoLink) return { ok: false, error: "repository-backed Recipe Crystallization requires repoLink" };
-    const folderName = `${safeName(input.question, 60)}__${repoIdentifier(input.repoLink)}`;
+    // Repository-backed crystallization is repository-scoped. Once RAG finds
+    // the same GitHub repository again, reuse no longer depends on question wording.
+    const folderName = repoIdentifier(input.repoLink);
     const skillDir = join(outputDir, folderName);
     if (existsSync(join(skillDir, "SKILL.md"))) return { ok: true, skill_path: skillDir, reused: true, repo_link: input.repoLink };
 

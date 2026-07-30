@@ -94,6 +94,23 @@ for (const agent of ["seekbrain_default", "seekbrain_refine_image"]) {
   assert.equal(routedConfig.agents[agent].provider, "quick");
   assert.equal(routedConfig.agents[agent].model, "fast");
 }
+assert.deepEqual(Object.fromEntries(Object.entries(routedConfig.agents).map(([name, agent]) => [name, agent.thinking])), {
+  seekbrain: "low",
+  seekbrain_deep_research: "low",
+  seekbrain_survey: "low",
+  seekbrain_research_planning: "high",
+  seekbrain_research_reviewer: "low",
+  seekbrain_skill_match: "off",
+  seekbrain_skill_context: "off",
+  seekbrain_skill_generate: "medium",
+  seekbrain_plan: "high",
+  seekbrain_code: "high",
+  seekbrain_validate: "low",
+  seekbrain_interpret: "high",
+  seekbrain_default: "off",
+  seekbrain_research_route: "off",
+  seekbrain_refine_image: "off",
+});
 assert.equal(routedConfig.workflow.seekbrain.deep_research, true);
 
 const relay = relayProviderConfig({
@@ -188,6 +205,10 @@ const userConfig = parseYaml(await readFile(join(work, ".config", "seekbrain", "
 assert.equal(userConfig.agents.seekbrain.model, "core-vision");
 assert.equal(userConfig.agents.seekbrain_default.model, "fast-vision");
 assert.equal(userConfig.agents.seekbrain_interpret.model, "core-vision");
+assert.equal(userConfig.agents.seekbrain.thinking, "low");
+assert.equal(userConfig.agents.seekbrain_default.thinking, "off");
+assert.equal(userConfig.agents.seekbrain_validate.thinking, "low");
+assert.equal(userConfig.agents.seekbrain_interpret.thinking, "high");
 assert.equal(userConfig.literature.paper_source, "none");
 assert.equal(userConfig.workflow.seekbrain.research_survey, false);
 assert.equal(userConfig.workflow.seekbrain.deep_research, false);
@@ -202,7 +223,7 @@ assert.deepEqual(userConfig.workflow.seekbrain.research_execution, {
   execution_concurrency: 2,
 });
 assert.deepEqual(userConfig.workflow.seekbrain.report.pdf, {
-  enabled: false,
+  enabled: true,
   command: "seekbrain-pdf",
   timeout_seconds: 120,
 });

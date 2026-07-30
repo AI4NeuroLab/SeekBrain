@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunLifecycleWorkflow, WorkflowJson, WorkflowRunContext } from "./run-lifecycle.ts";
 
@@ -58,6 +59,21 @@ export class ReviewWorkflow {
     return next;
   }
 
+  async stop(run: WorkflowRunContext, stage: string, reason = "stopped by researcher"): Promise<WorkflowJson> {
+    const reviews = run.state.human_reviews || {};
+    const previous = reviews[stage] || {};
+    const stoppedAt = new Date().toISOString();
+    const next = { ...previous, status: "cancelled_by_user", cancelled_at: stoppedAt, notes: reason };
+    await this.dependencies.lifecycle.updateState(run, {
+      human_reviews: { ...reviews, [stage]: next },
+      workflow_status: "cancelled_by_user",
+      cancelled_at: stoppedAt,
+      cancellation: { stage, reason, source: "review_selector", at: stoppedAt },
+    });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_workflow_cancelled", stage, ok: true, source: "review_selector" });
+    return next;
+  }
+
   async approveStage(cwd: string, runId: string, rawStage: unknown, notes?: string): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(cwd, runId);
     const stage = normalizeReviewStage(rawStage);
@@ -76,7 +92,7 @@ export class ReviewWorkflow {
     return { ok: true, run_id: run.runId, stage, review, message: stage === "plan" ? "Recorded researcher feedback for the methodological schema. For local schema edits, update the persisted schema with seekbrain_formulation_update before requesting approval again; rerun seekbrain_formulation_generate only for broad redesigns." : `Recorded researcher feedback for '${stage}'. Rerun or revise the relevant stage with this feedback before requesting approval again.` };
   }
 
-  async updatePlan(input: { cwd: string; runId: string; planMarkdown: unknown; summary?: string; confidence?: number; warnings?: string[]; revisionNote?: string }): Promise<WorkflowJson> {
+  async updatePlan(input: { cwd: string; runId: string; planMarkdown: unknown; reviewSummary?: string; warnings?: string[]; revisionNote?: string }): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const planMarkdown = String(input.planMarkdown || "").trim();
     if (!planMarkdown) return { ok: false, run_id: run.runId, error: "plan_markdown is required" };
@@ -84,11 +100,30 @@ export class ReviewWorkflow {
     const previousRevision = Number(previous.revision || 1);
     const revision = Number.isFinite(previousRevision) ? previousRevision + 1 : 2;
     const planPath = join(run.runDir, "plan.md");
-    const next: WorkflowJson = { ...previous, plan_markdown: planMarkdown, summary: input.summary || previous.summary || "Methodological schema updated from researcher feedback.", confidence: input.confidence ?? previous.confidence, warnings: input.warnings || previous.warnings || [], revision, revision_note: input.revisionNote || "", updated_by: "main_agent", updated_at: new Date().toISOString() };
+    const previousPath = join(run.runDir, "plan.previous.json");
+    const next: WorkflowJson = {
+      path: planPath,
+      review_summary: input.reviewSummary || previous.review_summary || "Methodological schema updated from researcher feedback.",
+      warnings: input.warnings || previous.warnings || [],
+      revision,
+      revision_note: input.revisionNote || "",
+      updated_by: "main_agent",
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      const currentPlan = (await readFile(planPath, "utf8")).trim();
+      if (currentPlan) await this.dependencies.writeText(previousPath, JSON.stringify({
+        plan_markdown: currentPlan,
+        review_summary: String(previous.review_summary || ""),
+        warnings: Array.isArray(previous.warnings) ? previous.warnings : [],
+        revision: previousRevision,
+      }, null, 2));
+    } catch { /* No prior Plan exists yet. */ }
+    next.previous_path = previousPath;
     await this.dependencies.writeText(planPath, planMarkdown);
     await this.dependencies.lifecycle.updateState(run, { plan: next });
     await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_formulation_update", ok: true, plan_path: planPath, revision });
-    return { ok: true, run_id: run.runId, plan_path: planPath, revision, result: { summary: next.summary, confidence: next.confidence, warnings: next.warnings }, human_review: { required: true, approved: this.approved(run, "plan"), feedback: this.feedbackText(run, "plan"), needs_user_review: true }, message: "Updated the methodological schema in plan.md and state.json. Summarize the revised schema in chat and ask the researcher to approve it before calling seekbrain_code_execute." };
+    return { ok: true, run_id: run.runId, plan_path: planPath, revision, result: { review_summary: next.review_summary, warnings: next.warnings }, human_review: { required: true, approved: this.approved(run, "plan"), feedback: this.feedbackText(run, "plan"), needs_user_review: true }, message: "Updated plan.md. Show the concise review summary and ask the researcher to approve it before calling seekbrain_code_execute." };
   }
 
   pending(run: WorkflowRunContext): WorkflowJson[] {

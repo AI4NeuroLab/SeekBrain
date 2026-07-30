@@ -1,0 +1,27 @@
+{
+  "tag": "ns_ana-zebrafish-swc-nblast-morphology",
+  "yaml_metadata": {
+    "name": "ns_ana-zebrafish-swc-nblast-morphology",
+    "description": "Performs NBLAST-based hierarchical clustering on SWC neuronal data and renders the resulting clusters within a 3D standard brain template using the navis library.",
+    "triggers": [
+      "Visualize morphological diversity of 2143 neurons",
+      "Perform NBLAST hierarchical clustering on neuronal data",
+      "How to render SWC neurons in a 3D brain mesh using navis",
+      "Group neuronal skeletons into morphological clusters",
+      "Map neuron clusters to standard brain template space"
+    ],
+    "tags": [
+      "navis",
+      "NBLAST",
+      "neuroinformatics",
+      "morphological-clustering",
+      "3D-visualization",
+      "SWC-processing"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

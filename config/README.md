@@ -80,6 +80,7 @@ workflow:
     deep_research: false
     targeted_skill_match: true
     targeted_skill_generate: true
+    rag_recipe_crystallization: false
 ```
 
 `candidate_pool_size` controls retrieval breadth independently from
@@ -130,8 +131,13 @@ agents:
   seekbrain:
     provider: your-provider
     model: your-model
-    thinking: high
+    thinking: low
 ```
+
+SeekBrain defaults to `thinking: off` for routine subagents and opts specific
+scientific stages in: Research Planning, Formulation, Code, and Interpretation
+use `high`; Validation and the main Orchestrator use `low`; Recipe generation
+uses `medium`.
 
 Explicit Pi arguments passed after `--` have the highest priority. Provider
 credentials remain in Pi auth storage or environment variables.
@@ -147,13 +153,21 @@ SeekBrain uses one user-owned analysis recipe root by default:
 └── from_expert/
 ```
 
-The bundled trajectory library is copied atomically on first recipe retrieval;
-help and version commands do not write it. Set `SEEKBRAIN_SKILLS_ROOT` to move
+The npm package stores the curated repertoire under `recipes/`, organized as
+`Multimodal-joint-analysis` and `Single-modality`. On first recipe retrieval,
+the 68 Recipe directories are copied atomically into the flat versioned
+`builtin/trajectory/<package-version>/` layout together with the packaged
+`INDEX.md`; help and version commands do not write it. Set `SEEKBRAIN_SKILLS_ROOT` to move
 the unified user recipe root. A project may additionally keep expert recipes in
 `<project>/.seekbrain/skills/from_expert`.
 
-The resolution flow remains trajectory matching first, followed by Paper RAG
-and persistent repository-backed Recipe Crystallization only when no trajectory recipe
-matches. `modules.targeted_skill.resource_filter` controls which trajectory
+The default resolution flow remains trajectory matching first, followed by Paper
+RAG repository guidance only when no trajectory Recipe matches. Optional immediate
+repository-backed Recipe Crystallization can be enabled with
+`workflow.seekbrain.rag_recipe_crystallization: true`. It writes one Recipe per
+GitHub `owner/repository` identity under `from_rag`; when RAG later finds the same
+repository, that Recipe is reused regardless of question wording. The option is
+disabled by default so existing Plan, Code, Validation, and post-validation
+distillation behavior is unchanged. `modules.targeted_skill.resource_filter` controls which trajectory
 resources are loaded; the public default matches the historical loader by
 including `.md` and `.py` files with a maximum of five resources.

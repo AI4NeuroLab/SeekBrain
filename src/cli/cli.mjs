@@ -40,6 +40,8 @@ workflow:
     # Global literature grounding before Research Planning generates its tree.
     # Independent from task/ordinary-run deep_research below.
     research_survey: false
+    # Optional automatic Reviewer Agent pass over the generated plan tree.
+    research_planning_peer_review: false
     # Used only after a Research Planning tree has been approved and materialized.
     research_execution:
       planning_concurrency: 3
@@ -47,7 +49,7 @@ workflow:
     deep_research: false
     targeted_skill_match: true
     targeted_skill_generate: false
-    image_refine: true
+    image_refine: false
     save_skill: true
     transparency: true
 
@@ -57,15 +59,59 @@ agents:
   seekbrain:
     # provider: your-provider
     # model: your-model
-    thinking: high
+    thinking: low
 
   # Defaults inherited by workflow subagents unless a stage overrides them.
   seekbrain_default:
     # provider: your-provider
     # model: your-model
+    thinking: off
+
+  seekbrain_data_resolve:
+    thinking: off
+
+  seekbrain_research_route:
+    thinking: off
+
+  seekbrain_research_planning:
     thinking: high
 
+  seekbrain_research_reviewer:
+    thinking: low
+
+  seekbrain_skill_match:
+    thinking: off
+
+  seekbrain_skill_context:
+    thinking: off
+
+  seekbrain_skill_generate:
+    thinking: medium
+
+  seekbrain_plan:
+    thinking: high
+
+  seekbrain_code:
+    thinking: high
+
+  seekbrain_validate:
+    thinking: low
+
+  seekbrain_interpret:
+    thinking: high
+    vision: false
+
+  seekbrain_report:
+    thinking: low
+
+  seekbrain_refine_image:
+    thinking: off
+
+  seekbrain_save_skill:
+    thinking: off
+
   seekbrain_deep_research:
+    thinking: low
     timeout_seconds: 600
     rag:
       base_url: ""
@@ -74,6 +120,7 @@ agents:
       source_char_limit: 5000
 
   seekbrain_survey:
+    thinking: low
     timeout_seconds: 600
     rag:
       paper_source: ailab_rag
@@ -96,7 +143,7 @@ agents: {}
 export const INTERACTIVE_TOOLS = [
   "read", "bash", "edit", "write",
   "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
-  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_decision_review", "seekbrain_planning_decision_record", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_planning_researcher_review", "seekbrain_planning_researcher_decision_record", "seekbrain_analysis_tasks_prepare", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_schema_review", "seekbrain_execution_tasks_run", "seekbrain_analysis_task_control", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
+  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_decision_review", "seekbrain_planning_decision_record", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_planning_researcher_review", "seekbrain_planning_researcher_decision_record", "seekbrain_analysis_tasks_prepare", "seekbrain_research_extend", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_schema_review", "seekbrain_execution_tasks_run", "seekbrain_analysis_task_control", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
   "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
   "seekbrain_review_approve", "seekbrain_review_feedback", "seekbrain_formulation_researcher_review",
   "seekbrain_formulation_update", "seekbrain_code_edit_review", "seekbrain_code_update_propose",
@@ -106,7 +153,7 @@ export const INTERACTIVE_TOOLS = [
 export const AUTOMATION_TOOLS = [
   "read", "bash", "edit", "write",
   "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
-  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_analysis_tasks_prepare", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_tasks_run", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
+  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_analysis_tasks_prepare", "seekbrain_research_extend", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_tasks_run", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
   "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
 ].join(",");
 
@@ -117,7 +164,7 @@ Usage:
   seekbrain [options] [-- <pi-args...>]
   seekbrain resume <session-id|path>
   seekbrain run [options] [-- <pi-args...>]
-  seekbrain report <project-path> <--rounds list|--evidence list>
+  seekbrain report <research-planning-project-path>
   seekbrain setup
   seekbrain doctor
   seekbrain config <show|list|get|set|unset|init> [options]
@@ -125,7 +172,7 @@ Usage:
 Commands:
   resume <session>      Resume a SeekBrain conversation session
   run                  Run a non-interactive analysis task
-  report <project>     Generate a report from explicitly selected results
+  report <project>     Generate a Research Planning report from eligible task rounds
   setup                Configure model routing and a literature provider
   doctor               Check Node, Pi, Python, and package dependencies
   config show          Show configuration paths; add --effective for merged values
@@ -148,8 +195,6 @@ Options:
   --dataset <path>     Dataset directory, metadata JSON file, or JSON content
   --work-dir <path>    Output directory
   --path <text>        Extra path or access notes
-  --rounds <list>      Normal report rounds, e.g. 3,4,6 (report only)
-  --evidence <list>    Report refs, e.g. SQ1-T1:R1,SQ2-T1:R1 (report only)
   --goal <text>        Optional report synthesis goal (report only)
   --session <id|path>  Resume a SeekBrain conversation session
   --session-dir <dir>  Override the session storage directory
@@ -163,8 +208,7 @@ Examples:
   seekbrain setup
   seekbrain -- --model provider/model
   seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example
-  seekbrain report results/example --rounds 3,4,6
-  seekbrain report results/example --evidence SQ1-T1:R1,SQ2-T1:R1
+  seekbrain report results/research-planning-project
   seekbrain config show
   seekbrain config show --effective
   seekbrain config list modules.targeted_skill
@@ -255,8 +299,6 @@ export function parseArgs(input) {
       "--work-dir": "workDir",
       "--work_dir": "workDir",
       "--path": "extraPath",
-      "--rounds": "rounds",
-      "--evidence": "evidence",
       "--goal": "reportGoal",
       "--pi-arg": "piArg",
     }[arg];
@@ -289,23 +331,14 @@ export function parseArgs(input) {
   }
   if (command === "report") {
     if (!reportProject) return { action: "error", message: "report requires a project path", code: 2 };
-    const rounds = String(options.rounds || "").split(",").map((value) => value.trim()).filter(Boolean).map((value) => `ROUND:${Number(value)}`);
-    if (rounds.some((value) => value === "ROUND:NaN")) return { action: "error", message: "--rounds must be a comma-separated list of round numbers", code: 2 };
-    const evidence = String(options.evidence || "").split(",").map((value) => value.trim()).filter(Boolean);
-    const selected = [...rounds, ...evidence];
-    if (!selected.length) return { action: "error", message: "report requires --rounds or --evidence", code: 2 };
     options.reportMode = true;
     options.reportProject = reportProject;
-    options.reportSelections = selected;
     options.query = [
-      "Generate a SeekBrain scientific report now.",
-      `Project path: ${reportProject}`,
-      `Selected evidence: ${selected.join(", ")}`,
+      "Generate the final SeekBrain Research Planning academic report now.",
+      `Research Planning project path: ${reportProject}`,
       options.reportGoal ? `Report goal: ${options.reportGoal}` : "",
-      "Call seekbrain_report_generate exactly once with this project path and exact selection. Do not start or resume a research workflow and do not add unselected evidence.",
+      "Call seekbrain_report_generate exactly once with this parent project path. Do not start or resume research, select individual rounds, or generate a report for a standard project.",
     ].filter(Boolean).join("\n");
-    delete options.rounds;
-    delete options.evidence;
     return { action: "launch", nonInteractive: true, options };
   }
   if (command === "config" && configCommand === "init" && options.scope === "user" && options.config) {

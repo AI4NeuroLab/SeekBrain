@@ -29,19 +29,27 @@ workflow:
     # Parent-level literature grounding before a Research Planning tree is generated.
     # This is independent from task/ordinary-run deep_research.
     research_survey: true
+    # Run an automatic Reviewer Agent over a generated Research Planning tree.
+    # Disabled by default; the generated tree still goes to researcher review.
+    research_planning_peer_review: false
     # Used only by approved Research Planning trees; ordinary runs do not initialize it.
     research_execution:
       planning_concurrency: 3
       execution_concurrency: 2
     report:
       pdf:
-        enabled: false
+        enabled: true
         command: seekbrain-pdf
         timeout_seconds: 120
     deep_research: false
     targeted_skill_match: true
     targeted_skill_generate: true
-    image_refine: true
+    # When enabled, a repository found by Paper RAG is immediately crystallized
+    # into ~/.seekbrain/skills/from_rag/<github-owner>_<repository>/ and reused
+    # whenever RAG finds the same repository again. Disabled by default so the
+    # current repository-guidance -> Plan -> Code -> Validation flow is unchanged.
+    rag_recipe_crystallization: false
+    image_refine: false
     save_skill: true
     transparency: true
     human_review:
@@ -54,18 +62,22 @@ workflow:
 
 agents:
   seekbrain:
+    thinking: low
     timeout_seconds: 5400
   seekbrain_default:
-    thinking: high
+    thinking: off
     timeout_seconds: 300
   seekbrain_data_resolve:
+    thinking: off
     timeout_seconds: 900
   seekbrain_research_route:
-    thinking: low
+    thinking: off
     timeout_seconds: 120
   seekbrain_research_planning:
+    thinking: high
     timeout_seconds: 300
   seekbrain_survey:
+    thinking: low
     timeout_seconds: 600
     rag:
       paper_source: ailab_rag
@@ -75,8 +87,10 @@ agents:
       require_github: false
       source_char_limit: 5000
   seekbrain_research_reviewer:
+    thinking: low
     timeout_seconds: 300
   seekbrain_deep_research:
+    thinking: low
     timeout_seconds: 600
     rag:
       enable: false
@@ -85,28 +99,38 @@ agents:
       timeout: 600
       source_char_limit: 5000
   seekbrain_skill_match:
+    thinking: off
     timeout_seconds: 300
   seekbrain_skill_context:
+    thinking: off
     timeout_seconds: 900
   seekbrain_skill_generate:
+    thinking: medium
     timeout_seconds: 900
   seekbrain_plan:
+    thinking: high
     timeout_seconds: 300
   seekbrain_code:
+    thinking: high
     timeout_seconds: 1800
     vision: false
   seekbrain_validate:
+    thinking: low
     timeout_seconds: 300
     vision: true
   seekbrain_interpret:
+    thinking: high
     timeout_seconds: 600
-    vision: true
+    vision: false
   seekbrain_report:
+    thinking: low
     timeout_seconds: 900
     vision: true
   seekbrain_refine_image:
+    thinking: off
     timeout_seconds: 1200
     vision: true
-  seekbrain_save_skill: {}
+  seekbrain_save_skill:
+    thinking: off
 
 models: []

@@ -1,0 +1,25 @@
+{
+  "tag": "ns_ana-zebrafish-connectome-pearson-corrcoef_distance_scatter_plot",
+  "yaml_metadata": {
+    "name": "ns_ana-zebrafish-connectome-pearson-corrcoef_distance_scatter_plot",
+    "description": "Quantifies how inter-regional connectivity varies with anatomical distance and visualizes the relationship with a correlation scatter plot.",
+    "triggers": [
+      "How to reproduce To_investigate_the_relationship_between_inter-regional_conne",
+      "Generate To_investigate_the_relationship_between_inter-regional_conne from zebrafish data",
+      "Analyze data for To_investigate_the_relationship_between_inter-regional_conne",
+      "Reproduce figure To_investigate_the_relationship_between_inter-regional_conne",
+      "Run analysis for To_investigate_the_relationship_between_inter-regional_conne"
+    ],
+    "tags": [
+      "analysis",
+      "zebrafish",
+      "neuroscience",
+      "reproduction"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

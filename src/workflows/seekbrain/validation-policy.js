@@ -30,6 +30,7 @@ export function normalizeValidation(raw, context = {}) {
   const codeAttempt = Number(context.codeAttempt || 0);
   const refinementCount = Number(context.refinementCount || 0);
   const maxCodeAttempts = Number(context.maxCodeAttempts || DEFAULT_MAX_CODE_ATTEMPTS);
+  const imageRefineEnabled = context.imageRefineEnabled === true;
   const perFigure = Array.isArray(raw?.per_figure) ? raw.per_figure : [];
   const perFigureFailures = perFigure.filter((entry) => entry?.pass === false);
   const blockingIssues = strings(raw?.blocking_issues);
@@ -51,7 +52,7 @@ export function normalizeValidation(raw, context = {}) {
   let route;
   if (!pass) {
     route = codeAttempt >= maxCodeAttempts ? "conclude_with_limitations" : "retry_code";
-  } else if (refinementCount < 1 && normalizedVisualIssues.length) {
+  } else if (imageRefineEnabled && refinementCount < 1 && normalizedVisualIssues.length) {
     route = "refine_image";
   } else {
     route = "proceed";
@@ -64,7 +65,7 @@ export function normalizeValidation(raw, context = {}) {
     per_figure: perFigure,
     blocking_issues: blockingIssues,
     methodological_caveats: methodologicalCaveats,
-    visual_issues: normalizedVisualIssues,
+    visual_issues: imageRefineEnabled ? normalizedVisualIssues : [],
     overall_mismatches: overallMismatches,
     route,
     next_code_feedback: nextCodeFeedback,

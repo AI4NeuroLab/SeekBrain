@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { skillCardMarkdown } from "../../src/extension/runtime/shared/transparency-content.ts";
 import { renderCodeEditResult } from "../../src/extension/tui/code-review-tui.ts";
 import { renderCapabilitiesResult, renderResumeRunResult, renderSeekBrainResult } from "../../src/extension/tui/compact-tool-results.ts";
 
@@ -148,13 +149,14 @@ describe("compact Neuro tool results", () => {
   it.each([
     ["seekbrain_data_resolve", { ok: true, source: "cache", data_dir: "/data/fish", metadata_path: "/tmp/seekbrain/datasets/fish/metadata.json", warnings: [] }, "Dataset profile reused"],
     ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "existing_skill", skill_paths: ["/skills/fc_matrix"], reference_paths: ["/ref/a.md"] }, "Analysis recipe retrieved from the Neuroscience Analysis Repertoire"],
+    ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "repository_reference", reference_paths: ["/cache/AttentionTopology.py"], repository_reference: { repository_url: "https://github.com/TCR23/TopologyForAttention", reference_files: ["/cache/AttentionTopology.py"] } }, "Analysis recipe found in an external repository"],
     ["seekbrain_deep_research", { ok: true, rag_ok: false, source_count: 0, rag_error: "Paper RAG base URL is not configured", context_path: "/run/deep_research_context.md" }, "Deep research complete · 0 sources"],
-    ["seekbrain_planning_generate", { ok: true, subquestion_count: 2, task_count: 3, research_plan: { planning_rationale: "Complementary branches" }, draft_plan_path: "/run/research_plan/draft_plan.json" }, "Hierarchical research plan drafted · 2 subquestions · 3 analysis tasks"],
-    ["seekbrain_planning_peer_review", { ok: true, verdict: "revise", refined: true, decision: "approve", subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, final_plan_path: "/run/research_plan/research_plan.json", next_tool: "seekbrain_analysis_tasks_prepare" }, "Hierarchical research plan reviewed and approved"],
+    ["seekbrain_planning_generate", { ok: true, subquestion_count: 2, task_count: 3, research_plan: { planning_rationale: "Complementary branches" }, research_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan drafted · 2 subquestions · 3 analysis tasks"],
+    ["seekbrain_planning_peer_review", { ok: true, verdict: "revise", refined: true, decision: "approve", subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, research_plan_path: "/run/research_plan/research_plan.json", next_tool: "seekbrain_analysis_tasks_prepare" }, "Hierarchical research plan reviewed and approved"],
     ["seekbrain_planning_peer_review", { ok: true, verdict: "accept", needs_text_review: true, subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, next_tool: "seekbrain_planning_researcher_decision_record" }, "researcher decision required"],
-    ["seekbrain_planning_researcher_review", { ok: true, decision: "revise", feedback_response: "Sharpened SQ2", final_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan revised · review again"],
+    ["seekbrain_planning_researcher_review", { ok: true, decision: "revise", feedback_response: "Sharpened SQ2", research_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan revised · review again"],
     ["seekbrain_planning_researcher_review", { ok: false, needs_text_review: true, next_tool: "seekbrain_planning_researcher_decision_record", message: "Interactive selector is unavailable." }, "researcher decision required"],
-    ["seekbrain_planning_researcher_decision_record", { ok: true, decision: "approve", final_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan approved"],
+    ["seekbrain_planning_researcher_decision_record", { ok: true, decision: "approve", research_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan approved"],
     ["seekbrain_analysis_tasks_prepare", { ok: true, reused: false, task_count: 3, next_task: { task_id: "SQ1-T1", question: "Test branch one" }, task_manifest_path: "/run/research_plan/task_manifest.json" }, "Analysis tasks prepared · 3 child runs"],
     ["seekbrain_formulation_generate", { ok: true, plan_path: "/run/plan.md", result: { summary: "Compute FC matrices", warnings: [] }, human_review: { needs_user_review: true } }, "Researcher review required"],
     ["seekbrain_code_execute", { ok: true, result: { summary: "Generated the analysis" }, artifacts: [{ name: "figure.png" }, { name: "statistics.json" }] }, "2 artifacts: figure.png, statistics.json"],
@@ -185,6 +187,26 @@ describe("compact Neuro tool results", () => {
     expect(blocked).toContain("Plan approval is required");
   });
 
+  it("shows repository-backed recipe details instead of no match", () => {
+    const card = skillCardMarkdown({
+      targeted_skill_result: {
+        matched: true,
+        source: "repository_reference",
+        summary: "# Repository-backed method guidance",
+        repository_reference: {
+          repository_url: "https://github.com/TCR23/TopologyForAttention",
+          reference_files: ["/cache/AttentionTopology.py"],
+          reused_validated_scripts: false,
+        },
+      },
+    });
+    expect(card).toContain("Analysis Recipe — repository method found");
+    expect(card).toContain("TCR23/TopologyForAttention");
+    expect(card).toContain("AttentionTopology.py");
+    expect(card).not.toContain("no match");
+    expect(card).not.toContain("SKILL.md");
+  });
+
   it("renders partial progress as running instead of failed", () => {
     const planning = rendered(renderSeekBrainResult("seekbrain_planning_generate")(result({
       progress: true,
@@ -199,7 +221,7 @@ describe("compact Neuro tool results", () => {
       stage: "generating",
       message: "Synthesizing selected evidence.",
     }), { expanded: false, isPartial: true }, theme));
-    expect(report).toContain("Scientific report · generating");
+    expect(report).toContain("Research Planning report · hierarchical synthesis");
     expect(report).not.toContain("failed");
 
     const failure = rendered(renderSeekBrainResult("seekbrain_planning_generate")(result({

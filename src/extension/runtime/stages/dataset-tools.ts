@@ -1,9 +1,17 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { DatasetMetadataStore } from "../../../data-resolve/index.ts";
+import {
+  applySemanticEnrichment,
+  DATASET_ROLES,
+  DatasetMetadataStore,
+  profileDatasetDeterministically,
+  semanticEvidenceBundle,
+} from "../../../data-resolve/index.ts";
 import { renderSeekBrainResult } from "../../tui/compact-tool-results.ts";
 import type { RunSubagentOptions } from "../shared/subagent-runner.ts";
 import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
+
+const SEMANTIC_FALLBACK_MAX_COLLECTIONS = 24;
 
 export interface DatasetToolDependencies {
   loadConfig(cwd: string): Promise<Json>;
@@ -17,11 +25,9 @@ export function createDatasetTools(deps: DatasetToolDependencies): SeekBrainTool
   return [defineTool({
     name: "seekbrain_data_resolve",
     label: "Profile Dataset",
-    description: "Profile a user-provided dataset directory into persistent factual metadata. Reuses the user-level cache for the same canonical dataset directory unless refresh=true.",
+    description: "Build a question-independent structural catalog for a user-provided dataset directory. Reuses the user-level cache unless refresh=true.",
     parameters: Type.Object({
       data_dir: Type.String({ description: "Dataset directory explicitly supplied by the user. It is inspected read-only." }),
-      question: Type.Optional(Type.String({ description: "Research question, used only to prioritize relevant metadata details." })),
-      paper_hint: Type.Optional(Type.String({ description: "Optional paper or dataset name supplied by the user." })),
       refresh: Type.Optional(Type.Boolean({ description: "Regenerate metadata even when this dataset is already cached." })),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -38,76 +44,106 @@ export function createDatasetTools(deps: DatasetToolDependencies): SeekBrainTool
           dataset_id: identity.datasetId,
           data_dir: identity.canonicalRoot,
           metadata: cached.metadata,
-          data_info: JSON.stringify(cached.metadata, null, 2),
           metadata_path: identity.metadataPath,
           manifest_path: identity.manifestPath,
           warnings: cached.manifest.warnings || [],
         });
       }
 
-      await datasetMetadataStore.prepare(identity);
-      const prompt = [
-        await deps.readPrompt("data_resolve"),
-        "",
-        "# Current request",
-        `DATA_DIR (canonical, read-only): ${identity.canonicalRoot}`,
-        `Work directory (writable probes only): ${identity.workDir}`,
-        params.paper_hint ? `Paper / dataset hint: ${params.paper_hint}` : "",
-        params.question ? `Downstream question (context only): ${params.question}` : "",
-      ].filter(Boolean).join("\n\n");
-      const resolved = await deps.runSubagent({
-        runDir: identity.workDir,
-        agentName: "data_resolve",
-        finalizeTool: "finalize_data_resolve",
-        finalizeSchema: Type.Object({
-          metadata: Type.Record(Type.String(), Type.Unknown()),
-          dataset_type: Type.Union([Type.Literal("A"), Type.Literal("B"), Type.Literal("C")]),
-          summary: Type.String(),
-          inspected_paths: Type.Array(Type.String()),
-          warnings: Type.Array(Type.String()),
-        }),
-        prompt,
-        agentConfig: deps.pickAgentConfig(config, "seekbrain_data_resolve"),
-        tools: ["read", "bash", "grep", "find", "ls", "write"],
-        signal,
-      });
-      if (!resolved.ok) {
+      try {
+        const profile = await profileDatasetDeterministically(identity.canonicalRoot);
+        let metadata = profile.metadata;
+        let profiler = "deterministic";
+        const ambiguousCollections = Array.isArray(metadata.quality?.unresolved_family_ids)
+          ? metadata.quality.unresolved_family_ids.length
+          : 0;
+        if (ambiguousCollections > 0 && ambiguousCollections <= SEMANTIC_FALLBACK_MAX_COLLECTIONS) {
+          const semantic = await deps.runSubagent({
+            runDir: identity.workDir,
+            agentName: "data_resolve_semantics",
+            finalizeTool: "finalize_data_resolve_semantics",
+            finalizeSchema: Type.Object({
+              description: Type.String(),
+              family_updates: Type.Array(Type.Object({
+                family_id: Type.String(),
+                role: Type.Union(DATASET_ROLES.filter((role) => role !== "opaque_binary").map((role) => Type.Literal(role)) as any),
+                axis_semantics: Type.Optional(Type.Array(Type.String())),
+                evidence: Type.Array(Type.String()),
+              })),
+              warnings: Type.Array(Type.String()),
+            }),
+            prompt: [
+              await deps.readPrompt("data_resolve"),
+              "",
+              "# Deterministic evidence bundle",
+              JSON.stringify(semanticEvidenceBundle(metadata)),
+            ].join("\n"),
+            agentConfig: deps.pickAgentConfig(config, "seekbrain_data_resolve"),
+            tools: [],
+            signal,
+          });
+          if (!semantic.ok) {
+            if (signal?.aborted) {
+              return deps.content({ ok: false, error: "Dataset profiling was cancelled", dataset_id: identity.datasetId, data_dir: identity.canonicalRoot });
+            }
+            metadata.warnings = [...(metadata.warnings || []), `Optional semantic enrichment did not complete: ${semantic.error || "unknown error"}`];
+          }
+          else {
+            metadata = applySemanticEnrichment(metadata, semantic.result as Json);
+            profiler = "deterministic+semantic";
+          }
+        }
+        else if (ambiguousCollections > SEMANTIC_FALLBACK_MAX_COLLECTIONS) {
+          metadata.warnings = [
+            ...(metadata.warnings || []),
+            `Semantic enrichment was skipped for ${ambiguousCollections} ambiguous structural collections; structural metadata is complete and ambiguity is preserved explicitly.`,
+          ];
+        }
+        if (metadata.quality?.status !== "complete") {
+          return deps.content({
+            ok: false,
+            error: "Dataset metadata did not pass the quality gate",
+            dataset_id: identity.datasetId,
+            data_dir: identity.canonicalRoot,
+            quality: metadata.quality,
+            warnings: metadata.warnings || [],
+            message: "Structurally incomplete metadata was not saved or passed downstream.",
+          });
+        }
+        const saved = await datasetMetadataStore.save(identity, metadata, {
+          dataset_type: profile.datasetType,
+          summary: profile.summary,
+          inspected_paths: profile.inspectedPaths,
+          warnings: metadata.warnings || profile.warnings,
+          profiler,
+          elapsed_ms: profile.elapsedMs,
+        });
         return deps.content({
-          ok: false,
-          error: resolved.error || "Data Analysis Agent failed to produce a dataset profile",
+          ok: true,
+          source: "generated",
+          generated: true,
+          profiler,
+          elapsed_ms: profile.elapsedMs,
           dataset_id: identity.datasetId,
           data_dir: identity.canonicalRoot,
+          metadata: saved.metadata,
+          metadata_path: identity.metadataPath,
+          manifest_path: identity.manifestPath,
+          dataset_type: profile.datasetType,
+          summary: profile.summary,
+          inspected_paths: profile.inspectedPaths,
+          warnings: metadata.warnings || profile.warnings,
+        });
+      } catch (error) {
+        return deps.content({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          dataset_id: identity.datasetId,
+          data_dir: identity.canonicalRoot,
+          message: "Dataset inventory failed before valid metadata could be saved.",
         });
       }
-      const result = resolved.result as Json;
-      const metadata = result.metadata as Json;
-      if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-        return deps.content({ ok: false, error: "Data Analysis Agent returned an invalid dataset profile", dataset_id: identity.datasetId });
-      }
-      metadata.root_dir = identity.canonicalRoot;
-      const saved = await datasetMetadataStore.save(identity, metadata, {
-        dataset_type: result.dataset_type,
-        summary: result.summary,
-        inspected_paths: result.inspected_paths,
-        warnings: result.warnings,
-      });
-      return deps.content({
-        ok: true,
-        source: "generated",
-        generated: true,
-        dataset_id: identity.datasetId,
-        data_dir: identity.canonicalRoot,
-        metadata: saved.metadata,
-        data_info: JSON.stringify(saved.metadata, null, 2),
-        metadata_path: identity.metadataPath,
-        manifest_path: identity.manifestPath,
-        dataset_type: result.dataset_type,
-        summary: result.summary,
-        inspected_paths: result.inspected_paths,
-        warnings: result.warnings,
-      });
     },
     renderResult: renderSeekBrainResult("seekbrain_data_resolve"),
   })];
 }
-

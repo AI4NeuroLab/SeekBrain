@@ -100,9 +100,11 @@ export function createConfigService(options: ConfigServiceOptions) {
     return {
       research_planning: configured.research_planning === true,
       research_survey: literature.research_survey,
+      research_planning_peer_review: configured.research_planning_peer_review === true,
       deep_research: literature.deep_research,
       targeted_skill_match: literature.targeted_skill_match,
       targeted_skill_generate: literature.targeted_skill_generate,
+      rag_recipe_crystallization: configured.rag_recipe_crystallization === true,
       literature_provider: literature.provider,
       has_literature_provider: literature.available,
       image_refine: boolValue("image_refine"),
@@ -172,4 +174,3 @@ export function createConfigService(options: ConfigServiceOptions) {
     ensureProcessEnvFromDotenv,
   };
 }
-

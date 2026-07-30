@@ -63,8 +63,8 @@ for (const width of [1, 8, 48, 80, 160]) {
 }
 header.setExpanded(true);
 const expandedHeader = header.render(160).join("\n");
-assert.match(expandedHeader, /START.*Type your research question directly/s);
-assert.match(expandedHeader, /DATA.*start with only a question/s);
+assert.match(expandedHeader, /START.*Type a research question or dataset path directly/s);
+assert.match(expandedHeader, /DATA.*a dataset path alone profiles the dataset and suggests research directions/s);
 assert.match(expandedHeader, /MODELS.*\/seekbrain-setup/s);
 assert.match(expandedHeader, /LOADED.*research workflow.*adaptive stage tracker.*usage footer/s);
 assert.doesNotMatch(expandedHeader, /\/entry/);

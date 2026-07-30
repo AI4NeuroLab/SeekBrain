@@ -1,6 +1,6 @@
 ---
-description: Run the SeekBrain workflow (dataset profiling → Deep Research → recipe → analytical formulation → code generation and execution → validation → optional figure refinement → result interpretation)
-argument-hint: "<question>"
+description: Profile a dataset or run the SeekBrain research workflow (dataset profiling → recipe → analytical formulation → code generation and execution → validation → result interpretation)
+argument-hint: "<question-or-dataset-path>"
 ---
 You are running the SeekBrain workflow for the following question:
 
@@ -11,21 +11,41 @@ $@
 Before starting the pipeline, check whether the user provided enough task
 information.
 
-- If the user explicitly requests a report from an existing project and gives
-  selected evidence references, this is not a new analysis run: skip all
-  dataset/metadata preflight and call `seekbrain_report_generate` with exactly that
-  project path and selection.
+- If the user explicitly requests the final report for a completed Research
+  Planning parent project, this is not a new analysis run: skip dataset/metadata
+  preflight and call `seekbrain_report_generate` with only that project path.
 
-- If the question is empty or ambiguous, ask for the concrete neuroscience
-  question before calling any tool.
+- A request containing only a dataset directory is a dataset-profile request,
+  not an empty or ambiguous research question. Immediately call
+  `seekbrain_data_resolve` with that exact directory. Do not ask for a research
+  question first, create a research project/run, retrieve a Recipe, or start any
+  analysis stage. After a successful resolve, use the returned canonical
+  `metadata` to:
+  1. describe the dataset type and inventory;
+  2. identify repeated units and conditions when present;
+  3. summarize the main scientific asset families, modalities, useful shapes or
+     axis semantics, and execution-relevant relationships;
+  4. report metadata quality and meaningful warnings; and
+  5. recommend 3–5 concrete, feasible research directions grounded only in the
+     available assets and relationships.
+  Keep this response compact and readable. Do not inspect raw data, invent
+  biological context absent from metadata, or recommend analyses that require
+  unavailable modalities. End after the recommendations and wait for the user
+  to choose one or provide a custom question.
+- When the user chooses a direction after dataset profiling, start the normal
+  workflow using the already returned `metadata_path`. If it is no longer
+  available in context, call `seekbrain_data_resolve` on the same exact dataset
+  directory again without `refresh`; this is a cache lookup, not a new profile.
+- If neither a research question nor a dataset-only request can be identified,
+  ask for the concrete neuroscience question before calling any tool.
 - The user may provide either metadata JSON (path or content) or a dataset
   directory. If they provide a dataset directory without metadata, do not ask
   them to create metadata: call `seekbrain_data_resolve` with that exact directory.
   If they provide neither form, request one. Never scan the filesystem to infer
   a dataset location.
 - If the user provided extra data-access notes or path overrides, preserve them
-  as `extra_path_info` and pass them to planning and coding tools. This is
-  optional; metadata is the primary data source.
+  in the research-start metadata. Formulation reads that canonical state and
+  records execution-relevant paths in plan.md; do not pass them again to Code.
 - `project_dir` is required by `seekbrain_research_start`, but a missing output
   directory does not require a question to the user. If the user did not
   specify one, create a stable ID path such as
@@ -85,17 +105,15 @@ directories to discover data, generated outputs, repositories, or references.
 Commands such as `find /`, `find /mnt`, broad `ls` of shared roots, or similar
 root/parent scans are forbidden.
 
-If expected data appears missing or inaccessible, pass the missing path,
-metadata details, and any lightweight diagnosis as additional context to later
-tools. Do not choose substitute data yourself.
+If expected data appears missing or inaccessible, record the issue in canonical
+metadata or plan.md. Do not choose substitute data yourself.
 
 The only allowed analysis runtime is Native Python in the maintained `brain`
 conda/Python environment, and the current process is expected to already be
 running inside it. Do not use or recommend bridge runtimes such as Julia via
 `juliacall`, R, MATLAB, shell pipelines as the analysis engine, or any other
-non-Python runtime. If the user, metadata, or explicit path-existence checks
-reveal useful data-access information, pass it explicitly to downstream stage
-agents through `data_info`, `extra_path_info`, or `additional_context`.
+non-Python runtime. Data-access information must live in canonical metadata and
+then plan.md; do not retransmit it through repeated stage-tool arguments.
 
 ## Workflow
 
@@ -125,10 +143,7 @@ First implementation scope:
 
 After `seekbrain_formulation_generate` when the methodological-schema review gate is enabled:
 
-1. Read the methodological schema returned in `plan_markdown` and summarize it yourself in the chat.
-   Do not rely on a Formulation Agent-authored review summary. Include `plan_path`,
-   objective, inputs, preprocessing, analysis/statistics, outputs, confidence,
-   warnings, and any important assumptions or risky choices.
+1. Show the returned concise `review_summary`, `plan_path`, and warnings in chat.
 2. Immediately call `seekbrain_formulation_researcher_review` to show the native two-option selector
    (`Yes, code`, `No, and tell SeekBrain what to do differently`). Do not
    replace this selector with a plain chat sentence asking the user to approve.
@@ -141,6 +156,9 @@ After `seekbrain_formulation_generate` when the methodological-schema review gat
    `seekbrain_formulation_generate` when the feedback requires a broad methodological redesign or
    invalidates the previous schema. Do not call `seekbrain_code_execute` until schema approval
    is recorded.
+5. If it returns `decision="stop"`, the workflow is terminally cancelled by the
+   researcher. Do not revise the Plan, show the review selector again, or call
+   any downstream workflow tool. Retain the current Plan and end the response.
 
 If a downstream tool returns `blocked_by_human_review=true`, do not retry that
 tool immediately. Show the user the required stage and ask for approval or
@@ -167,16 +185,19 @@ inside `work_dir`. These records are available to inspect when they are useful
 for diagnosis or decision-making; do not rely on guessed paths when tool
 outputs already provide explicit paths.
 
-Stage-agent tools accept optional `additional_context`. Use it when you need to
-intentionally pass short, unexpected, or cross-stage information that is not
-already covered by the tool's named parameters but should affect that specific
-stage-agent call. Do not copy whole upstream outputs into it; summarize only the
-decision-relevant point.
+After research start, stage tools resolve canonical inputs from `run_id`. Do not
+repeat question, metadata, recipe, plan, or background context in tool arguments.
 
 0. **Profile the dataset when needed**
    - Tool: `seekbrain_data_resolve`
    - Use it only when the user supplied a dataset directory instead of metadata.
-   - Inputs: exact `data_dir`, optional question and paper/dataset hint.
+   - **Dataset-only terminal branch:** if the current request contains a dataset
+     directory but no research question, resolve it, describe the dataset and
+     recommend 3–5 metadata-grounded research directions as specified in
+     Preflight, then stop. Do not call `seekbrain_research_start` or any later
+     stage until the user selects or supplies a question.
+   - Input: exact `data_dir`. Dataset metadata is canonical and must not depend
+     on the current research question.
    - It reuses the persistent dataset profile for the same canonical directory. Set
      `refresh=true` only when the user requests regeneration or says the
      dataset changed materially.
@@ -254,10 +275,14 @@ decision-relevant point.
    - Never prepare the hierarchical research plan before explicit Yes approval.
      In a non-UI context, ask the user for Yes or No, then pass the user's short
      reply and its normalized decision to `seekbrain_planning_decision_record`.
-   - After `seekbrain_planning_generate`, call `seekbrain_planning_peer_review`
-     exactly once. It reviews the complete hierarchical research plan and may perform at most one
-     Orchestrator refinement. Do not repeat this automatic review tool unless
-     the user explicitly requests another scientific review.
+   - When `workflow_config.optional.research_planning_peer_review="enabled"`,
+     call `seekbrain_planning_peer_review` exactly once after
+     `seekbrain_planning_generate`. It reviews the complete hierarchical research plan and may
+     perform at most one Orchestrator refinement. Do not repeat this automatic
+     review tool unless the user explicitly requests another scientific review.
+   - When automatic peer review is disabled, `seekbrain_planning_generate`
+     finalizes the generated tree directly and presents it for researcher review;
+     do not call `seekbrain_planning_peer_review` unless the user explicitly asks for it.
    - `seekbrain_planning_peer_review` presents the final native researcher
      selector immediately after automatic review and applies revision feedback
      through the Orchestrator without another Reviewer Agent pass.
@@ -269,6 +294,11 @@ decision-relevant point.
      `seekbrain_analysis_tasks_prepare`, then
      `seekbrain_execution_initialize`. Do not manually run each child in
      sequence.
+   - If the user wants to extend a completed Research Planning project, call
+     `seekbrain_research_extend` with `new_sq` to append exactly one SQN-T1, or
+     with `new_round` to add the next round of an existing task. Then call
+     `seekbrain_execution_run` for the returned parent run. Do not regenerate
+     or re-review the whole research tree.
    - Call `seekbrain_execution_run` to run the Analysis Execution Engine. It
      prepares recipes, Deep Research context, and methodological schemas in
      parallel, presents each completed schema through the serialized parent
@@ -292,46 +322,43 @@ decision-relevant point.
 
 ## Reports
 
-Never generate a report automatically. A passive availability hint is not user
-authorization. Only call `seekbrain_report_generate` when the user explicitly asks
-for a report and identifies the results to include, using `ROUND:<n>` for normal
-project rounds and `<task-id>:R<n>` for Research Planning task rounds. The
-selection is authoritative: do not add, inspect, evaluate, or warn about
-unselected rounds or branches. `seekbrain_report_evidence_compile` is a diagnostic
-lower-level tool; ordinary report requests should use `seekbrain_report_generate`
-once with the full explicit selection.
+Never generate a report automatically. Academic reports are supported only for
+Research Planning parent projects. A passive availability hint is not
+authorization. Call `seekbrain_report_generate` only when the user explicitly
+asks for a report or runs `/seekbrain-report`. The interactive command lets the
+researcher select completed, validated task rounds, including multiple rounds
+from one task. Pass the parent project path and the exact selected evidence IDs.
+Do not mix standard and Research Planning results. Multiple rounds from one task
+are related analysis versions rather than independent experiments.
+`seekbrain_report_evidence_compile` is a diagnostic lower-level tool.
 
 3. **Deep Research** (enabled optional context)
    - Tool: `seekbrain_deep_research`
    - Purpose: retrieve and synthesize background context for the question.
    - Inputs: `question`, `run_id`.
    - Outputs to keep: `deep_research_context`, `context_path`, `sources_path`.
-   - Use: pass useful background context into `seekbrain_formulation_generate`; it is also stored
-     in run state for `seekbrain_code_execute`.
+   - Use: the tool persists its result for stages that need background evidence.
 
 4. **Analysis recipe** (enabled optional context)
    - Tool: `seekbrain_recipe_retrieve`
    - Purpose: retrieve or crystallize analysis guidance from the Neuroscience Analysis Repertoire.
    - Inputs: `question`, `run_id`.
-   - Outputs to keep: `analysis_recipe`, `analysis_recipe_path`, `trace_dir`,
-     `recipe_paths`, and `reference_paths`.
-   - Use: pass useful analysis recipe text into `seekbrain_formulation_generate` and `seekbrain_code_execute`.
+   - Outputs to keep: `analysis_recipe_path`, compact `summary`, `trace_dir`,
+     `recipe_paths`, and `reference_paths`. The full recipe remains on disk.
+   - Use: the tool persists the selected recipe; Formulation reads it by `run_id`.
      If you need to inspect recipe reference files, use only the exact
      paths returned by the tool. Do not reconstruct recipe package paths from
      names, headings, or text inside the analysis recipe.
 
 5. **Analytical Formulation**
    - Tool: `seekbrain_formulation_generate`
-   - Purpose: use the Formulation Agent to turn the question, metadata, path notes,
-     available context, and analysis recipe into a methodological schema.
-   - Inputs: `question`, `run_id`, metadata as `data_info`, optional
-     `extra_path_info`, available `analysis_recipe`, available
-     `deep_research_context`.
-   - Outputs to keep: `plan_path`, result summary/confidence/warnings.
-   - Use: pass the methodological schema text into `seekbrain_code_execute`.
+   - Purpose: create the detailed, concise plan.md method contract from canonical run state.
+   - Inputs: `run_id` only.
+   - Outputs to keep: `plan_path`, `review_summary`, and warnings.
+   - Use: Code reads plan.md directly; do not retransmit its text.
    - Researcher review: if the plan gate is enabled, stop after this stage and wait
-     for explicit user approval. Summarize the schema yourself from
-     `plan_markdown`, then call `seekbrain_formulation_researcher_review` to show the native
+     for explicit user approval. Show `review_summary`, then call
+     `seekbrain_formulation_researcher_review` to show the native
      two-option selector. Use `seekbrain_formulation_update` to persist any direct schema
      edits. Do not call `seekbrain_code_execute` until schema approval is recorded.
 
@@ -339,10 +366,7 @@ once with the full explicit selection.
    - Tool: `seekbrain_code_execute`
    - Purpose: use the Code Agent to implement the methodological schema and
      produce the declared scientific and code artifacts.
-   - Inputs: `question`, `run_id`, methodological schema as
-     `methodological_schema`, metadata as `data_info`, optional
-     `extra_path_info`, available `analysis_recipe`, and optionally
-     `validation_feedback` on retries.
+   - Inputs: `run_id`; retries may additionally pass `validation_feedback`.
    - Outputs to keep: `artifacts`, `checks`, `statistics`, `code_attempt`.
    - Use: `state.artifacts` is the dynamic artifact index for figures, data,
      statistics, logs, and code. Do not invent artifact paths.
@@ -445,8 +469,9 @@ again after that failed attempt.
 
 If any tool returns `blocked_by_dummy_data: true` or `checks.dummy_data_signals`
 is non-empty, ask the user for the correct data paths before retrying
-`seekbrain_code_execute`. Treat the user's correction as updated `extra_path_info`. Do not
-silently continue with synthetic data.
+`seekbrain_code_execute`. Record the correction in plan.md through the
+Formulation update/review flow before retrying. Do not silently continue with
+synthetic data.
 
 If `checks.statistics_warnings` is non-empty, mention the warnings in the final
 report and consider whether a code retry is warranted.

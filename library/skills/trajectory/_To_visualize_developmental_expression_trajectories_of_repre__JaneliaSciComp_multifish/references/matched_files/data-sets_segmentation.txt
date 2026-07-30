@@ -1,4 +1,0 @@
-# Source: data-sets/segmentation.txt
-# Summary: See repo_context.md
-
-model.zip           7c4b6de492abba160cfa9d7c2bbb4592    https://janelia.figshare.com/ndownloader/files/26271079

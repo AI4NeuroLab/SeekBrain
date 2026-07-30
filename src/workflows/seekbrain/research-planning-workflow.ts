@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import type { StageAgentResult } from "./research-skill-workflow.ts";
-import type { RunLifecycleWorkflow, WorkflowJson } from "./run-lifecycle.ts";
+import { readCanonicalMetadata, type RunLifecycleWorkflow, type WorkflowJson } from "./run-lifecycle.ts";
 
 export interface ResearchPlanningWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
@@ -42,6 +43,7 @@ export interface PrepareSubquestionsInput {
   agentConfig: WorkflowJson;
   finalizeSchema: unknown;
   subquestionCount?: number;
+  peerReviewRequired?: boolean;
   signal?: AbortSignal;
 }
 
@@ -61,7 +63,7 @@ export interface ReviewResearchPlanInput {
 export interface RecordResearchPlanDecisionInput {
   cwd: string;
   runId: string;
-  decision: "approve" | "revise" | "cancel";
+  decision: "approve" | "revise" | "restore_previous" | "cancel";
   feedback?: string;
   source?: string;
   orchestratorRolePrompt: string;
@@ -75,9 +77,37 @@ export interface MaterializeResearchTasksInput {
   runId: string;
 }
 
+export interface ExtendResearchInput {
+  cwd: string;
+  projectPath: string;
+  action: "new_sq" | "new_round";
+  question?: string;
+  taskId?: string;
+}
+
 function planningState(run: WorkflowJson): WorkflowJson {
   const value = run.state.research_planning;
   return value && typeof value === "object" ? value : {};
+}
+
+function canonicalResearchPlanPath(run: WorkflowJson): string {
+  return join(run.runDir, "research_plan", "research_plan.json");
+}
+
+async function readJson(path: string): Promise<WorkflowJson | undefined> {
+  try { return JSON.parse(await readFile(path, "utf8")) as WorkflowJson; }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+function metadataReference(run: WorkflowJson): WorkflowJson {
+  const metadataPath = String(run.state.metadata_json_path || "").trim();
+  return {
+    ...(metadataPath ? { metadata_json_path: metadataPath } : { data_info: String(run.state.data_info || "") }),
+    extra_path_info: String(run.state.extra_path_info || ""),
+  };
 }
 
 export function verifiedExplicitResearchPlanningRequest(question: unknown, evidenceQuote: unknown): string | undefined {
@@ -126,8 +156,8 @@ function textList(value: unknown): string[] {
 
 function normalizeResearchTree(value: WorkflowJson): WorkflowJson {
   const rawSubquestions = Array.isArray(value.subquestions) ? value.subquestions : [];
-  if (rawSubquestions.length < 2 || rawSubquestions.length > 3) {
-    throw new Error(`Research plan must contain 2 or 3 subquestions; received ${rawSubquestions.length}.`);
+  if (rawSubquestions.length < 2) {
+    throw new Error(`Research plan must contain at least 2 subquestions; received ${rawSubquestions.length}.`);
   }
   const subquestions = rawSubquestions.map((raw, subquestionIndex) => {
     const item = raw && typeof raw === "object" ? raw as WorkflowJson : {};
@@ -196,6 +226,16 @@ function normalizeReviewerCritique(value: WorkflowJson): WorkflowJson {
 export class ResearchPlanningWorkflow {
   constructor(readonly dependencies: ResearchPlanningWorkflowDependencies) {}
 
+  async getResearchPlan(cwd: string, runId: string): Promise<WorkflowJson> {
+    const run = await this.dependencies.lifecycle.resolveRun(cwd, runId);
+    const current = planningState(run);
+    const path = String(current.research_plan_path || canonicalResearchPlanPath(run));
+    const plan = await readJson(path);
+    if (!plan) throw new Error("Canonical hierarchical research plan is missing.");
+    const normalized = normalizeResearchTree(plan);
+    return { plan: normalized, path, state: current };
+  }
+
   async recordAssessment(input: RecordResearchPlanningAssessmentInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const value = input.assessment || {};
@@ -247,7 +287,7 @@ export class ResearchPlanningWorkflow {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const question = String(run.state.question || "").trim();
     if (!question) throw new Error("A persisted research question is required before planning assessment.");
-    const metadata = String(run.state.data_info || "").slice(0, 12_000);
+    const metadata = (await readCanonicalMetadata(run)).slice(0, 12_000);
     const externalLiterature = input.literatureProvider === "semantic_scholar" || input.literatureProvider === "pubmed";
     const literatureInstruction = externalLiterature
       ? [
@@ -334,7 +374,7 @@ export class ResearchPlanningWorkflow {
   async recordDecision(
     cwd: string,
     runId: string,
-    decision: "yes" | "no",
+    decision: "yes" | "no" | "agent_full_auto",
     source = "planning_selector",
     consentEvidence?: string,
   ): Promise<WorkflowJson> {
@@ -343,7 +383,7 @@ export class ResearchPlanningWorkflow {
     if (current.assessment?.route !== "research_planning") {
       return { ok: false, run_id: run.runId, error: "This run was not routed to Research Planning." };
     }
-    const accepted = decision === "yes";
+    const accepted = decision !== "no";
     const next = {
       ...current,
       status: accepted ? "approved" : "declined",
@@ -354,6 +394,7 @@ export class ResearchPlanningWorkflow {
         reviewed_at: new Date().toISOString(),
       },
       active_route: accepted ? "research_planning" : "standard",
+      agent_full_auto: decision === "agent_full_auto",
     };
     await this.dependencies.lifecycle.updateState(run, { research_planning: next });
     await this.dependencies.appendEvent({
@@ -362,6 +403,7 @@ export class ResearchPlanningWorkflow {
       ok: true,
       decision,
       source,
+      agent_full_auto: decision === "agent_full_auto",
       ...(consentEvidence ? { consent_evidence: consentEvidence } : {}),
     });
     return {
@@ -369,6 +411,7 @@ export class ResearchPlanningWorkflow {
       run_id: run.runId,
       decision,
       decision_source: source,
+      agent_full_auto: decision === "agent_full_auto",
       ...(consentEvidence ? { consent_evidence: consentEvidence } : {}),
       route: next.active_route,
       next_tool: accepted ? "seekbrain_planning_generate" : "seekbrain_recipe_retrieve",
@@ -380,9 +423,9 @@ export class ResearchPlanningWorkflow {
 
   async prepareSubquestions(input: PrepareSubquestionsInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
+    const metadata = await readCanonicalMetadata(run);
     const current = planningState(run);
-    const legacySubquestionsReady = current.status === "subquestions_ready" && Boolean(current.subquestions);
-    if (current.status !== "approved" && !legacySubquestionsReady) {
+    if (current.status !== "approved") {
       return {
         ok: false,
         run_id: run.runId,
@@ -397,14 +440,14 @@ export class ResearchPlanningWorkflow {
       : `Generate exactly ${Math.max(2, Math.min(3, Math.trunc(input.subquestionCount)))} subquestions.`;
     const agent = await this.dependencies.runAgent({
       runDir: run.runDir,
-      finalizeTool: "finalize_research_plan_draft",
-      prompt: prompt(input.rolePrompt, "finalize_research_plan_draft", [
+      finalizeTool: "finalize_research_plan",
+      prompt: prompt(input.rolePrompt, "finalize_research_plan", [
         `Main question:\n${String(run.state.question || "")}`,
         `Scientific goal:\n${String(assessment.inferred_scientific_goal || "")}`,
         `Background:\n${String(assessment.inferred_background || "")}`,
         surveyPromptSection(run),
         `Evidence dimensions identified by routing:\n${JSON.stringify(assessment.evidence_dimensions || [])}`,
-        `Dataset metadata:\n${String(run.state.data_info || "")}`,
+        `Dataset metadata:\n${metadata}`,
         requestedCount,
         "Finalize the complete hierarchical research plan with: { research_goal, planning_rationale, subquestions, synthesis_strategy }.",
         "Each subquestion must contain { id, question, hypothesis, role_in_overall_conclusion, dataset_grounding, tasks }.",
@@ -425,18 +468,17 @@ export class ResearchPlanningWorkflow {
       await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_planning_generate", ok: false, reason: "invalid_research_tree" });
       return { ok: false, run_id: run.runId, error: error instanceof Error ? error.message : String(error) };
     }
-    const path = join(run.runDir, "research_plan", "draft_plan.json");
+    const path = canonicalResearchPlanPath(run);
     await this.dependencies.writeJson(path, researchTree);
     const taskCount = researchTree.subquestions.reduce((total: number, subquestion: WorkflowJson) => total + subquestion.tasks.length, 0);
     await this.dependencies.lifecycle.updateState(run, {
       research_planning: {
         ...current,
-        status: "draft_ready",
-        draft_plan: researchTree,
-        draft_plan_path: path,
+        status: input.peerReviewRequired ? "ready_for_peer_review" : "ready_for_user_review",
+        research_plan_path: path,
+        peer_review_required: input.peerReviewRequired === true,
         subquestion_count: researchTree.subquestions.length,
         task_count: taskCount,
-        migrated_from_legacy_subquestions: legacySubquestionsReady,
       },
     });
     await this.dependencies.appendEvent({
@@ -445,7 +487,6 @@ export class ResearchPlanningWorkflow {
       ok: true,
       subquestion_count: researchTree.subquestions.length,
       task_count: taskCount,
-      migrated_from_legacy_subquestions: legacySubquestionsReady,
     });
     return {
       ok: true,
@@ -454,30 +495,31 @@ export class ResearchPlanningWorkflow {
       subquestions: researchTree.subquestions,
       subquestion_count: researchTree.subquestions.length,
       task_count: taskCount,
-      migrated_from_legacy_subquestions: legacySubquestionsReady,
-      draft_plan_path: path,
-      needs_reviewer_review: true,
-      next_tool: "seekbrain_planning_peer_review",
+      research_plan_path: path,
+      needs_reviewer_review: input.peerReviewRequired === true,
+      needs_user_review: input.peerReviewRequired !== true,
+      next_tool: input.peerReviewRequired ? "seekbrain_planning_peer_review" : "seekbrain_planning_researcher_review",
     };
   }
 
   async reviewResearchPlan(input: ReviewResearchPlanInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
+    const metadata = await readCanonicalMetadata(run);
     const current = planningState(run);
-    const isInitialReview = current.status === "draft_ready" && Boolean(current.draft_plan);
+    const loaded = await this.getResearchPlan(input.cwd, input.runId);
+    const isInitialReview = current.status === "ready_for_peer_review";
     const isExplicitRereview = input.explicitUserRequest === true
-      && current.status === "ready_for_user_review"
-      && Boolean(current.final_plan);
+      && current.status === "ready_for_user_review";
     if (!isInitialReview && !isExplicitRereview) {
       return {
         ok: false,
         run_id: run.runId,
         error: current.status === "ready_for_user_review"
           ? "The hierarchical research plan was already reviewed. A second Reviewer Agent call requires an explicit user request."
-          : "Hierarchical research plan review requires a persisted draft from seekbrain_planning_generate.",
+          : "Hierarchical research plan review requires a canonical plan awaiting Peer Review.",
       };
     }
-    const candidatePlan = isInitialReview ? current.draft_plan as WorkflowJson : current.final_plan as WorkflowJson;
+    const candidatePlan = loaded.plan as WorkflowJson;
     const reviewNumber = Number(current.reviewer_call_count || 0) + 1;
     const assessment = current.assessment || {};
     const reviewAgent = await this.dependencies.runAgent({
@@ -488,7 +530,7 @@ export class ResearchPlanningWorkflow {
         `Scientific goal:\n${String(assessment.inferred_scientific_goal || candidatePlan.research_goal || "")}`,
         `Scientific background:\n${String(assessment.inferred_background || "")}`,
         surveyPromptSection(run),
-        `Locked dataset metadata:\n${String(run.state.data_info || "")}`,
+        `Locked dataset metadata:\n${metadata}`,
         `Hierarchical research plan to review:\n${JSON.stringify(candidatePlan, null, 2)}`,
         "Review the complete hierarchical research plan once. Finalize with: { verdict, summary, blocking_issues, non_blocking_suggestions, missing_evidence, redundancies, unsupported_tasks, blocked_reason, recommended_action }.",
       ].join("\n\n")),
@@ -541,12 +583,12 @@ export class ResearchPlanningWorkflow {
         finalizeTool: "finalize_research_plan_refinement",
         prompt: prompt(input.orchestratorRolePrompt, "finalize_research_plan_refinement", [
           `Main question:\n${String(run.state.question || "")}`,
-          `Locked dataset metadata:\n${String(run.state.data_info || "")}`,
+          `Locked dataset metadata:\n${metadata}`,
           surveyPromptSection(run),
           `Hierarchical research plan before this review:\n${JSON.stringify(candidatePlan, null, 2)}`,
           `Reviewer critique:\n${JSON.stringify(critique, null, 2)}`,
           "Respond to every blocking issue exactly once. Accept and revise it, partially accept it with a scoped change, or defend the original choice with a scientific and metadata-grounded explanation.",
-          "Finalize with: { review_response, final_plan, unresolved_issues }. Do not request another automatic Reviewer pass.",
+          "Finalize with: { review_response, research_plan, unresolved_issues }. Do not request another automatic Reviewer pass.",
         ].join("\n\n")),
         agentConfig: input.orchestratorAgentConfig,
         finalizeSchema: input.refinementFinalizeSchema,
@@ -556,21 +598,20 @@ export class ResearchPlanningWorkflow {
         return { ok: false, run_id: run.runId, error: refinementAgent.error || "Hierarchical research plan refinement did not complete." };
       }
       try {
-        finalPlan = normalizeResearchTree(refinementAgent.result.final_plan || {});
+        finalPlan = normalizeResearchTree(refinementAgent.result.research_plan || {});
       } catch (error) {
         return { ok: false, run_id: run.runId, error: error instanceof Error ? error.message : String(error) };
       }
       response = {
         review_response: Array.isArray(refinementAgent.result.review_response) ? refinementAgent.result.review_response : [],
         unresolved_issues: Array.isArray(refinementAgent.result.unresolved_issues) ? refinementAgent.result.unresolved_issues : [],
-        final_plan: finalPlan,
       };
       responsePath = join(run.runDir, "research_plan", reviewNumber === 1 ? "orchestrator_response.json" : `orchestrator_response_${reviewNumber}.json`);
       await this.dependencies.writeJson(responsePath, response);
     }
 
-    const finalPath = join(run.runDir, "research_plan", "research_plan.json");
-    await this.dependencies.writeJson(finalPath, finalPlan);
+    const finalPath = String(loaded.path);
+    if (critique.verdict === "revise") await this.dependencies.writeJson(finalPath, finalPlan);
     const unresolvedIssues = response?.unresolved_issues || [];
     await this.dependencies.lifecycle.updateState(run, {
       research_planning: {
@@ -582,8 +623,7 @@ export class ResearchPlanningWorkflow {
         automatic_refinement_count: Number(current.automatic_refinement_count || 0) + (critique.verdict === "revise" ? 1 : 0),
         orchestrator_response: response,
         orchestrator_response_path: responsePath,
-        final_plan: finalPlan,
-        final_plan_path: finalPath,
+        research_plan_path: finalPath,
         unresolved_issues: unresolvedIssues,
       },
     });
@@ -610,7 +650,7 @@ export class ResearchPlanningWorkflow {
       unresolved_issue_count: unresolvedIssues.length,
       reviewer_critique_path: critiquePath,
       orchestrator_response_path: responsePath,
-      final_plan_path: finalPath,
+      research_plan_path: finalPath,
       needs_user_review: true,
       next_tool: "seekbrain_planning_researcher_review",
     };
@@ -619,13 +659,15 @@ export class ResearchPlanningWorkflow {
   async recordResearchPlanDecision(input: RecordResearchPlanDecisionInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const current = planningState(run);
-    if (current.status !== "ready_for_user_review" || !current.final_plan) {
+    if (current.status !== "ready_for_user_review") {
       return {
         ok: false,
         run_id: run.runId,
-        error: "Researcher review requires a finalized hierarchical research plan from seekbrain_planning_peer_review.",
+        error: "Researcher review requires a canonical hierarchical research plan ready for user review.",
       };
     }
+    const loaded = await this.getResearchPlan(input.cwd, input.runId);
+    const currentPlan = loaded.plan as WorkflowJson;
     const reviewedAt = new Date().toISOString();
     const history = Array.isArray(current.user_review_history) ? current.user_review_history : [];
     if (input.decision === "approve" || input.decision === "cancel") {
@@ -656,8 +698,8 @@ export class ResearchPlanningWorkflow {
         run_id: run.runId,
         decision: input.decision,
         status: input.decision === "approve" ? "approved_for_execution" : "cancelled_by_user",
-        research_plan: current.final_plan,
-        final_plan_path: current.final_plan_path,
+        research_plan: currentPlan,
+        research_plan_path: loaded.path,
         review_decision_path: decisionPath,
         next_tool: input.decision === "approve" ? "seekbrain_analysis_tasks_prepare" : undefined,
         message: input.decision === "approve"
@@ -667,21 +709,73 @@ export class ResearchPlanningWorkflow {
     }
 
     const feedback = String(input.feedback || "").trim();
-    if (!feedback) {
+    if (input.decision === "revise" && !feedback) {
       return { ok: false, run_id: run.runId, error: "Scientific feedback is required when revising the hierarchical research plan." };
     }
     const revisionNumber = Number(current.user_revision_count || 0) + 1;
+    const finalPath = String(loaded.path);
+    const previousPath = join(run.runDir, "research_plan", "research_plan.previous.json");
+    if (input.decision === "restore_previous") {
+      let previousPlan: WorkflowJson;
+      try { previousPlan = normalizeResearchTree(JSON.parse(await readFile(previousPath, "utf8"))); }
+      catch { return { ok: false, run_id: run.runId, error: "No previous Research Plan version is available to restore." }; }
+      await this.dependencies.writeJson(previousPath, currentPlan);
+      await this.dependencies.writeJson(finalPath, previousPlan);
+      const revisionEntry = {
+        decision: "revise",
+        feedback: "Restore previous Plan version",
+        feedback_response: "Restored the previous Research Plan version.",
+        source: input.source || "research_tree_selector",
+        revision_number: revisionNumber,
+        changed_nodes: [],
+        rollback: true,
+        reviewed_at: reviewedAt,
+      };
+      const nextHistory = [...history, revisionEntry];
+      const decisionPath = join(run.runDir, "research_plan", "review_decision.json");
+      await this.dependencies.writeJson(decisionPath, { latest: revisionEntry, history: nextHistory });
+      await this.dependencies.lifecycle.updateState(run, {
+        research_planning: {
+          ...current,
+          status: "ready_for_user_review",
+          research_plan_path: finalPath,
+          previous_research_plan_path: previousPath,
+          user_revision_count: revisionNumber,
+          user_review_history: nextHistory,
+          review_decision_path: decisionPath,
+        },
+      });
+      await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_planning_researcher_review", ok: true, decision: "revise", rollback: true, revision_number: revisionNumber, reviewer_called: false });
+      return {
+        ok: true,
+        run_id: run.runId,
+        decision: "revise",
+        status: "ready_for_user_review",
+        feedback,
+        feedback_response: revisionEntry.feedback_response,
+        research_plan: previousPlan,
+        research_plan_path: finalPath,
+        previous_research_plan_path: previousPath,
+        rolled_back: true,
+        reviewer_called: false,
+        reviewer_call_count: Number(current.reviewer_call_count || 0),
+        needs_user_review: true,
+        next_tool: "seekbrain_planning_researcher_review",
+        message: "Restored the previous Research Plan. Review it again.",
+      };
+    }
+    const metadata = await readCanonicalMetadata(run);
     const revisionAgent = await this.dependencies.runAgent({
       runDir: run.runDir,
       finalizeTool: "finalize_research_plan_user_revision",
       prompt: prompt(input.orchestratorRolePrompt, "finalize_research_plan_user_revision", [
         `Main question:\n${String(run.state.question || "")}`,
-        `Locked dataset metadata:\n${String(run.state.data_info || "")}`,
+        `Locked dataset metadata:\n${metadata}`,
         surveyPromptSection(run),
-        `Current final hierarchical research plan:\n${JSON.stringify(current.final_plan, null, 2)}`,
+        `Current authoritative hierarchical research plan:\n${JSON.stringify(currentPlan, null, 2)}`,
         `User scientific feedback (highest priority):\n${feedback}`,
-        "Revise only what is necessary to satisfy the user feedback while preserving metadata grounding, stable hierarchy, and the 2–3 subquestion / 1–2 task constraints.",
-        "Finalize with: { feedback_response, final_plan }. Do not call or simulate the Reviewer Agent.",
+        "The current plan already contains every previously accepted change. Apply only the latest feedback. Preserve every node and detail not implicated by this feedback while maintaining metadata grounding and the 2–3 subquestion / 1–2 task constraints.",
+        "Finalize with: { feedback_response, changed_nodes, research_plan }. Do not call or simulate the Reviewer Agent.",
       ].join("\n\n")),
       agentConfig: input.orchestratorAgentConfig,
       finalizeSchema: input.revisionFinalizeSchema,
@@ -692,7 +786,7 @@ export class ResearchPlanningWorkflow {
     }
     let revisedPlan: WorkflowJson;
     try {
-      revisedPlan = normalizeResearchTree(revisionAgent.result.final_plan || {});
+      revisedPlan = normalizeResearchTree(revisionAgent.result.research_plan || {});
     } catch (error) {
       return { ok: false, run_id: run.runId, error: error instanceof Error ? error.message : String(error) };
     }
@@ -702,21 +796,22 @@ export class ResearchPlanningWorkflow {
       feedback_response: String(revisionAgent.result.feedback_response || "").trim(),
       source: input.source || "research_tree_selector",
       revision_number: revisionNumber,
+      changed_nodes: Array.isArray(revisionAgent.result.changed_nodes) ? revisionAgent.result.changed_nodes.map(String) : [],
       reviewed_at: reviewedAt,
     };
     const nextHistory = [...history, revisionEntry];
     const revisionPath = join(run.runDir, "research_plan", `user_revision_${revisionNumber}.json`);
-    const finalPath = join(run.runDir, "research_plan", "research_plan.json");
     const decisionPath = join(run.runDir, "research_plan", "review_decision.json");
-    await this.dependencies.writeJson(revisionPath, { ...revisionEntry, final_plan: revisedPlan });
+    await this.dependencies.writeJson(previousPath, currentPlan);
+    await this.dependencies.writeJson(revisionPath, revisionEntry);
     await this.dependencies.writeJson(finalPath, revisedPlan);
     await this.dependencies.writeJson(decisionPath, { latest: revisionEntry, history: nextHistory });
     await this.dependencies.lifecycle.updateState(run, {
       research_planning: {
         ...current,
         status: "ready_for_user_review",
-        final_plan: revisedPlan,
-        final_plan_path: finalPath,
+        research_plan_path: finalPath,
+        previous_research_plan_path: previousPath,
         user_revision_count: revisionNumber,
         user_review_history: nextHistory,
         latest_user_revision_path: revisionPath,
@@ -739,7 +834,8 @@ export class ResearchPlanningWorkflow {
       feedback,
       feedback_response: revisionEntry.feedback_response,
       research_plan: revisedPlan,
-      final_plan_path: finalPath,
+      research_plan_path: finalPath,
+      previous_research_plan_path: previousPath,
       revision_path: revisionPath,
       reviewer_called: false,
       reviewer_call_count: Number(current.reviewer_call_count || 0),
@@ -760,101 +856,23 @@ export class ResearchPlanningWorkflow {
         error: "Analysis tasks can be created only after the final hierarchical research plan is approved.",
       };
     }
+    const loadedPlan = await this.getResearchPlan(input.cwd, input.runId);
+    const researchPlanPath = String(loadedPlan.path);
     const parentProjectDir = String(run.state.project_dir || dirname(run.runDir));
     if (current.status === "tasks_ready" && Array.isArray(current.task_runs) && current.task_runs.length > 0) {
-      const migratedTaskRuns: WorkflowJson[] = [];
-      let migrated = false;
-      for (const existing of current.task_runs as WorkflowJson[]) {
-        if (existing.task_project_dir && existing.task_project_manifest_path) {
-          migratedTaskRuns.push(existing);
-          continue;
-        }
-        migrated = true;
-        const taskId = String(existing.task_id || "task");
-        const taskProjectDir = join(parentProjectDir, "research_tasks", taskId);
-        const taskProjectManifestPath = join(taskProjectDir, "project.json");
-        const child = await this.dependencies.lifecycle.resolveRun(input.cwd, String(existing.run_id));
-        const metadata = {
-          data_info: String(run.state.data_info || ""),
-          extra_path_info: String(run.state.extra_path_info || ""),
-          metadata_json_path: String(run.state.metadata_json_path || ""),
-        };
-        if (!existsSync(taskProjectManifestPath)) {
-          await this.dependencies.writeJson(taskProjectManifestPath, {
-            schema_version: 1,
-            project_id: `${String(run.state.project_id || "research")}-${taskId}`,
-            project_dir: taskProjectDir,
-            created_at: new Date().toISOString(),
-            metadata_locked: true,
-            metadata,
-            research_task: {
-              task_id: taskId,
-              subquestion_id: existing.subquestion_id,
-              parent_run_id: run.runId,
-              legacy_round_layout: true,
-            },
-            rounds: [{
-              round_number: 1,
-              round_name: "round1",
-              run_id: existing.run_id,
-              run_dir: existing.run_dir,
-              question: existing.question,
-              status: existing.status === "complete" ? "concluded" : "active",
-              created_at: child.state.created_at || new Date().toISOString(),
-              legacy_external_run_dir: true,
-            }],
-          });
-        }
-        await this.dependencies.lifecycle.updateState(child, {
-          project_id: `${String(run.state.project_id || "research")}-${taskId}`,
-          project_dir: taskProjectDir,
-          round_number: 1,
-          round_name: "round1",
-          task_project_manifest_path: taskProjectManifestPath,
-          legacy_round_layout: true,
-        });
-        const normalized = {
-          ...existing,
-          task_project_dir: taskProjectDir,
-          task_project_manifest_path: taskProjectManifestPath,
-          round_number: 1,
-          round_name: "round1",
-          legacy_round_layout: true,
-        };
-        migratedTaskRuns.push(normalized);
-        await this.dependencies.lifecycle.registerResearchTaskProject(run, {
-          task_id: taskId,
-          subquestion_id: existing.subquestion_id,
-          project_dir: taskProjectDir,
-          project_manifest_path: taskProjectManifestPath,
-          status: existing.status,
-        });
-      }
-      if (migrated) {
-        const manifestPath = String(current.task_manifest_path || join(run.runDir, "research_plan", "task_manifest.json"));
-        await this.dependencies.writeJson(manifestPath, {
-          parent_run_id: run.runId,
-          research_plan_path: current.final_plan_path,
-          migrated_at: new Date().toISOString(),
-          task_runs: migratedTaskRuns,
-        });
-        await this.dependencies.lifecycle.updateState(run, {
-          research_planning: { ...current, task_runs: migratedTaskRuns, task_manifest_path: manifestPath },
-        });
-      }
+      const taskRuns = current.task_runs as WorkflowJson[];
       return {
         ok: true,
         run_id: run.runId,
         reused: true,
-        migrated_legacy_layout: migrated,
-        task_runs: migratedTaskRuns,
-        task_count: migratedTaskRuns.length,
+        task_runs: taskRuns,
+        task_count: taskRuns.length,
         task_manifest_path: current.task_manifest_path,
-        next_task: migratedTaskRuns.find((item: WorkflowJson) => item.status === "pending") || migratedTaskRuns[0],
+        next_task: taskRuns.find((item: WorkflowJson) => item.status === "pending") || taskRuns[0],
         next_tool: "seekbrain_recipe_retrieve",
       };
     }
-    const plan = current.final_plan as WorkflowJson;
+    const plan = loadedPlan.plan as WorkflowJson;
     const taskRuns: WorkflowJson[] = [];
     for (const subquestion of plan.subquestions as WorkflowJson[]) {
       for (const task of subquestion.tasks as WorkflowJson[]) {
@@ -870,11 +888,7 @@ export class ResearchPlanningWorkflow {
               cwd: input.cwd,
               projectPath: taskProjectDir,
               question: String(task.analysis_question),
-              metadata: {
-                data_info: String(run.state.data_info || ""),
-                extra_path_info: String(run.state.extra_path_info || ""),
-                metadata_json_path: String(run.state.metadata_json_path || ""),
-              },
+              metadata: metadataReference(run),
             });
         const child = created.run;
         const inheritedContext = {
@@ -902,9 +916,7 @@ export class ResearchPlanningWorkflow {
           research_subquestion_id: subquestion.id,
           task_project_manifest_path: taskProjectManifestPath,
           metadata_locked: true,
-          data_info: String(run.state.data_info || ""),
-          extra_path_info: String(run.state.extra_path_info || ""),
-          metadata_json_path: String(run.state.metadata_json_path || ""),
+          ...metadataReference(run),
           inherited_context: inheritedContext,
           research_planning: { status: "task_execution", enabled: false, parent_run_id: run.runId },
         });
@@ -938,7 +950,7 @@ export class ResearchPlanningWorkflow {
     const manifestPath = join(run.runDir, "research_plan", "task_manifest.json");
     const manifest = {
       parent_run_id: run.runId,
-      research_plan_path: current.final_plan_path,
+      research_plan_path: researchPlanPath,
       created_at: new Date().toISOString(),
       task_runs: taskRuns,
     };
@@ -968,6 +980,178 @@ export class ResearchPlanningWorkflow {
       next_task: taskRuns[0],
       next_tool: "seekbrain_recipe_retrieve",
       guidance: "Execute each analysis task independently through Recipe, Analytical Formulation, Code Generation & Execution, Validation, and Result Interpretation using its explicit run_id. Do not run Research Planning again inside child tasks.",
+    };
+  }
+
+  async extendResearch(input: ExtendResearchInput): Promise<WorkflowJson> {
+    const projectDir = resolve(input.cwd, input.projectPath);
+    const project = await readJson(join(projectDir, "project.json"));
+    const planningRunDir = String(
+      project?.planning_run?.run_dir
+      || (Array.isArray(project?.rounds) ? project.rounds[0]?.run_dir : "")
+      || join(projectDir, "planning"),
+    );
+    const parent = await this.dependencies.lifecycle.resumeRun(input.cwd, planningRunDir);
+    const current = planningState(parent);
+    if (!current.research_plan_path || !Array.isArray(current.task_runs)) {
+      throw new Error("This project does not contain a materialized Research Planning plan.");
+    }
+    if (current.status !== "tasks_complete") {
+      throw new Error("Finish the current Research Planning tasks before adding one extension.");
+    }
+    const loaded = await this.getResearchPlan(input.cwd, parent.runId);
+    const plan = loaded.plan as WorkflowJson;
+    const subquestions = plan.subquestions as WorkflowJson[];
+
+    let subquestion: WorkflowJson;
+    let task: WorkflowJson;
+    let created: Awaited<ReturnType<RunLifecycleWorkflow["startResearch"]>> | Awaited<ReturnType<RunLifecycleWorkflow["continueResearch"]>>;
+
+    if (input.action === "new_sq") {
+      const question = String(input.question || "").trim();
+      if (!question) throw new Error("question is required when adding a new subquestion.");
+      const nextNumber = Math.max(0, ...subquestions.map((item) => Number(/^SQ(\d+)$/i.exec(String(item.id || ""))?.[1] || 0))) + 1;
+      const subquestionId = `SQ${nextNumber}`;
+      const taskId = `${subquestionId}-T1`;
+      task = {
+        id: taskId,
+        title: question,
+        analysis_question: question,
+        biological_hypothesis: question,
+        analysis_strategy: question,
+        required_data: [String(parent.state.metadata_json_path || parent.state.data_info || "canonical dataset metadata")],
+        expected_evidence: question,
+        supports_conclusion_if: question,
+        contradicts_conclusion_if: question,
+      };
+      subquestion = {
+        id: subquestionId,
+        question,
+        hypothesis: question,
+        role_in_overall_conclusion: question,
+        dataset_grounding: [String(parent.state.metadata_json_path || parent.state.data_info || "canonical dataset metadata")],
+        tasks: [task],
+      };
+      plan.subquestions = [...subquestions, subquestion];
+      await this.dependencies.writeJson(String(loaded.path), plan);
+      created = await this.dependencies.lifecycle.startResearch({
+        cwd: input.cwd,
+        projectPath: join(projectDir, "research_tasks", taskId),
+        question,
+        metadata: metadataReference(parent),
+      });
+    } else {
+      const taskId = String(input.taskId || "").trim();
+      if (!taskId) throw new Error("task_id is required when adding a new round.");
+      subquestion = subquestions.find((item) => (item.tasks as WorkflowJson[]).some((candidate) => String(candidate.id) === taskId)) as WorkflowJson;
+      task = (subquestion?.tasks as WorkflowJson[] | undefined)?.find((candidate) => String(candidate.id) === taskId) as WorkflowJson;
+      if (!task || !subquestion) throw new Error(`Unknown Research Planning task '${taskId}'.`);
+      const direction = String(input.question || task.analysis_question || task.title || "").trim();
+      created = await this.dependencies.lifecycle.continueResearch(
+        input.cwd,
+        join(projectDir, "research_tasks", taskId),
+        direction,
+      );
+    }
+
+    const child = created.run;
+    const taskProjectDir = String(created.projectDir);
+    const taskProjectManifestPath = String(created.manifestPath);
+    const inheritedContext = {
+      source: "research_planning_extension",
+      parent_run_id: parent.runId,
+      parent_run_dir: parent.runDir,
+      parent_question: String(parent.state.question || ""),
+      research_goal: String(plan.research_goal || ""),
+      synthesis_strategy: String(plan.synthesis_strategy || ""),
+      literature_grounding_context: surveyBackground(parent),
+      literature_grounding_sources: Array.isArray(current.survey?.sources) ? current.survey.sources : [],
+      subquestion: {
+        id: subquestion.id,
+        question: subquestion.question,
+        hypothesis: subquestion.hypothesis,
+        role_in_overall_conclusion: subquestion.role_in_overall_conclusion,
+      },
+      task,
+      note: "Execute only this terminal task and return evidence for the parent Research Planning project.",
+    };
+    await this.dependencies.lifecycle.updateState(child, {
+      parent_run_id: parent.runId,
+      parent_run_dir: parent.runDir,
+      research_task_id: task.id,
+      research_subquestion_id: subquestion.id,
+      task_project_manifest_path: taskProjectManifestPath,
+      metadata_locked: true,
+      ...metadataReference(parent),
+      inherited_context: inheritedContext,
+      research_planning: { status: "task_execution", enabled: false, parent_run_id: parent.runId },
+    });
+    const taskRun = {
+      task_id: task.id,
+      subquestion_id: subquestion.id,
+      task_project_dir: taskProjectDir,
+      task_project_manifest_path: taskProjectManifestPath,
+      run_id: child.runId,
+      run_dir: child.runDir,
+      state_path: child.statePath,
+      round_number: created.roundNumber,
+      round_name: created.roundName,
+      title: task.title,
+      question: child.state.question,
+      biological_hypothesis: task.biological_hypothesis,
+      analysis_strategy: task.analysis_strategy,
+      expected_evidence: task.expected_evidence,
+      status: "pending",
+      next_tool: "seekbrain_recipe_retrieve",
+    };
+    const taskRuns = [
+      ...(current.task_runs as WorkflowJson[]).filter((item) => String(item.task_id) !== String(task.id)),
+      taskRun,
+    ];
+    await this.dependencies.lifecycle.registerResearchTaskProject(parent, {
+      task_id: task.id,
+      subquestion_id: subquestion.id,
+      project_dir: taskProjectDir,
+      project_manifest_path: taskProjectManifestPath,
+      status: "pending",
+    });
+    await this.dependencies.writeJson(String(current.task_manifest_path), {
+      parent_run_id: parent.runId,
+      research_plan_path: loaded.path,
+      updated_at: new Date().toISOString(),
+      task_runs: taskRuns,
+    });
+    await this.dependencies.lifecycle.updateState(parent, {
+      research_planning: {
+        ...current,
+        status: "tasks_ready",
+        subquestion_count: (plan.subquestions as WorkflowJson[]).length,
+        task_count: taskRuns.length,
+        task_runs: taskRuns,
+      },
+    });
+    await this.dependencies.appendEvent({
+      run_id: parent.runId,
+      event: "seekbrain_research_extend",
+      ok: true,
+      action: input.action,
+      task_id: task.id,
+      child_run_id: child.runId,
+      round_number: created.roundNumber,
+    });
+    return {
+      ok: true,
+      parent_run_id: parent.runId,
+      action: input.action,
+      task_id: task.id,
+      subquestion_id: subquestion.id,
+      run_id: child.runId,
+      run_dir: child.runDir,
+      round_number: created.roundNumber,
+      round_name: created.roundName,
+      task_run: taskRun,
+      agent_full_auto: current.agent_full_auto === true,
+      next_tool: "seekbrain_execution_run",
     };
   }
 }

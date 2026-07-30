@@ -19,6 +19,23 @@ async function fixture() {
 }
 
 describe("review workflow", () => {
+  it("persists an explicit terminal stop without interpreting feedback text", async () => {
+    const item = await fixture();
+    try {
+      const review = await item.workflow.stop(item.run, "plan", "Researcher stopped at Plan review");
+      expect(review).toMatchObject({ status: "cancelled_by_user", notes: "Researcher stopped at Plan review" });
+      const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
+      expect(state).toMatchObject({
+        workflow_status: "cancelled_by_user",
+        human_reviews: { plan: { status: "cancelled_by_user" } },
+        cancellation: { stage: "plan", source: "review_selector" },
+      });
+      expect(item.events.map((event) => event.event)).toEqual(["seekbrain_workflow_cancelled"]);
+    } finally {
+      await rm(item.cwd, { recursive: true, force: true });
+    }
+  });
+
   it("records approval, feedback and a local plan revision", async () => {
     const item = await fixture();
     try {
@@ -28,12 +45,15 @@ describe("review workflow", () => {
       expect(feedback).toMatchObject({ ok: true, review: { status: "changes_requested" } });
       expect(feedback.review.approved_at).toBeUndefined();
 
-      await item.lifecycle.updateState(item.run, { plan: { summary: "old", confidence: 0.5, warnings: ["old warning"], revision: 2 } });
+      await writeFile(join(item.run.runDir, "plan.md"), "# Original");
+      await item.lifecycle.updateState(item.run, { plan: { review_summary: "old", warnings: ["old warning"], revision: 2 } });
       const updated = await item.workflow.updatePlan({ cwd: item.cwd, runId: item.run.runId, planMarkdown: "# Revised", revisionNote: "human edit" });
       expect(updated).toMatchObject({ ok: true, revision: 3, human_review: { approved: false, feedback: "1. add controls", needs_user_review: true } });
       expect(await readFile(join(item.run.runDir, "plan.md"), "utf8")).toBe("# Revised");
+      expect(JSON.parse(await readFile(join(item.run.runDir, "plan.previous.json"), "utf8"))).toMatchObject({ plan_markdown: "# Original", revision: 2 });
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
-      expect(state.plan).toMatchObject({ summary: "old", revision: 3, revision_note: "human edit", updated_by: "main_agent" });
+      expect(state.plan).toMatchObject({ review_summary: "old", path: join(item.run.runDir, "plan.md"), revision: 3, revision_note: "human edit", updated_by: "main_agent" });
+      expect(state.plan.plan_markdown).toBeUndefined();
       expect(item.events.map((event) => event.event)).toEqual(["seekbrain_review_approve", "seekbrain_review_feedback", "seekbrain_formulation_update"]);
     } finally {
       await rm(item.cwd, { recursive: true, force: true });

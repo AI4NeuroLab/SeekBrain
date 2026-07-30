@@ -1,15 +1,21 @@
+import { Input, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+
 type Json = Record<string, any>;
 
 export type ReviewSelection =
   | { decision: "unavailable" }
   | { decision: "approve" }
+  | { decision: "restore_previous" }
   | { decision: "feedback"; feedback: string }
   | { decision: "feedback_empty" }
   | { decision: "cancel" };
 
+export type BinaryReviewSelection = ReviewSelection;
+
 export type YesNoSelection =
   | { decision: "unavailable" }
   | { decision: "yes" }
+  | { decision: "agent_full_auto" }
   | { decision: "no" }
   | { decision: "cancel" };
 
@@ -17,6 +23,7 @@ export type TaskPlanReviewSelection =
   | { decision: "unavailable" }
   | { decision: "approve" }
   | { decision: "approve_remaining" }
+  | { decision: "restore_previous" }
   | { decision: "feedback"; feedback: string }
   | { decision: "feedback_empty" }
   | { decision: "cancel" };
@@ -49,8 +56,6 @@ export function researchTreeReviewTitle(plan: Json, planning: Json = {}): string
   const subquestions = Array.isArray(plan.subquestions) ? plan.subquestions : [];
   const taskCount = subquestions.reduce((total: number, item: Json) => total + (Array.isArray(item.tasks) ? item.tasks.length : 0), 0);
   const lines = [
-    "Review the hierarchical research plan?",
-    "",
     `Overall goal: ${compactReviewLine(plan.research_goal, 220)}`,
   ];
   for (const [index, subquestion] of subquestions.entries()) {
@@ -73,18 +78,75 @@ export function researchTreeReviewTitle(plan: Json, planning: Json = {}): string
 
 export function taskPlanReviewTitle(item: Json, queueLength: number): string {
   const task = item.task || item;
+  const warnings = Array.isArray(item.plan_warnings)
+    ? item.plan_warnings.map((warning: unknown) => compactReviewLine(warning, 240)).filter(Boolean)
+    : [];
   return [
-    `Review methodological schema ${String(item.task_id || task.task_id || "")}?`,
+    `${String(item.task_id || task.task_id || "")} · ${compactReviewLine(task.title || task.question || "Analysis task", 180)}`,
     "",
-    compactReviewLine(task.title || task.question || item.plan_summary, 220),
-    task.biological_hypothesis ? `Hypothesis: ${compactReviewLine(task.biological_hypothesis, 220)}` : "",
-    item.plan_summary ? `Methodological schema: ${compactReviewLine(item.plan_summary, 260)}` : task.analysis_strategy ? `Methodological schema: ${compactReviewLine(task.analysis_strategy, 260)}` : "",
-    task.expected_evidence ? `Expected evidence: ${compactReviewLine(task.expected_evidence, 220)}` : "",
-    item.skill_summary ? `Analysis recipe: ${compactReviewLine(item.skill_summary, 160)}` : "",
-    item.deep_research_summary ? `Deep Research: ${compactReviewLine(item.deep_research_summary, 160)}` : "",
+    item.plan_summary ? `Plan: ${compactReviewLine(item.plan_summary, 420)}` : task.analysis_strategy ? `Plan: ${compactReviewLine(task.analysis_strategy, 420)}` : "",
+    ...warnings.map((warning: string) => `Warning: ${warning}`),
+    item.plan_path ? `Plan file: ${String(item.plan_path)}` : "",
     "",
-    `Review queue: 1 of ${queueLength}`,
+    `Queue: 1 of ${queueLength}`,
   ].filter(Boolean).join("\n");
+}
+
+async function inputWithReviewContext(context: Json, input: {
+  reviewText: string;
+  feedbackTitle: string;
+  feedbackPlaceholder: string;
+}): Promise<string | undefined> {
+  if (!context?.ui?.custom) return context?.ui?.input?.(input.feedbackTitle, input.feedbackPlaceholder);
+  return context.ui.custom((tui: Json, theme: Json, _keybindings: unknown, done: (value: string | undefined) => void) => {
+    const editor = new Input();
+    editor.focused = true;
+    editor.onSubmit = (value: string) => done(value.trim() || undefined);
+    editor.onEscape = () => done(undefined);
+    return {
+      focused: true,
+      handleInput(data: string) {
+        editor.handleInput(data);
+        tui.requestRender();
+      },
+      render(width: number): string[] {
+        const frameWidth = Math.max(24, width);
+        const innerWidth = Math.max(1, frameWidth - 2);
+        const fit = (value: string) => truncateToWidth(value, innerWidth, "", true);
+        const row = (value = "", background?: string) => {
+          const content = fit(value);
+          const filled = background && typeof theme.bg === "function" ? theme.bg(background, content) : content;
+          return theme.fg("borderAccent", "│") + filled + theme.fg("borderAccent", "│");
+        };
+        const divider = () => theme.fg("borderMuted", `├${"─".repeat(innerWidth)}┤`);
+        const title = theme.bold(theme.fg("accent", " REVISION MODE "));
+        const titleFill = Math.max(0, innerWidth - visibleWidth(title) - 1);
+        const top = theme.fg("borderAccent", "╭─") + title + theme.fg("borderAccent", `${"─".repeat(titleFill)}╮`);
+        const bottom = theme.fg("borderAccent", `╰${"─".repeat(innerWidth)}╯`);
+        // The selector keeps the canonical Schema path for quick inspection,
+        // but the revision card spends its space on the Plan content itself.
+        const planLines = input.reviewText
+          .split("\n")
+          .filter((line) => !/^\s*(?:Schema|Plan file):\s*[/\\]/i.test(line))
+          .flatMap((line) => line ? wrapTextWithAnsi(line, Math.max(1, innerWidth - 4)) : [""]);
+        const editorLines = editor.render(Math.max(1, innerWidth - 4));
+        return [
+          top,
+          ...planLines.map((line) => row(`  ${theme.fg("text", line)}`, "customMessageBg")),
+          divider(),
+          row(`  ${theme.bold(theme.fg("accent", "YOUR REVISION REQUEST"))}`, "selectedBg"),
+          ...editorLines.map((line) => row(`  ${line}`, "selectedBg")),
+          divider(),
+          row([
+            `  ${theme.fg("success", "Enter")} ${theme.fg("dim", "submit")}`,
+            `  ${theme.fg("warning", "Esc")} ${theme.fg("dim", "return without changes")}`,
+          ].filter(Boolean).join(" ")),
+          bottom,
+        ];
+      },
+      invalidate() { editor.invalidate(); },
+    };
+  }, { overlay: true, overlayOptions: { width: "94%", maxHeight: "96%", anchor: "center", margin: 1 } });
 }
 
 export function dependencyInstallReviewTitle(request: Json): string {
@@ -108,14 +170,17 @@ export function dependencyInstallReviewTitle(request: Json): string {
 export async function selectYesNoReview(context: Json, input: {
   title: string;
   yesLabel?: string;
+  autoLabel?: string;
   noLabel?: string;
 }): Promise<YesNoSelection> {
   if (process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
   const yes = input.yesLabel || "Yes";
+  const auto = input.autoLabel;
   const no = input.noLabel || "No";
   if (context?.ui?.select) {
-    const choice = await context.ui.select(input.title, [yes, no]);
+    const choice = await context.ui.select(input.title, [yes, ...(auto ? [auto] : []), no]);
     if (choice === yes || choice?.startsWith("Yes")) return { decision: "yes" };
+    if (auto && choice === auto) return { decision: "agent_full_auto" };
     if (choice === no || choice?.startsWith("No")) return { decision: "no" };
     return { decision: "cancel" };
   }
@@ -130,14 +195,18 @@ export async function selectBinaryReview(context: Json, input: {
   title: string;
   approveLabel: string;
   feedbackLabel?: string;
+  restorePreviousLabel?: string;
   feedbackTitle: string;
   feedbackPlaceholder: string;
-}): Promise<ReviewSelection> {
+}): Promise<BinaryReviewSelection> {
   if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
-  const choice = await context.ui.select(input.title, [input.approveLabel, input.feedbackLabel || "No, and tell SeekBrain what to do differently"]);
+  const options = [input.approveLabel, input.feedbackLabel || "No, and tell SeekBrain what to do differently"];
+  if (input.restorePreviousLabel) options.push(input.restorePreviousLabel);
+  const choice = await context.ui.select(input.title, options);
   if (choice?.startsWith("Yes")) return { decision: "approve" };
+  if (input.restorePreviousLabel && choice === input.restorePreviousLabel) return { decision: "restore_previous" };
   if (choice?.startsWith("No")) {
-    const feedback = String(await context.ui.input(input.feedbackTitle, input.feedbackPlaceholder) || "").trim();
+    const feedback = String(await inputWithReviewContext(context, { reviewText: input.title, feedbackTitle: input.feedbackTitle, feedbackPlaceholder: input.feedbackPlaceholder }) || "").trim();
     return feedback ? { decision: "feedback", feedback } : { decision: "feedback_empty" };
   }
   return { decision: "cancel" };
@@ -147,15 +216,18 @@ export async function selectResearchTreeReview(context: Json, input: {
   title: string;
   feedbackTitle: string;
   feedbackPlaceholder: string;
+  rollbackAvailable?: boolean;
 }): Promise<ReviewSelection> {
   if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
   const approve = "Approve — begin analysis task execution";
   const revise = "Revise — provide scientific feedback";
+  const restorePrevious = "Restore previous Plan version";
   const cancel = "Cancel — retain the plan without execution";
-  const choice = await context.ui.select(input.title, [approve, revise, cancel]);
+  const choice = await context.ui.select(input.title, [approve, revise, ...(input.rollbackAvailable ? [restorePrevious] : []), cancel]);
   if (choice === approve) return { decision: "approve" };
+  if (choice === restorePrevious) return { decision: "restore_previous" };
   if (choice === revise) {
-    const feedback = String(await context.ui.input(input.feedbackTitle, input.feedbackPlaceholder) || "").trim();
+    const feedback = String(await inputWithReviewContext(context, { reviewText: input.title, feedbackTitle: input.feedbackTitle, feedbackPlaceholder: input.feedbackPlaceholder }) || "").trim();
     return feedback ? { decision: "feedback", feedback } : { decision: "feedback_empty" };
   }
   return { decision: "cancel" };
@@ -165,16 +237,19 @@ export async function selectTaskPlanReview(context: Json, input: {
   title: string;
   feedbackTitle: string;
   feedbackPlaceholder: string;
+  rollbackAvailable?: boolean;
 }): Promise<TaskPlanReviewSelection> {
   if (!context?.ui?.select || process.env.SEEKBRAIN_NON_INTERACTIVE === "1") return { decision: "unavailable" };
   const approve = "Approve this schema";
   const revise = "Request changes";
+  const restorePrevious = "Restore previous Plan version";
   const approveRemaining = "Approve this and all remaining schemas";
-  const choice = await context.ui.select(input.title, [approve, revise, approveRemaining]);
+  const choice = await context.ui.select(input.title, [approve, revise, ...(input.rollbackAvailable ? [restorePrevious] : []), approveRemaining]);
   if (choice === approve) return { decision: "approve" };
   if (choice === approveRemaining) return { decision: "approve_remaining" };
+  if (choice === restorePrevious) return { decision: "restore_previous" };
   if (choice === revise) {
-    const feedback = String(await context.ui.input(input.feedbackTitle, input.feedbackPlaceholder) || "").trim();
+    const feedback = String(await inputWithReviewContext(context, { reviewText: input.title, feedbackTitle: input.feedbackTitle, feedbackPlaceholder: input.feedbackPlaceholder }) || "").trim();
     return feedback ? { decision: "feedback", feedback } : { decision: "feedback_empty" };
   }
   return { decision: "cancel" };

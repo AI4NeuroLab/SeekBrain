@@ -30,6 +30,7 @@ describe("review TUI adapters", () => {
     expect(await selectYesNoReview({}, { title: "Use Research Planning?" })).toEqual({ decision: "unavailable" });
     expect(await selectYesNoReview({ ui: { select: async () => "Yes, use Research Planning" } }, { title: "Use Research Planning?", yesLabel: "Yes, use Research Planning", noLabel: "No, continue normally" })).toEqual({ decision: "yes" });
     expect(await selectYesNoReview({ ui: { select: async () => "No, continue normally" } }, { title: "Use Research Planning?", yesLabel: "Yes, use Research Planning", noLabel: "No, continue normally" })).toEqual({ decision: "no" });
+    expect(await selectYesNoReview({ ui: { select: async () => "Agent-Full-Auto" } }, { title: "Use Research Planning?", autoLabel: "Agent-Full-Auto" })).toEqual({ decision: "agent_full_auto" });
     expect(await selectYesNoReview({ ui: { confirm: async () => true } }, { title: "Use Research Planning?" })).toEqual({ decision: "yes" });
     expect(await selectYesNoReview({ ui: { confirm: async () => false } }, { title: "Use Research Planning?" })).toEqual({ decision: "no" });
   });
@@ -78,6 +79,40 @@ describe("review TUI adapters", () => {
     expect(await selectResearchTreeReview({ ui: { select: async () => "Approve — begin analysis task execution" } }, input)).toEqual({ decision: "approve" });
     expect(await selectResearchTreeReview({ ui: { select: async () => "Revise — provide scientific feedback", input: async () => " sharpen SQ2 " } }, input)).toEqual({ decision: "feedback", feedback: "sharpen SQ2" });
     expect(await selectResearchTreeReview({ ui: { select: async () => "Cancel — retain the plan without execution" } }, input)).toEqual({ decision: "cancel" });
+    expect(await selectResearchTreeReview({ ui: { select: async (_title: string, options: string[]) => {
+      expect(options).toContain("Restore previous Plan version");
+      return "Restore previous Plan version";
+    } } }, { ...input, rollbackAvailable: true })).toEqual({ decision: "restore_previous" });
+  });
+
+  it("keeps the current Research Plan visible inside a bounded revision panel", async () => {
+    let rendered: string[] = [];
+    const context = {
+      ui: {
+        select: async () => "Revise — provide scientific feedback",
+        custom: async (factory: any) => {
+          const component = factory({ requestRender() {} }, { fg: (_name: string, value: string) => value, bg: (_name: string, value: string) => value, bold: (value: string) => value }, {}, () => {});
+          rendered = component.render(72);
+          return "sharpen SQ2";
+        },
+      },
+    };
+    const result = await selectResearchTreeReview(context, {
+      title: "Review the structured research plan?\nSchema: /runs/example/plan.md\nSQ1 · First branch\nSQ2 · Second branch",
+      feedbackTitle: "Scientific feedback",
+      feedbackPlaceholder: "Describe changes",
+    });
+    expect(result).toEqual({ decision: "feedback", feedback: "sharpen SQ2" });
+    expect(rendered.join("\n")).toContain("╭─ REVISION MODE ");
+    expect(rendered.join("\n")).toContain("SQ2 · Second branch");
+    expect(rendered.join("\n")).toContain("YOUR REVISION REQUEST");
+    expect(rendered.join("\n")).not.toContain("The current version stays active until you submit.");
+    expect(rendered.join("\n")).not.toContain("CURRENT PLAN");
+    expect(rendered.join("\n")).not.toContain("Schema: /runs/example/plan.md");
+    expect(rendered.join("\n")).not.toContain("Scientific feedback");
+    expect(rendered.join("\n")).not.toContain("Describe changes");
+    expect(rendered.join("\n")).toContain("│");
+    expect(rendered.join("\n")).toContain("╰─");
   });
 
   it("summarizes the scientific tree before final human review", () => {
@@ -89,6 +124,7 @@ describe("review TUI adapters", () => {
       ],
       synthesis_strategy: "Compare independent and joint explanatory support.",
     }, { reviewer_critique: { verdict: "accept" }, automatic_refinement_count: 1, unresolved_issues: [] });
+    expect(title).not.toContain("Review the hierarchical research plan?");
     expect(title).toContain("Overall goal: Determine whether structure");
     expect(title).toContain("SQ1 · How strongly does SC explain FC?");
     expect(title).toContain("SQ1-T1 · Quantify robust SC-FC coupling");
@@ -100,6 +136,7 @@ describe("review TUI adapters", () => {
   it("shows a compact scientific summary for each queued methodological schema", () => {
     const title = taskPlanReviewTitle({
       task_id: "SQ1-T1",
+      plan_path: "/runs/SQ1-T1/round1/plan.md",
       plan_summary: "Fit SC-FC models with node-label permutation and robustness checks.",
       skill_summary: "Matched structural_functional_connectivity",
       deep_research_summary: "3 sources synthesized",
@@ -108,12 +145,18 @@ describe("review TUI adapters", () => {
         biological_hypothesis: "Anatomical connectivity constrains functional connectivity.",
         expected_evidence: "Stable positive SC-FC effects and reusable residuals.",
       },
+      plan_warnings: ["Atlas labels must match the retained matrix order."],
     }, 2);
-    expect(title).toContain("Review methodological schema SQ1-T1?");
-    expect(title).toContain("Hypothesis: Anatomical connectivity");
-    expect(title).toContain("Methodological schema: Fit SC-FC models");
-    expect(title).toContain("Analysis recipe: Matched structural_functional_connectivity");
-    expect(title).toContain("Review queue: 1 of 2");
+    expect(title).toContain("SQ1-T1 · Quantify structural constraints");
+    expect(title).toContain("Plan: Fit SC-FC models");
+    expect(title).toContain("Warning: Atlas labels must match");
+    expect(title).toContain("Plan file: /runs/SQ1-T1/round1/plan.md");
+    expect(title).not.toContain("Hypothesis:");
+    expect(title).not.toContain("Expected evidence:");
+    expect(title).not.toContain("Deep Research:");
+    expect(title).not.toContain("Analysis recipe:");
+    expect(title).not.toContain("Revision:");
+    expect(title).toContain("Queue: 1 of 2");
   });
 
   it("shows only the recommendation above the Research Planning decision", () => {

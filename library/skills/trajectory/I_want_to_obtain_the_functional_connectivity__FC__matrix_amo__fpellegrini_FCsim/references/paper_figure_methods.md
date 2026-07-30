@@ -1,3 +1,0 @@
-# Paper Figure-Method Mapping
-
-{}

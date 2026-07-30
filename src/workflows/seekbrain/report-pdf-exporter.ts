@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { access } from "node:fs/promises";
-import { basename, dirname } from "node:path";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface ReportPdfExportInput {
   markdownPath: string;
@@ -12,12 +14,16 @@ export interface ReportPdfExportInput {
 
 export async function exportReportPdf(input: ReportPdfExportInput) {
   const command = String(input.command || "seekbrain-pdf").trim();
+  const builtInRenderer = resolve(dirname(fileURLToPath(import.meta.url)), "../../../bin/seekbrain-pdf.mjs");
+  const useBuiltIn = command === "seekbrain-pdf" && existsSync(builtInRenderer);
+  const executable = useBuiltIn ? process.execPath : command;
+  const args = useBuiltIn ? [builtInRenderer, basename(input.markdownPath)] : [basename(input.markdownPath)];
   const timeoutMs = Math.max(1, Number(input.timeoutSeconds || 120)) * 1000;
   const startedAt = Date.now();
   return await new Promise<Record<string, unknown>>((done) => {
     let stderr = "";
     let settled = false;
-    const child = spawn(command, [basename(input.markdownPath)], {
+    const child = spawn(executable, args, {
       cwd: dirname(input.markdownPath),
       stdio: ["ignore", "ignore", "pipe"],
     });

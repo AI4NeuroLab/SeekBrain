@@ -30,7 +30,7 @@ async function fixture() {
     research_planning: {
       status: "tasks_ready",
       active_route: "research_planning",
-      final_plan_path: join(parent.runDir, "research_plan", "final_plan.json"),
+      research_plan_path: join(parent.runDir, "research_plan", "research_plan.json"),
       task_manifest_path: taskManifestPath,
       task_runs: taskRuns,
     },
@@ -40,6 +40,33 @@ async function fixture() {
 }
 
 describe("ResearchTaskScheduler", () => {
+  it("queues one extension task without rebuilding the scheduler", async () => {
+    const { cwd, lifecycle, parent, scheduler, projectDir } = await fixture();
+    try {
+      await scheduler.initialize({ cwd, runId: parent.runId, planningConcurrency: 2, executionConcurrency: 1 });
+      const extension = {
+        task_id: "SQ4-T1",
+        subquestion_id: "SQ4",
+        run_id: "child-4",
+        run_dir: join(projectDir, "research_tasks", "SQ4-T1", "round1"),
+        round_number: 1,
+        status: "pending",
+      };
+      const current = await lifecycle.resolveRun(cwd, parent.runId);
+      await lifecycle.updateState(current, {
+        research_planning: {
+          ...current.state.research_planning,
+          task_runs: [...current.state.research_planning.task_runs, extension],
+        },
+      });
+      const updated = await scheduler.upsertExtensionTask(cwd, parent.runId, extension);
+      expect(updated.tasks.at(-1)).toMatchObject({ task_id: "SQ4-T1", status: "queued", ordinal: 4 });
+      expect(updated.task_count).toBe(4);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("reconciles interrupted active tasks from durable child stages", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "seekbrain-scheduler-recovery-"));
     try {
@@ -178,22 +205,30 @@ describe("ResearchTaskScheduler", () => {
       for (const taskId of ["SQ1-T1", "SQ2-T1"]) {
         await scheduler.publishEvent({
           cwd, parentRunId: parent.runId, taskId, type: "plan_ready", eventId: `ready-${taskId}`,
-          payload: { plan_path: `/plans/${taskId}.md` },
+          payload: { plan_path: `/plans/${taskId}.md`, plan_revision: 1 },
         });
       }
       await scheduler.drainEvents(cwd, parent.runId);
       expect((await scheduler.nextPlanReview(cwd, parent.runId)).current.task_id).toBe("SQ1-T1");
 
-      await scheduler.recordPlanReview({ cwd, runId: parent.runId, taskId: "SQ1-T1", decision: "revise", feedback: "Add a robustness check." });
+      await scheduler.recordPlanReview({ cwd, runId: parent.runId, taskId: "SQ1-T1", decision: "revise", feedback: "Add a robustness check.", planRevision: 1 });
       expect((await scheduler.nextPlanReview(cwd, parent.runId)).current.task_id).toBe("SQ2-T1");
-      await scheduler.claimPlanningTasks(cwd, parent.runId);
+      expect((await scheduler.status(cwd, parent.runId, false)).tasks.find((task: any) => task.task_id === "SQ1-T1").status).toBe("revising_plan");
+      expect((await scheduler.claimPlanningTasks(cwd, parent.runId)).claimed_task_ids).toEqual([]);
+      expect((await scheduler.status(cwd, parent.runId, false)).tasks.find((task: any) => task.task_id === "SQ3-T1").status).toBe("planning");
       await scheduler.publishEvent({
         cwd, parentRunId: parent.runId, taskId: "SQ1-T1", type: "plan_ready", eventId: "ready-SQ1-revision",
-        payload: { plan_path: "/plans/SQ1-revised.md" },
+        payload: { plan_path: "/plans/SQ1-revised.md", plan_revision: 2 },
       });
       await scheduler.drainEvents(cwd, parent.runId);
 
-      await scheduler.recordPlanReview({ cwd, runId: parent.runId, taskId: "SQ2-T1", decision: "approve_remaining" });
+      expect((await scheduler.nextPlanReview(cwd, parent.runId)).current.task_id).toBe("SQ2-T1");
+      await scheduler.recordPlanReview({ cwd, runId: parent.runId, taskId: "SQ2-T1", decision: "approve", planRevision: 1 });
+      expect((await scheduler.nextPlanReview(cwd, parent.runId)).current).toMatchObject({ task_id: "SQ1-T1", plan_revision: 2 });
+      const revisedQueue = JSON.parse(await readFile(join(projectDir, "execution", "review_queue.json"), "utf8"));
+      expect(revisedQueue.items.find((item: any) => item.task_id === "SQ1-T1" && item.plan_revision === 1).status).toBe("superseded");
+
+      await scheduler.recordPlanReview({ cwd, runId: parent.runId, taskId: "SQ1-T1", decision: "approve_remaining", planRevision: 2 });
       expect((await scheduler.nextPlanReview(cwd, parent.runId)).queue_length).toBe(0);
 
       await scheduler.publishEvent({

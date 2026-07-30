@@ -58,11 +58,14 @@ describe("research planning workflow", () => {
     try {
       const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
       const run = await lifecycle.startRun(cwd, "run", undefined, "How does eye opening alter visual-cortex transcriptomes?");
-      await lifecycle.updateState(run, { data_info: JSON.stringify({ modality: "Neuropixels electrophysiology" }) });
+      const metadataPath = join(cwd, "metadata.json");
+      await writeFile(metadataPath, JSON.stringify({ modality: "Neuropixels electrophysiology" }));
+      await lifecycle.updateState(run, { metadata_json_path: metadataPath });
       const workflow = new ResearchPlanningWorkflow({
         lifecycle,
         runAgent: async ({ prompt }) => {
           expect(prompt).not.toContain("literature_queries");
+          expect(prompt).toContain("Neuropixels electrophysiology");
           return { ok: true, result: {
             route: "needs_clarification",
             reason: "The dataset contains electrophysiology, not transcriptomics.",
@@ -138,7 +141,7 @@ describe("research planning workflow", () => {
               recommended_action: "",
             } };
           }
-          expect(finalizeTool).toBe("finalize_research_plan_draft");
+          expect(finalizeTool).toBe("finalize_research_plan");
           expect(prompt).toContain("[Literature Grounding Background]\nDevelopmental evidence supports modality-specific tests.");
           const task = (id: string, title: string) => ({
             id,
@@ -191,6 +194,14 @@ describe("research planning workflow", () => {
       expect(declined).toMatchObject({ ok: true, route: "standard", next_tool: "seekbrain_recipe_retrieve" });
 
       await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
+      expect(await workflow.recordDecision(cwd, run.runId, "agent_full_auto", "native_selector", "Agent-Full-Auto")).toMatchObject({
+        ok: true,
+        route: "research_planning",
+        agent_full_auto: true,
+      });
+      expect((await lifecycle.resolveRun(cwd, run.runId)).state.research_planning.agent_full_auto).toBe(true);
+
+      await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
       expect(await workflow.recordDecision(cwd, run.runId, "yes", "native_selector", "Yes — initiate structured research decomposition")).toMatchObject({
         ok: true,
         route: "research_planning",
@@ -210,14 +221,16 @@ describe("research planning workflow", () => {
         },
       });
       phase = "subquestions";
-      const prepared = await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "subquestion role", agentConfig: {}, finalizeSchema: {} });
+      const prepared = await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "subquestion role", agentConfig: {}, finalizeSchema: {}, peerReviewRequired: true });
       expect(prepared).toMatchObject({ ok: true, needs_reviewer_review: true, subquestion_count: 2, task_count: 2 });
       expect(prepared.subquestions).toHaveLength(2);
       expect(prepared.subquestions[0].id).toBe("SQ1");
       expect(prepared.subquestions[0].tasks[0].id).toBe("SQ1-T1");
       const state = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
-      expect(state.research_planning.status).toBe("draft_ready");
-      expect(state.research_planning.draft_plan_path).toBe(join(run.runDir, "research_plan", "draft_plan.json"));
+      expect(state.research_planning.status).toBe("ready_for_peer_review");
+      expect(state.research_planning.research_plan_path).toBe(join(run.runDir, "research_plan", "research_plan.json"));
+      expect(JSON.parse(await readFile(state.research_planning.research_plan_path, "utf8"))).toMatchObject({ research_goal: "Distinguish cognitive and embodied priors." });
+      await expect(readFile(join(run.runDir, "research_plan", "draft_plan.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
       phase = "review";
       const reviewed = await workflow.reviewResearchPlan({
         cwd,
@@ -275,9 +288,12 @@ describe("research planning workflow", () => {
         })),
         synthesis_strategy: "Compare both branches.",
       };
+      const researchPlanPath = join(run.runDir, "research_plan", "research_plan.json");
+      await mkdir(dirname(researchPlanPath), { recursive: true });
+      await writeFile(researchPlanPath, JSON.stringify(draft, null, 2));
       await lifecycle.updateState(run, {
         data_info: JSON.stringify({ variables: ["measurements"] }),
-        research_planning: { status: "draft_ready", draft_plan: draft, assessment: {} },
+        research_planning: { status: "ready_for_peer_review", research_plan_path: researchPlanPath, assessment: {} },
       });
       let reviewerCalls = 0;
       let refinementCalls = 0;
@@ -296,13 +312,13 @@ describe("research planning workflow", () => {
           }
           if (finalizeTool === "finalize_research_plan_user_revision") {
             userRevisionCalls += 1;
-            return { ok: true, result: { feedback_response: "Updated the synthesis emphasis.", final_plan: draft } };
+            return { ok: true, result: { feedback_response: "Updated the synthesis emphasis.", changed_nodes: ["SQ1"], research_plan: { ...draft, synthesis_strategy: "Revised synthesis emphasis." } } };
           }
           refinementCalls += 1;
           expect(finalizeTool).toBe("finalize_research_plan_refinement");
           return { ok: true, result: {
             review_response: [{ target_id: "SQ1-T1", resolution: "accepted", explanation: "Defined the null result.", changed_nodes: ["SQ1-T1"] }],
-            final_plan: draft,
+            research_plan: draft,
             unresolved_issues: [],
           } };
         },
@@ -345,6 +361,18 @@ describe("research planning workflow", () => {
       expect(userRevisionCalls).toBe(1);
       const revisedState = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
       expect(revisedState.research_planning).toMatchObject({ reviewer_call_count: 1, user_revision_count: 1, status: "ready_for_user_review" });
+      expect(JSON.parse(await readFile(researchPlanPath, "utf8")).synthesis_strategy).toBe("Revised synthesis emphasis.");
+      const rolledBack = await workflow.recordResearchPlanDecision({
+        cwd,
+        runId: run.runId,
+        decision: "restore_previous",
+        orchestratorRolePrompt: "orchestrate",
+        orchestratorAgentConfig: {},
+        revisionFinalizeSchema: {},
+      });
+      expect(rolledBack).toMatchObject({ ok: true, decision: "revise", rolled_back: true, needs_user_review: true });
+      expect(userRevisionCalls).toBe(1);
+      expect(JSON.parse(await readFile(researchPlanPath, "utf8")).synthesis_strategy).toBe("Compare both branches.");
       const approved = await workflow.recordResearchPlanDecision({
         cwd,
         runId: run.runId,
@@ -379,6 +407,42 @@ describe("research planning workflow", () => {
       ]));
       const reused = await workflow.materializeResearchTasks({ cwd, runId: run.runId });
       expect(reused).toMatchObject({ ok: true, reused: true, task_count: 2 });
+      const completedParent = await lifecycle.resolveRun(cwd, run.runId);
+      await lifecycle.updateState(completedParent, {
+        research_planning: { ...completedParent.state.research_planning, status: "tasks_complete" },
+      });
+      const addedSubquestion = await workflow.extendResearch({
+        cwd,
+        projectPath: join(cwd, "project"),
+        action: "new_sq",
+        question: "Does a third evidence branch support the conclusion?",
+      });
+      expect(addedSubquestion).toMatchObject({
+        ok: true,
+        action: "new_sq",
+        subquestion_id: "SQ3",
+        task_id: "SQ3-T1",
+        round_number: 1,
+        next_tool: "seekbrain_execution_run",
+      });
+      const extendedPlan = JSON.parse(await readFile(researchPlanPath, "utf8"));
+      expect(extendedPlan.subquestions.at(-1)).toMatchObject({ id: "SQ3", tasks: [{ id: "SQ3-T1" }] });
+
+      const completedAgain = await lifecycle.resolveRun(cwd, run.runId);
+      await lifecycle.updateState(completedAgain, {
+        research_planning: { ...completedAgain.state.research_planning, status: "tasks_complete" },
+      });
+      const addedRound = await workflow.extendResearch({
+        cwd,
+        projectPath: join(cwd, "project"),
+        action: "new_round",
+        taskId: "SQ1-T1",
+        question: "Repeat with the revised alignment rule.",
+      });
+      expect(addedRound).toMatchObject({ ok: true, action: "new_round", task_id: "SQ1-T1", round_number: 2 });
+      const roundManifest = JSON.parse(await readFile(join(cwd, "project", "research_tasks", "SQ1-T1", "project.json"), "utf8"));
+      expect(roundManifest.rounds.map((item: any) => item.round_number)).toEqual([1, 2]);
+      expect(JSON.parse(await readFile(researchPlanPath, "utf8"))).toEqual(extendedPlan);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

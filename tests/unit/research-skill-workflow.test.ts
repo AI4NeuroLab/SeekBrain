@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { atomicWriteJson, FileRunRepository } from "../../src/core/index.ts";
 import { LiteratureProviderRouter } from "../../src/literature-compat/index.ts";
 import { PaperRagClient } from "../../src/targeted-skill/index.ts";
-import { ResearchSkillWorkflow, RunLifecycleWorkflow } from "../../src/workflows/index.ts";
+import { compactRecipeMethodContract, ResearchSkillWorkflow, RunLifecycleWorkflow } from "../../src/workflows/index.ts";
 
 async function fixture() {
   const cwd = await mkdtemp(join(tmpdir(), "seekbrain-research-stage-"));
@@ -17,6 +17,17 @@ async function fixture() {
 }
 
 describe("research and skill workflows", () => {
+  it("extracts a method contract without bundled implementation code or expected results", () => {
+    const recipe = `[SKILL.md]\n# FC recipe\n\n## When to use this\nRelevance prose.\n\n## Preconditions\nNeed regional traces.\n\n## Inputs and outputs\nInput region_series.npy.\n\n## Procedure\n1. Smooth.\n2. Correlate.\n\n## Key parameters\nsigma=2.\n\n## Expected results\nmean=0.4.\n\n## Pitfalls\nExclude symmetrically.\n\n## Bundled files\n\n\`\`\`python\nprint('large implementation')\n\`\`\``;
+    const contract = compactRecipeMethodContract(recipe);
+    expect(contract).toContain("## Procedure");
+    expect(contract).toContain("sigma=2");
+    expect(contract).toContain("Exclude symmetrically");
+    expect(contract).not.toContain("Expected results");
+    expect(contract).not.toContain("large implementation");
+    expect(contract).not.toContain("Relevance prose");
+  });
+
   it("resolves and persists a targeted skill through an injected port", async () => {
     const item = await fixture();
     try {
@@ -54,8 +65,13 @@ describe("research and skill workflows", () => {
         flags: { targeted_skill_match: true, targeted_skill_generate: false, deep_research: true, literature_provider: "ailab_rag" },
       });
       expect(result).toMatchObject({ ok: true, matched: true, run_id: item.run.runId });
+      expect(result.targeted_skill).toBeUndefined();
       const state = JSON.parse(await readFile(join(item.run.runDir, "state.json"), "utf8"));
-      expect(state.targeted_skill).toContain("research question");
+      expect(state.targeted_skill).toBeUndefined();
+      expect(state.targeted_skill_path).toBe(join(item.run.runDir, "targeted_skill.md"));
+      expect(await readFile(state.targeted_skill_path, "utf8")).toContain("research question");
+      expect(state.targeted_skill_result.summary).toContain("research question");
+      expect(state.targeted_skill_result.method_contract).toContain("skill for research question");
       expect(state.targeted_skill_result.private_trace).toBeUndefined();
       expect(item.events[0].event).toBe("seekbrain_recipe_retrieve");
     } finally {

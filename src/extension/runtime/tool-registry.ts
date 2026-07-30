@@ -14,6 +14,7 @@ export const TOOL_REGISTRATION_ORDER = [
   "seekbrain_planning_researcher_review",
   "seekbrain_planning_researcher_decision_record",
   "seekbrain_analysis_tasks_prepare",
+  "seekbrain_research_extend",
   "seekbrain_execution_initialize",
   "seekbrain_execution_run",
   "seekbrain_execution_schema_review",
@@ -61,4 +62,3 @@ export function registerTools(pi: ExtensionAPI, definitions: SeekBrainToolDefini
     pi.registerTool(definition);
   }
 }
-

@@ -1,0 +1,11 @@
+{
+  "tag": "ns_multi-mouse-ca-odor_tuning_ratio_chi_square-pie_plot",
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/scientific_context.md",
+    "references/implementation_notes.md"
+  ]
+}

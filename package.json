@@ -5,7 +5,8 @@
   "description": "SeekBrain scientific research agent",
   "license": "MIT",
   "bin": {
-    "seekbrain": "./bin/seekbrain.mjs"
+    "seekbrain": "./bin/seekbrain.mjs",
+    "seekbrain-pdf": "./bin/seekbrain-pdf.mjs"
   },
   "keywords": [
     "scientific-research",
@@ -14,11 +15,13 @@
   ],
   "files": [
     "bin",
+    "assets",
+    "examples",
     "src",
     "prompts",
     "config",
-    "library/skills/trajectory",
-    ".env.example",
+    "recipes",
+    "scripts/build-recipe-index.mjs",
     "scripts/doctor.mjs",
     "README.md",
     "LICENSE",
@@ -40,6 +43,7 @@
   },
   "scripts": {
     "doctor": "node scripts/doctor.mjs",
+    "recipes:index": "node scripts/build-recipe-index.mjs",
     "typecheck": "tsc --project tsconfig.json",
     "test:unit": "vitest run",
     "test:contract": "node scripts/run-tests.mjs",
@@ -52,6 +56,8 @@
     "@earendil-works/pi-coding-agent": "0.80.10",
     "@earendil-works/pi-tui": "0.80.10",
     "diff": "8.0.4",
+    "marked": "16.4.2",
+    "pdfkit": "0.17.2",
     "typebox": "1.1.24",
     "yaml": "2.9.0"
   },

@@ -34,6 +34,7 @@ export const HumanReviewConfigSchema = Type.Object({
 export const SeekBrainWorkflowConfigSchema = Type.Object({
   research_planning: Type.Boolean(),
   research_survey: Type.Boolean(),
+  research_planning_peer_review: Type.Boolean(),
   research_execution: Type.Object({
     planning_concurrency: Type.Number({ minimum: 1, maximum: 16 }),
     execution_concurrency: Type.Number({ minimum: 1, maximum: 16 }),
@@ -48,6 +49,7 @@ export const SeekBrainWorkflowConfigSchema = Type.Object({
   deep_research: Type.Boolean(),
   targeted_skill_match: Type.Boolean(),
   targeted_skill_generate: Type.Boolean(),
+  rag_recipe_crystallization: Type.Boolean(),
   image_refine: Type.Boolean(),
   save_skill: Type.Boolean(),
   transparency: Type.Boolean(),

@@ -1,0 +1,26 @@
+{
+  "tag": "ns_multi-c_elegans-ca_behavior-correlation-timeseries_trace",
+  "yaml_metadata": {
+    "name": "ns_multi-c_elegans-ca_behavior-correlation-timeseries_trace",
+    "description": "Analyzes how individual neurons encode velocity across diverse temporal scales using exponentially weighted moving averages and correlation optimization.",
+    "triggers": [
+      "calculate neuronal velocity integration timescales",
+      "determine preferred temporal decay constant for firing rate",
+      "analyze velocity encoding across different EWMA filters",
+      "correlate neuronal spikes with smoothed velocity traces",
+      "compute half-decay times for neural velocity tuning"
+    ],
+    "tags": [
+      "neuroscience",
+      "velocity-encoding",
+      "electrophysiology",
+      "time-series-analysis",
+      "signal-processing"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

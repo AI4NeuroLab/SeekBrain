@@ -13,7 +13,14 @@ assert.doesNotMatch(toolSource, /pi\.registerTool|createAgentSession|spawn\(/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 assert.match(workflowSource, /plan\.md/);
 assert.match(workflowSource, /seekbrain_formulation_researcher_review/);
-assert.match(promptSource, /add an `## Execution Strategy` section/);
-assert.match(promptSource, /Do not add this section for ordinary small datasets/);
+assert.match(promptSource, /## Goal/);
+assert.match(promptSource, /## Inputs/);
+assert.match(promptSource, /## Method/);
+assert.match(promptSource, /## Outputs/);
+assert.match(promptSource, /## Assumptions and Warnings/);
+assert.match(promptSource, /Do not score, rank, or re-evaluate its relevance/);
+assert.doesNotMatch(promptSource, /## Recipe Relevance/);
+assert.doesNotMatch(toolSource, /data_info|analysis_recipe|methodological_schema|confidence/);
+assert.doesNotMatch(workflowSource, /plan_markdown: agent\.result/);
 
 console.log("Phase 4 plan tool delegates stage behavior through the workflow boundary");

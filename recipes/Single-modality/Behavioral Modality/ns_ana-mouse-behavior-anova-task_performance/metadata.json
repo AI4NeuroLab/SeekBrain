@@ -1,0 +1,26 @@
+{
+  "tag": "ns_ana-mouse-behavior-anova-task_performance",
+  "yaml_metadata": {
+    "name": "ns_ana-mouse-behavior-anova-task_performance",
+    "description": "Analyzes the impact of bilateral HDB-OB cholinergic inactivation on olfactory discrimination learning and evaluates signal reversibility post-CNO washout.",
+    "triggers": [
+      "Does chemogenetic inactivation of HDB-OB neurons impair olfactory learning?",
+      "Assess reversibility of CNO inhibition on olfactory discrimination task performance",
+      "Analyze behavioral learning curves for HDB-OB chemogenetic studies",
+      "How does CNO-induced inactivation of OB-projecting neurons affect task performance?",
+      "Evaluate experimental evidence for recovery after cholinergic inhibition in the olfactory bulb"
+    ],
+    "tags": [
+      "chemogenetics",
+      "olfactory-bulb",
+      "cholinergic-modulation",
+      "neuroscience-behavior",
+      "hM4Di"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

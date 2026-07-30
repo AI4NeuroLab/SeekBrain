@@ -27,7 +27,8 @@ export function createDependencyApprovalQueueFactory(deps: DependencyApprovalQue
   return new DependencyInstallApprovalQueue({
     environment: resolvePythonInstallEnvironment(env),
     env,
-    initialApproveAll: parent?.state.research_execution?.dependency_install_approve_all === true,
+    initialApproveAll: parent?.state.research_planning?.agent_full_auto === true
+      || parent?.state.research_execution?.dependency_install_approve_all === true,
     onApproveAll: parentRunId
       ? async () => {
           const current = await resolveRun(cwd, parentRunId);

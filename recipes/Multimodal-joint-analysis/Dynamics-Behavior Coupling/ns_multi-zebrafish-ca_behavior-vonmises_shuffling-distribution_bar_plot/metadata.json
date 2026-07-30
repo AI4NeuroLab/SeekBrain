@@ -1,0 +1,28 @@
+{
+  "tag": "ns_multi-zebrafish-ca_behavior-vonmises_shuffling-distribution_bar_plot",
+  "yaml_metadata": {
+    "name": "ns_multi-zebrafish-ca_behavior-vonmises_shuffling-distribution_bar_plot",
+    "description": "Compare empirical bump-to-scene von Mises concentration with circular-shift controls and plot the observed and null distributions. Use to assess phase-locking stability during visual perturbations.",
+    "triggers": [
+      "Analyze statistical validation of neural bump phase-locking to visual scenes",
+      "Generate outputs with the ns_multi-zebrafish-ca_behavior-vonmises_shuffling-distribution_bar_plot recipe",
+      "Use this recipe to plot observed bump-to-scene concentration values against a circular-shift null distribution for each condition or animal"
+    ],
+    "tags": [
+      "circular-statistics",
+      "von-mises-distribution",
+      "neural-field-theory",
+      "phase-locking",
+      "stochastic-modeling"
+    ],
+    "version": "1.0"
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/implementation_notes.md",
+    "references/scientific_context.md"
+  ]
+}

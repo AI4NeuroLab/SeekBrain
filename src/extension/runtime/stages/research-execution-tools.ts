@@ -75,7 +75,7 @@ toolDefinitions.push({
   label: "Initialize Analysis Execution",
   description: "Initialize the durable parallel scheduler for an approved, materialized hierarchical research plan. This is not used by the ordinary SeekBrain workflow.",
   parameters: Type.Object({ run_id: Type.String() }),
-  async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, _onUpdate, ctx) {
     const config = await loadConfigCached(PROJECT_ROOT);
     const execution = config.workflow.seekbrain.research_execution;
     return content(await researchTaskScheduler.initialize({
@@ -95,6 +95,8 @@ toolDefinitions.push({
   parameters: Type.Object({ run_id: Type.String() }),
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const config = await loadConfigCached(PROJECT_ROOT);
+    const parentRun = await resolveRun(ctx.cwd, params.run_id);
+    const agentFullAuto = parentRun.state.research_planning?.agent_full_auto === true;
     const reviewGate = new SerializedReviewGate();
     const dependencyQueue = await createDependencyApprovalQueue(ctx as Json, params.run_id, reviewGate);
     const execution = config.workflow.seekbrain.research_execution;
@@ -114,7 +116,7 @@ toolDefinitions.push({
     const workflow = seekbrainWorkflowConfig(config);
     const reviewPolicy = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
     const planGateEnabled = humanGateEnabled(config, "plan");
-    const initiallyAutoApprove = !planGateEnabled || reviewPolicy.approve_remaining === true;
+    const initiallyAutoApprove = agentFullAuto || !planGateEnabled || reviewPolicy.approve_remaining === true;
     const [deepResearchPrompt, planPrompt] = await Promise.all([readPrompt("deep_research"), readPrompt("plan")]);
     const childStates = new Map<string, Json>();
     await Promise.all(allTasks.map(async (task: Json) => {
@@ -129,7 +131,7 @@ toolDefinitions.push({
         && state.validation_invalidated_by_code_edit !== true;
       return [taskId, {
         task_id: taskId,
-        skill: state.targeted_skill || state.targeted_skill_result ? "complete" : "waiting",
+        skill: state.targeted_skill_path || state.targeted_skill_result ? "complete" : "waiting",
         deep_research: state.deep_research_context ? "complete" : "waiting",
         plan: state.plan ? "complete" : "waiting",
         review: state.human_reviews?.plan?.status === "approved" ? "approved" : state.plan ? "queued" : "waiting",
@@ -162,6 +164,7 @@ toolDefinitions.push({
     };
     const executionResults: Json[] = [];
     const activeExecutions = new Map<string, Promise<Json>>();
+    const activeRevisions = new Map<string, Promise<Json>>();
     const updateExecutionProgress = (taskId: string, type: string, payload: Json) => {
       const patch: Json = {};
       if (type === "execution_started" || type === "code_started") {
@@ -278,27 +281,26 @@ toolDefinitions.push({
         const plan = await planWorkflow.execute({
           cwd: ctx.cwd,
           runId: task.run_id,
-          targetedSkill: skill.targeted_skill_preview || skill.targeted_skill,
-          deepResearchContext: research.deep_research_context,
           rolePrompt: planPrompt,
           agentConfig: pickAgentConfig(config, "seekbrain_plan"),
           finalizeSchema: Type.Object({
-            plan_markdown: Type.String(), review_summary: Type.String(), summary: Type.String(),
-            confidence: Type.Number(), warnings: Type.Array(Type.String()),
+            plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()),
           }),
           humanReviewRequired: false,
           signal,
         });
         if (!plan.ok) throw new Error(String(plan.error || "Methodological schema generation failed."));
-        const planSummary = String(plan.result?.review_summary || plan.result?.summary || "");
+        const planSummary = String(plan.result?.review_summary || "");
         if (initiallyAutoApprove) {
-          await approveChildPlan(task, planGateEnabled
+          await approveChildPlan(task, agentFullAuto
+            ? "approved by Agent-Full-Auto"
+            : planGateEnabled
             ? "approved by the current Research Planning approve-remaining policy"
             : "Methodological schema review gate is disabled");
         }
         await researchTaskScheduler.publishEvent({
           cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "plan_ready",
-          payload: { plan_path: plan.plan_path, plan_summary: planSummary, skill_summary: skillSummary, deep_research_summary: researchSummary },
+          payload: { plan_path: plan.plan_path, plan_summary: planSummary, plan_warnings: plan.result?.warnings || [], plan_revision: Number(plan.revision || 0), rollback_available: false, skill_summary: skillSummary, deep_research_summary: researchSummary },
         });
         updateProgress(taskId, { plan: "ready", plan_summary: planSummary, review: initiallyAutoApprove ? "approved" : "queued" }, `${taskId} · Methodological schema ready`);
         return { task_id: task.task_id, run_id: task.run_id, ok: true, plan_path: plan.plan_path, plan_summary: planSummary, skill_summary: skillSummary, deep_research_summary: researchSummary };
@@ -311,8 +313,56 @@ toolDefinitions.push({
         return { task_id: task.task_id, run_id: task.run_id, ok: false, error: String(error) };
       }
     };
+    const startPlanRevision = (task: Json, feedback: string, expectedRevision: number, restorePrevious = false) => {
+      const taskId = String(task.task_id);
+      if (activeRevisions.has(taskId)) return;
+      const running = (async () => {
+        updateProgress(taskId, { plan: "revising", review: "revising" }, `${taskId} · revising methodological schema in background`);
+        let revised: Json;
+        try {
+          revised = await planWorkflow.revise({
+            cwd: ctx.cwd,
+            runId: String(task.run_id),
+            feedback,
+            restorePrevious,
+            expectedRevision,
+            rolePrompt: planPrompt,
+            agentConfig: pickAgentConfig(config, "seekbrain_plan"),
+            finalizeSchema: Type.Object({
+              plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()),
+            }),
+            signal,
+          });
+        } catch (error) {
+          revised = { ok: false, error: String(error) };
+        }
+        const child = await resolveRun(ctx.cwd, task.run_id);
+        const planPath = String(child.state.plan?.path || task.plan_path || "");
+        const planSummary = String(child.state.plan?.review_summary || task.plan_summary || "");
+        const planRevision = Number(child.state.plan?.revision || expectedRevision);
+        await researchTaskScheduler.publishEvent({
+          cwd: ctx.cwd,
+          parentRunId: params.run_id,
+          taskId,
+          type: "plan_ready",
+          payload: {
+            plan_path: planPath,
+            plan_summary: planSummary,
+            plan_warnings: child.state.plan?.warnings || [],
+            plan_revision: planRevision,
+            rollback_available: Boolean(child.state.plan?.previous_path),
+            skill_summary: task.skill_summary,
+            deep_research_summary: task.deep_research_summary,
+            ...(revised.ok ? {} : { revision_error: revised.error || "Plan revision failed" }),
+          },
+        });
+        updateProgress(taskId, { plan: "ready", review: "queued", ...(revised.ok ? {} : { revision_error: revised.error }) }, `${taskId} · revised methodological schema ready for review`);
+        return revised;
+      })();
+      activeRevisions.set(taskId, running);
+    };
     const reviewReadyPlans = async () => {
-      if (!planGateEnabled) return;
+      if (agentFullAuto || !planGateEnabled) return;
       while (true) {
         const queue = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
         if (!queue.current) return;
@@ -320,10 +370,12 @@ toolDefinitions.push({
           title: taskPlanReviewTitle(queue.current, queue.queue_length),
           feedbackTitle: `Changes for ${queue.current.task_id}`,
           feedbackPlaceholder: "Describe the scientific or analytical changes required before execution",
+          rollbackAvailable: queue.current.rollback_available === true,
         }));
         if (["unavailable", "feedback_empty", "cancel"].includes(selection.decision)) return;
-        const decision = selection.decision === "feedback" ? "revise" : selection.decision;
-        const feedback = selection.decision === "feedback" ? selection.feedback : "";
+        const restorePrevious = selection.decision === "restore_previous";
+        const decision = selection.decision === "feedback" || restorePrevious ? "revise" : selection.decision;
+        const feedback = selection.decision === "feedback" ? selection.feedback : restorePrevious ? "Restore previous Plan version" : "";
         const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
         const affected = decision === "approve_remaining"
           ? scheduler.tasks.filter((item: Json) => item.status === "awaiting_plan_review")
@@ -332,24 +384,26 @@ toolDefinitions.push({
           const child = await resolveRun(ctx.cwd, affectedTask.run_id);
           if (decision === "revise") await reviewWorkflow.feedback(child, "plan", feedback, { source: "research_task_review_queue", action: "revise" });
           else await approveChildPlan(affectedTask, decision === "approve_remaining" ? "approved with all remaining methodological schemas" : "approved via Research Planning analysis-task queue");
-          updateProgress(String(affectedTask.task_id), { review: decision === "revise" ? "revision_required" : "approved" });
+          updateProgress(String(affectedTask.task_id), { review: decision === "revise" ? "revising" : "approved" });
         }
         await researchTaskScheduler.recordPlanReview({
           cwd: ctx.cwd, runId: params.run_id, taskId: String(queue.current.task_id),
           decision: decision as "approve" | "revise" | "approve_remaining", feedback,
+          planRevision: Number(queue.current.plan_revision || 0),
         });
+        if (decision === "revise" && affected[0]) startPlanRevision(affected[0], feedback, Number(queue.current.plan_revision || 0), restorePrevious);
         emitProgress(`${queue.current.task_id} · Methodological schema ${decision === "revise" ? "revision requested" : "approved"}`);
         if (decision !== "revise") await startApprovedTasks();
       }
     };
     const approveReadyPlansWithoutGate = async () => {
-      if (planGateEnabled) return;
+      if (planGateEnabled && !agentFullAuto) return;
       while (true) {
         const queue = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
         if (!queue.current) return;
         const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
         const task = scheduler.tasks.find((item: Json) => String(item.task_id) === String(queue.current.task_id));
-        if (task) await approveChildPlan(task, "Methodological schema review gate is disabled");
+        if (task) await approveChildPlan(task, agentFullAuto ? "approved by Agent-Full-Auto" : "Methodological schema review gate is disabled");
         await researchTaskScheduler.recordPlanReview({
           cwd: ctx.cwd, runId: params.run_id, taskId: String(queue.current.task_id), decision: "approve",
         });
@@ -372,15 +426,32 @@ toolDefinitions.push({
     };
     enqueuePlanningTasks(initiallyClaimedTasks);
     emitProgress("Preparing analysis recipes, Deep Research, and methodological schemas in parallel");
-    while (remaining.size) {
-      const settled: { index: number; result: Json } = await Promise.race(remaining.values());
-      remaining.delete(settled.index);
-      results.push(settled.result);
+    while (remaining.size || activeRevisions.size) {
+      const completed = await Promise.race([
+        ...[...remaining.entries()].map(([index, running]) => running.then((settled) => ({
+          kind: "planning" as const,
+          index,
+          settled,
+        }))),
+        ...[...activeRevisions.entries()].map(([taskId, running]) => running.then(
+          (result) => ({ kind: "revision" as const, taskId, result }),
+          (error) => ({ kind: "revision" as const, taskId, result: { ok: false, error: String(error) } }),
+        )),
+      ]);
+      if (completed.kind === "planning") {
+        remaining.delete(completed.index);
+        results.push(completed.settled.result);
+        // A ready Plan frees one planning slot. Fill it immediately so queued
+        // tasks are visible from the start but do not begin Recipe/Formulation work
+        // until the configured planning concurrency allows it.
+        await claimAndEnqueuePlanningTasks();
+      } else {
+        // Keep completed revisions registered until this coordination loop has
+        // observed them. Otherwise a fast revision can disappear while another
+        // task is still producing its initial Plan and never reach review.
+        activeRevisions.delete(completed.taskId);
+      }
       const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
-      // A ready Plan frees one planning slot. Fill it immediately so queued
-      // tasks are visible from the start but do not begin Recipe/Formulation work
-      // until the configured planning concurrency allows it.
-      await claimAndEnqueuePlanningTasks();
       for (const scheduled of scheduler.tasks.filter((item: Json) => item.status === "approved" && item.plan_path)) {
         const sourceTask = allTasks.find((item: Json) => String(item.task_id) === String(scheduled.task_id));
         if (sourceTask) await approveChildPlan(sourceTask, "approved by the current Research Planning approve-remaining policy");
@@ -432,13 +503,15 @@ toolDefinitions.push({
   description: "Present one serialized methodological-schema review for an analysis task. Supports approval, revision feedback, or approval of this and all remaining valid methodological schemas.",
   parameters: Type.Object({
     run_id: Type.String(),
-    decision: Type.Optional(Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("approve_remaining")])),
+    decision: Type.Optional(Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("restore_previous"), Type.Literal("approve_remaining")])),
     feedback: Type.Optional(Type.String()),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, _onUpdate, ctx) {
     const queue = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
     if (!queue.current) return content({ ok: true, parent_run_id: params.run_id, queue_empty: true, message: "No methodological schema is waiting for review." });
-    let decision = params.decision;
+    const parentRun = await resolveRun(ctx.cwd, params.run_id);
+    const agentFullAuto = parentRun.state.research_planning?.agent_full_auto === true;
+    let decision = agentFullAuto ? "approve" as const : params.decision;
     let feedback = String(params.feedback || "").trim();
     if (!decision) {
       const task = queue.current.task || {};
@@ -446,12 +519,18 @@ toolDefinitions.push({
         title: taskPlanReviewTitle(queue.current, queue.queue_length),
         feedbackTitle: `Changes for ${queue.current.task_id}`,
         feedbackPlaceholder: "Describe the scientific or analytical changes required before execution",
+        rollbackAvailable: queue.current.rollback_available === true,
       });
       if (selection.decision === "unavailable") return content({ ok: false, parent_run_id: params.run_id, needs_text_review: true, message: "Interactive methodological-schema review is unavailable." });
       if (selection.decision === "feedback_empty") return content({ ok: false, parent_run_id: params.run_id, message: "No methodological-schema revision feedback was entered." });
       if (selection.decision === "cancel") return content({ ok: false, parent_run_id: params.run_id, message: "Methodological-schema review was cancelled." });
       decision = selection.decision === "feedback" ? "revise" : selection.decision;
       feedback = selection.decision === "feedback" ? selection.feedback : feedback;
+    }
+    const restorePrevious = decision === "restore_previous";
+    if (restorePrevious) {
+      decision = "revise";
+      feedback = "Restore previous Plan version";
     }
     const scheduler = await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
     const affected = decision === "approve_remaining"
@@ -460,15 +539,48 @@ toolDefinitions.push({
     for (const task of affected) {
       const child = await resolveRun(ctx.cwd, task.run_id);
       if (decision === "revise") await reviewWorkflow.feedback(child, "plan", feedback, { source: "research_task_review_queue", action: "revise" });
-      else await reviewWorkflow.approve(child, "plan", decision === "approve_remaining" ? "approved with all remaining methodological schemas" : "approved via Research Planning analysis-task queue", { source: "research_task_review_queue" });
+      else await reviewWorkflow.approve(child, "plan", agentFullAuto ? "approved by Agent-Full-Auto" : decision === "approve_remaining" ? "approved with all remaining methodological schemas" : "approved via Research Planning analysis-task queue", { source: agentFullAuto ? "agent_full_auto" : "research_task_review_queue" });
     }
-    return content(await researchTaskScheduler.recordPlanReview({
+    const recorded = await researchTaskScheduler.recordPlanReview({
       cwd: ctx.cwd,
       runId: params.run_id,
       taskId: String(queue.current.task_id),
       decision: decision as "approve" | "revise" | "approve_remaining",
       feedback,
-    }));
+      planRevision: Number(queue.current.plan_revision || 0),
+    });
+    if (decision !== "revise" || !affected[0]) return content(recorded);
+    const task = affected[0];
+    const config = await loadConfigCached(PROJECT_ROOT);
+    const revised = await planWorkflow.revise({
+      cwd: ctx.cwd,
+      runId: String(task.run_id),
+      feedback,
+      restorePrevious,
+      expectedRevision: Number(queue.current.plan_revision || 0),
+      rolePrompt: await readPrompt("plan"),
+      agentConfig: pickAgentConfig(config, "seekbrain_plan"),
+      finalizeSchema: Type.Object({ plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()) }),
+      signal,
+    });
+    const child = await resolveRun(ctx.cwd, task.run_id);
+    await researchTaskScheduler.publishEvent({
+      cwd: ctx.cwd,
+      parentRunId: params.run_id,
+      taskId: String(task.task_id),
+      type: "plan_ready",
+      payload: {
+        plan_path: child.state.plan?.path,
+        plan_summary: child.state.plan?.review_summary || task.plan_summary,
+        plan_revision: Number(child.state.plan?.revision || queue.current.plan_revision || 0),
+        rollback_available: Boolean(child.state.plan?.previous_path),
+        skill_summary: task.skill_summary,
+        deep_research_summary: task.deep_research_summary,
+        ...(revised.ok ? {} : { revision_error: revised.error }),
+      },
+    });
+    await researchTaskScheduler.status(ctx.cwd, params.run_id, true);
+    return content({ ...recorded, revision: revised, next_review: (await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id)).current });
   },
   renderResult: renderSeekBrainResult("seekbrain_execution_schema_review"),
 });

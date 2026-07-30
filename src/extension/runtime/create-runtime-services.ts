@@ -89,11 +89,19 @@ const skillLibrary = new SkillLibraryManager({ packageRoot: PACKAGE_ROOT });
 const ragSkillGenerator = new RagSkillGenerator(async (input) => {
   const runDir = session.getActiveRunDir() || PROJECT_ROOT;
   const config = await loadConfigCached(PROJECT_ROOT);
-  const repositoryContext = input.matchedFiles.map((file) => `### ${file.path}\n\n${file.content}`).join("\n\n").slice(0, 50_000);
-  const paperOnly = input.evidenceLevel === "paper_only";
+  const paperPrompt = await readPrompt("recipe_crystallization");
+  const repositoryCode = input.matchedFiles
+    .map((file) => `### ${file.path}\n\n${file.content}`)
+    .join("\n\n")
+    .slice(0, 60_000);
+  const prompt = paperPrompt
+    .replaceAll("{tag}", "repository_recipe")
+    .replaceAll("{question_text}", input.question)
+    .replaceAll("{matched_paper_context}", input.matchedPaperContext.slice(0, 40_000))
+    .replaceAll("{repo_code_excerpts}", repositoryCode);
   const authored = await runSubagent({
     runDir,
-    agentName: "targeted_skill_generator",
+    agentName: "seekbrain_skill_generate",
     finalizeTool: "finalize_targeted_skill",
     finalizeSchema: Type.Object({
       name: Type.String(),
@@ -105,23 +113,13 @@ const ragSkillGenerator = new RagSkillGenerator(async (input) => {
       utility_script: Type.Optional(Type.String()),
     }),
     prompt: [
-      paperOnly
-        ? "You are the isolated SeekBrain paper-only Recipe Crystallization Agent."
-        : "You are the isolated SeekBrain Recipe Crystallization Agent for literature and code.",
-      paperOnly
-        ? "Generate reusable, evidence-grounded methodological guidance from the paper only. No implementation repository was verified."
-        : "Generate a reusable, evidence-grounded neuroscience analysis recipe from the question, paper context, and verified repository files.",
-      paperOnly
-        ? "Do not claim that paper procedures are implemented, do not invent code or dependencies, and return an empty analysis_script if the field is present."
-        : "Do not invent dataset paths, schemas, functions, dependencies, or results. The analysis script must use argparse and save declared outputs.",
-      "Return only through finalize_targeted_skill.",
-      `Question:\n${input.question}`,
-      `Paper: ${input.title}\n${input.matchedPaperContext.slice(0, 30_000)}`,
-      paperOnly ? "Evidence level: paper_only" : `Repository: ${input.repoLink}\n${input.repoOverview}`,
-      paperOnly ? "Repository evidence: none" : `Matched repository analysis:\n${input.matchedRepoContext.slice(0, 20_000)}`,
-      paperOnly ? "Paper-to-code mapping: unavailable" : `Paper-to-code mapping and gaps:\n${input.connectionAnalysis.slice(0, 20_000)}`,
-      `Required adaptation plan:\n${input.reproductionPlan.slice(0, 20_000)}`,
-      paperOnly ? "Matched repository files: none" : `Matched repository files:\n${repositoryContext}`,
+      prompt,
+      "Convert the five requested mapping sections into a reusable SeekBrain SKILL.md body while preserving their scientific content and evidence boundaries.",
+      "The Recipe must state its objective, required inputs, procedure, expected outputs, validation criteria, paper-to-code mapping, and gaps.",
+      "Do not invent repository functions, parameters, dependencies, data schemas, or results. Include analysis_script only when the supplied repository excerpts support it; otherwise return an empty string.",
+      "Return only through finalize_targeted_skill with { name, description, triggers, tags, skill_body, analysis_script?, utility_script? }.",
+      `Repository URL: ${input.repoLink}`,
+      `Repository overview:\n${input.repoOverview}`,
     ].join("\n\n"),
     agentConfig: pickAgentConfig(config, "seekbrain_skill_generate"),
     tools: [],
@@ -129,43 +127,6 @@ const ragSkillGenerator = new RagSkillGenerator(async (input) => {
   });
   if (!authored.ok || !authored.result) throw new Error((authored as Json).error || "Recipe Crystallization Agent did not finalize");
   return authored.result;
-}, async (input) => {
-  const runDir = session.getActiveRunDir() || PROJECT_ROOT;
-  const config = await loadConfigCached(PROJECT_ROOT);
-  const manifest = input.repositoryFiles
-    .map((file) => `${file.path}\t${file.extension}\t${file.size}`)
-    .join("\n")
-    .slice(0, 60_000);
-  const context = await runSubagent({
-    runDir,
-    agentName: "targeted_skill_context",
-    finalizeTool: "finalize_targeted_skill_context",
-    finalizeSchema: Type.Object({
-      repo_overview: Type.String(),
-      selected_files: Type.Array(Type.String()),
-      matched_paper_context: Type.String(),
-      matched_repo_context: Type.String(),
-      connection_analysis: Type.String(),
-      reproduction_plan: Type.String(),
-    }),
-    prompt: [
-      "You are the isolated SeekBrain Recipe Crystallization context analyst for literature and code.",
-      "Reproduce the original context-matching stages: analyze the paper method, inspect the repository, rank the exact relevant files, map paper methods to code, identify missing pieces, and produce a detailed executable reproduction plan.",
-      "Use read/grep/find/ls to inspect the cloned repository. selected_files must contain exact paths relative to Repository root and at most 10 files.",
-      "Never infer a function, parameter, dependency, dataset path, or output that is not supported by the supplied paper or repository.",
-      "Return only through finalize_targeted_skill_context.",
-      `Question:\n${input.question}`,
-      `Paper: ${input.title}\n${input.paperText.slice(0, 60_000)}`,
-      `Repository URL: ${input.repoLink}`,
-      `Repository root: ${input.repoDir}`,
-      `Repository file manifest:\n${manifest}`,
-    ].join("\n\n"),
-    agentConfig: pickAgentConfig(config, "seekbrain_skill_context"),
-    tools: ["read", "grep", "find", "ls"],
-    signal: input.signal,
-  });
-  if (!context.ok || !context.result) throw new Error((context as Json).error || "analysis-recipe context analyst did not finalize");
-  return context.result as any;
 });
 const targetedSkillResolver = new TargetedSkillResolver(literatureProviderRouter, {
   ensureTrajectoryDir: () => skillLibrary.ensureTrajectory(),
@@ -271,31 +232,29 @@ const reporterWorkflow = new ReporterWorkflow({
     images: input.images,
     signal: input.signal,
   }),
-  loadImages: loadVisionImages,
   writeJson,
   writeText,
   exportPdf: exportReportPdf,
 });
 const generateScientificReport = async (input: {
   projectPath: string;
-  selectedEvidence: string[];
+  selectedEvidenceIds?: string[];
   reportGoal?: string;
   signal?: AbortSignal;
   onProgress?: (progress: Json) => void;
 }) => {
   input.onProgress?.({
     stage: "compiling",
-    message: "Compiling selected evidence",
-    selected_count: input.selectedEvidence.length,
+    message: "Compiling the completed Research Planning evidence tree",
   });
   const compiled = await reportEvidenceCompiler.compile({
     projectPath: input.projectPath,
-    selectedEvidence: input.selectedEvidence,
+    selectedEvidenceIds: input.selectedEvidenceIds,
     reportGoal: input.reportGoal,
   });
   const config = await loadConfigCached(PROJECT_ROOT);
   return reporterWorkflow.execute({
-    evidenceBundlePath: compiled.evidence_bundle_path,
+    hierarchicalEvidencePath: compiled.hierarchical_evidence_path,
     rolePrompt: await readPrompt("report"),
     agentConfig: pickAgentConfig(config, "seekbrain_report"),
     finalizeSchema: seekbrainReportFinalizeSchema(),
@@ -329,7 +288,7 @@ const codeWorkflow = new CodeWorkflow({
     finalizeSchema: input.finalizeSchema,
     prompt: input.prompt,
     agentConfig: input.agentConfig,
-    tools: ["read", "write", "edit", "bash", "grep", "find", "ls"],
+    tools: ["read", "write", "edit", "bash"],
     signal: input.signal,
     afterToolCall: input.afterToolCall,
   }),
@@ -348,7 +307,7 @@ const validateWorkflow = new ValidateWorkflow({
     finalizeSchema: input.finalizeSchema,
     prompt: input.prompt,
     agentConfig: input.agentConfig,
-    tools: [],
+    tools: ["read"],
     images: input.images,
     signal: input.signal,
   }),
@@ -387,7 +346,6 @@ const interpretWorkflow = new InterpretWorkflow({
   lifecycle: runLifecycle,
   currentArtifactsValidated,
   nextStep: validationNextStep,
-  loadImages: loadVisionImages,
   runAgent: async (input) => runSubagent({
     runDir: input.runDir,
     agentName: "seekbrain_interpretation_run",
@@ -396,11 +354,9 @@ const interpretWorkflow = new InterpretWorkflow({
     prompt: input.prompt,
     agentConfig: input.agentConfig,
     tools: ["read"],
-    images: input.images,
     signal: input.signal,
   }),
   writeJson,
-  writeText,
   snapshot: snapshotRunArtifacts,
   appendEvent: (event) => appendStateEntry(pi, event),
   publishTaskEvent: async (event) => {

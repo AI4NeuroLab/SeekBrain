@@ -101,8 +101,8 @@ function startHint(theme: any, expanded: boolean, narrow = false): string {
 
 function detailRows(theme: any): Array<[string, string]> {
   return [
-    ["START", theme.fg("text", "Type your research question directly in the editor below")],
-    ["DATA", theme.fg("dim", "start with only a question · drop files or paste a dataset path when useful")],
+    ["START", theme.fg("text", "Type a research question or dataset path directly in the editor below")],
+    ["DATA", theme.fg("dim", "a dataset path alone profiles the dataset and suggests research directions")],
     ["MODELS", action(theme, "/seekbrain-setup", "choose Core / Fast models")],
     ["KEYS", theme.fg("dim", "esc interrupt · ctrl+p models · shift+tab thinking · ctrl+c clear · ctrl+d exit")],
     ["LOADED", theme.fg("dim", `research workflow · adaptive stage tracker · usage footer · ${workspaceName()}`)],

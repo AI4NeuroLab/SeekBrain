@@ -1,0 +1,11 @@
+{
+  "tag": "ns_multi-mouse-spike_visual_stim-svm-performance",
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/scientific_context.md",
+    "references/implementation_notes.md"
+  ]
+}

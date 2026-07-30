@@ -7,7 +7,6 @@ import { helpText, main, PACKAGE_ROOT, parseArgs, VERSION } from "../src/cli/cli
 const root = new URL("../", import.meta.url);
 const expectedHelp = await readFile(new URL("fixtures/seekbrain-help.txt", import.meta.url), "utf8");
 const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
-const migration = JSON.parse(await readFile(new URL("docs/architecture/package-migration-manifest.json", root), "utf8"));
 const binSource = await readFile(new URL("bin/seekbrain.mjs", root), "utf8");
 
 assert.equal(PACKAGE_ROOT, root.pathname.replace(/\/$/, ""));
@@ -33,36 +32,19 @@ assert.deepEqual(parseArgs(["run", "--query", "question", "--dataset", "data", "
   nonInteractive: true,
   options: { piArgs: [], query: "question", dataset: "data", workDir: "out" },
 });
-const reportArgs = parseArgs(["report", "results/project", "--rounds", "3,4,6", "--evidence", "SQ1-T1:R2", "--goal", "Synthesize selected findings"]);
+const reportArgs = parseArgs(["report", "results/project", "--goal", "Synthesize the complete Research Planning tree"]);
 assert.equal(reportArgs.action, "launch");
 assert.equal(reportArgs.nonInteractive, true);
 assert.equal(reportArgs.options.reportMode, true);
 assert.equal(reportArgs.options.reportProject, "results/project");
-assert.deepEqual(reportArgs.options.reportSelections, ["ROUND:3", "ROUND:4", "ROUND:6", "SQ1-T1:R2"]);
+assert.equal(reportArgs.options.reportSelections, undefined);
 assert.match(reportArgs.options.query, /Call seekbrain_report_generate exactly once/);
-assert.equal(parseArgs(["report", "results/project"]).action, "error");
+assert.equal(parseArgs(["report", "results/project"]).action, "launch");
 assert.equal(manifest.bin.seekbrain, "./bin/seekbrain.mjs");
+assert.equal(manifest.bin["seekbrain-pdf"], "./bin/seekbrain-pdf.mjs");
 assert.deepEqual(manifest.piConfig, { name: "seekbrain", configDir: ".pi" });
 assert.ok(manifest.files.includes("bin"));
 assert.match(binSource, /^#!\/usr\/bin\/env node/);
-assert.equal(migration.targetVersion, "0.2.0");
-for (const path of ["internagent", "cases", "images", "question"]) {
-  assert.ok(
-    migration.entries.some((entry) => entry.path === path && entry.action === "delete"),
-    `${path} must have an explicit deletion decision`,
-  );
-}
-for (const [path, target] of [
-  ["packages/core/src", "src/core"],
-  ["packages/workflows/src", "src/workflows"],
-  ["packages/pi-extension/src", "src/extension"],
-]) {
-  assert.ok(
-    migration.entries.some((entry) => entry.path === path && entry.action === "migrate" && entry.target === target),
-    `${path} must have a migration target`,
-  );
-}
-
 function capture() {
   let stdout = "";
   let stderr = "";

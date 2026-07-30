@@ -133,14 +133,25 @@ function reviewResult(details: Json, theme: Json) {
 function targetedSkillResult(details: Json, theme: Json) {
   const paths = Array.isArray(details.recipe_paths) ? details.recipe_paths : Array.isArray(details.skill_paths) ? details.skill_paths : [];
   const names = paths.map((path: unknown) => basename(String(path))).filter(Boolean);
-  const state = details.source === "crystallized" || details.source === "generated_from_rag" || details.generated === true
-    ? "crystallized from literature and code"
-    : details.source === "repertoire" || details.matched === true
-      ? "retrieved from the Neuroscience Analysis Repertoire"
-      : "not found";
+  const repository = details.repository_reference || {};
+  const repositoryUrl = String(repository.repository_url || "");
+  const repositoryName = repositoryUrl.replace(/\/$/, "").replace(/^https?:\/\/(?:www\.)?github\.com\//i, "")
+    || String(repository.repository_key || "").replace(/^github\.com\//i, "");
+  const repositorySource = details.source === "repository_reference" || details.source === "validated_repository_recipe";
+  const state = details.source === "repository_reference" ? "found in an external repository"
+    : details.source === "validated_repository_recipe" ? "reused from validated repository scripts"
+      : details.source === "crystallized" || details.source === "generated_from_rag" || details.generated === true
+        ? "crystallized from literature and code"
+        : details.source === "repertoire" || details.source === "existing_skill"
+          ? "retrieved from the Neuroscience Analysis Repertoire"
+          : "not found";
+  const referenceNames = (Array.isArray(repository.reference_files) ? repository.reference_files : Array.isArray(details.reference_paths) ? details.reference_paths : [])
+    .map((path: unknown) => basename(String(path))).filter(Boolean);
   return textComponent([
     `${details.matched === true ? "✓" : "○"} Analysis recipe ${state}`,
-    names.length > 0 ? `Recipes: ${names.join(", ")}` : "No matching analysis recipe found",
+    repositorySource
+      ? `Repository: ${repositoryName || "repository"}${referenceNames.length ? ` · Reference: ${referenceNames.slice(0, 2).join(", ")}` : ""}`
+      : names.length > 0 ? `Recipes: ${names.join(", ")}` : "No matching analysis recipe found",
     `${count(details.reference_paths)} references${warningSuffix(details)} · Ctrl+O for details`,
   ], theme);
 }
@@ -195,6 +206,13 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     ], theme);
   }
   if (toolName === "seekbrain_planning_peer_review") {
+    if (details.skipped === true) {
+      return textComponent([
+        "○ Hierarchical research plan peer review skipped by configuration",
+        `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} tasks`,
+        `Next: ${details.next_tool || "seekbrain_planning_researcher_review"} · Ctrl+O for details`,
+      ], theme);
+    }
     if (details.verdict === "blocked") {
       return textComponent([
         "○ Hierarchical research plan blocked by data feasibility",
@@ -221,7 +239,7 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     return textComponent([
       `✓ Hierarchical research plan reviewed · ${details.verdict}${details.refined ? " · refined once" : ""}`,
       `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} tasks · ${Number(details.unresolved_issue_count || 0)} unresolved issues`,
-      details.final_plan_path ? `Plan: ${compactPath(details.final_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
+      details.research_plan_path ? `Plan: ${compactPath(details.research_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
   if (toolName === "seekbrain_planning_researcher_review" || toolName === "seekbrain_planning_researcher_decision_record") {
@@ -237,7 +255,7 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     return textComponent([
       revised ? "↻ Hierarchical research plan revised · review again" : cancelled ? "○ Hierarchical research plan retained · execution cancelled" : "✓ Hierarchical research plan approved",
       revised ? summary(details.feedback_response || details.message) : summary(details.message),
-      details.final_plan_path ? `Plan: ${compactPath(details.final_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
+      details.research_plan_path ? `Plan: ${compactPath(details.research_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
   if (toolName === "seekbrain_analysis_tasks_prepare") {
@@ -251,7 +269,7 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     `✓ Hierarchical research plan drafted · ${Number(details.subquestion_count ?? count(details.subquestions))} subquestions · ${Number(details.task_count ?? 0)} analysis tasks`,
     details.research_survey ? `Survey: ${String(details.research_survey.status || "ready")} · ${Number(details.research_survey.source_count || 0)} sources${details.research_survey.reused ? " · reused" : ""}` : "",
     summary(details.research_plan?.planning_rationale),
-    details.draft_plan_path ? `Draft: ${compactPath(details.draft_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
+    details.research_plan_path ? `Plan: ${compactPath(details.research_plan_path)} · Ctrl+O for details` : "Ctrl+O for details",
   ], theme);
 }
 
@@ -323,7 +341,7 @@ function stageResult(stage: string, details: Json, theme: Json) {
   }
   return textComponent([
     `✓ ${stage} complete${warnings}`,
-    summary(nested.summary || details.summary),
+    summary(nested.review_summary || nested.summary || details.summary),
     ...extra,
     path ? `Output: ${compactPath(path)} · Ctrl+O for details` : "Ctrl+O for details",
   ], theme);
@@ -375,7 +393,7 @@ export function renderSeekBrainResult(toolName: string) {
       case "seekbrain_formulation_researcher_review":
         return reviewResult(details, theme);
       case "seekbrain_formulation_update":
-        return textComponent(["✓ Methodological schema updated · Researcher review required", summary(details.result?.summary || details.message), details.plan_path ? `Schema: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details"], theme);
+        return textComponent(["✓ Methodological schema updated · Researcher review required", summary(details.result?.review_summary || details.message), details.plan_path ? `Schema: ${compactPath(details.plan_path)} · Ctrl+O for details` : "Ctrl+O for details"], theme);
       case "seekbrain_code_update_propose":
         return proposedCodeResult(details, theme);
       case "seekbrain_recipe_retrieve":
@@ -399,7 +417,7 @@ export function renderSeekBrainResult(toolName: string) {
         return researchExecutionResult(toolName, details, theme);
       case "seekbrain_report_evidence_compile":
         return textComponent([
-          `✓ Report evidence compiled · ${Number(details.selected_count || 0)} selected results · ${Number(details.figure_count || 0)} figures`,
+          `✓ Research Planning evidence compiled · ${Number(details.round_count || 0)} rounds from ${Number(details.task_count || 0)} tasks · ${Number(details.subquestion_count || 0)} sub-questions · ${Number(details.figure_count || 0)} figures`,
           details.report_dir ? `Report workspace: ${compactPath(details.report_dir)}` : "",
           "Report Agent has not been called · Ctrl+O for full details",
         ], theme);
@@ -421,14 +439,14 @@ export function renderSeekBrainResult(toolName: string) {
       case "seekbrain_report_generate":
         if (details.progress === true) {
           return textComponent([
-            "○ Scientific report · generating",
-            Number(details.selected_count || 0) > 0 ? `${Number(details.selected_count)} selected results` : "",
-            summary(details.message || "Synthesizing selected evidence"),
+            "○ Research Planning report · hierarchical synthesis",
+            Number(details.round_count || 0) > 0 ? `${Number(details.round_count)} selected rounds from ${Number(details.task_count || 0)} tasks` : "",
+            summary(details.message || "Synthesizing hierarchical evidence"),
             "Provenance will be validated before report artifacts are written.",
           ], theme);
         }
         return textComponent([
-          `✓ Scientific report generated · ${Number(details.selected_count || 0)} selected results · ${Number(details.figure_count || 0)} figures`,
+          `✓ Scientific report generated · ${Number(details.round_count || 0)} rounds from ${Number(details.task_count || 0)} tasks · ${String(details.report_scope || "partial")} scope · ${Number(details.figure_count || 0)} figures`,
           details.title ? `Title: ${summary(details.title)}` : "",
           details.pdf_generated === true && details.pdf_path ? `PDF: ${compactPath(details.pdf_path)}` : "",
           details.pdf_generated === false && details.pdf_note ? `PDF: ${summary(details.pdf_note)}` : "",

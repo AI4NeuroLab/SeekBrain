@@ -1,0 +1,27 @@
+{
+  "tag": "ns_ana-mouse-omics-hierarchical_clustering-scatter_type_temporal_trajectory",
+  "yaml_metadata": {
+    "name": "ns_ana-mouse-omics-hierarchical_clustering-scatter_type_temporal_trajectory",
+    "description": "Quantifies and visualizes the evolution, emergence, and diversification of hierarchical cell clusters and subclusters across developmental time points.",
+    "triggers": [
+      "How do cell cluster counts change across mouse visual cortex development?",
+      "Visualize the temporal dynamics of cell-type subclusters in developmental atlas data.",
+      "Track cell type lineage and branching from embryonic to postnatal stages.",
+      "Quantify the diversification of neural identities over the developmental timeline.",
+      "Generate alluvial diagrams for hierarchical cell cluster trajectories."
+    ],
+    "tags": [
+      "single-cell-transcriptomics",
+      "developmental-biology",
+      "lineage-tracing",
+      "hierarchical-clustering",
+      "temporal-dynamics",
+      "mouse-visual-cortex"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

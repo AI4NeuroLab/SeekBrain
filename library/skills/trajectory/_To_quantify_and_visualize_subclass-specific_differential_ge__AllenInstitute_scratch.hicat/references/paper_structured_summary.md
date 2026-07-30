@@ -1,2 +1,0 @@
-# Full Paper Structured Summary
-

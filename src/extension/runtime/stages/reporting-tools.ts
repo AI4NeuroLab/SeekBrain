@@ -8,7 +8,7 @@ export interface ReportingToolDependencies {
   compiler: ReportEvidenceCompiler;
   generate(input: {
     projectPath: string;
-    selectedEvidence: string[];
+    selectedEvidenceIds?: string[];
     reportGoal?: string;
     signal?: AbortSignal;
     onProgress?: (progress: Json) => void;
@@ -20,35 +20,31 @@ export function createReportingTools(deps: ReportingToolDependencies): SeekBrain
   return [
     defineTool({
       name: "seekbrain_report_evidence_compile",
-      label: "Compile Report Evidence",
-      description: "Compile an immutable report input bundle from exactly the completed rounds or Research Planning analysis-task rounds explicitly selected by the user. Does not call the Report Agent.",
+      label: "Compile Research Planning Report Evidence",
+      description: "Compile selected completed Research Planning task rounds into an authoritative hierarchical evidence bundle without calling the Report Agent. Standard projects are rejected.",
       parameters: Type.Object({
         project_path: Type.String(),
-        selected_evidence: Type.Array(Type.String({ description: "ROUND:<n> or <task-id>:R<n>, for example ROUND:3 or SQ1-T1:R2." }), { minItems: 1 }),
+        selected_evidence_ids: Type.Optional(Type.Array(Type.String())),
         report_goal: Type.Optional(Type.String()),
       }),
       async execute(_toolCallId, params) {
-        return deps.content(await deps.compiler.compile({
-          projectPath: params.project_path,
-          selectedEvidence: params.selected_evidence,
-          reportGoal: params.report_goal,
-        }));
+        return deps.content(await deps.compiler.compile({ projectPath: params.project_path, selectedEvidenceIds: params.selected_evidence_ids, reportGoal: params.report_goal }));
       },
       renderResult: renderSeekBrainResult("seekbrain_report_evidence_compile"),
     }),
     defineTool({
       name: "seekbrain_report_generate",
-      label: "Generate Report",
-      description: "On explicit user request, compile exactly the selected completed rounds/task rounds and call the Report Agent once. Unselected evidence is not loaded into the Report Agent context.",
+      label: "Generate Research Planning Report",
+      description: "On explicit user request, synthesize selected completed Research Planning task rounds and generate academic Markdown and PDF. Multiple rounds from one task are allowed and are treated as related analysis versions, not independent experiments.",
       parameters: Type.Object({
         project_path: Type.String(),
-        selected_evidence: Type.Array(Type.String({ description: "ROUND:<n> or <task-id>:R<n>." }), { minItems: 1 }),
+        selected_evidence_ids: Type.Optional(Type.Array(Type.String())),
         report_goal: Type.Optional(Type.String()),
       }),
       async execute(_toolCallId, params, signal, onUpdate) {
         return deps.content(await deps.generate({
           projectPath: params.project_path,
-          selectedEvidence: params.selected_evidence,
+          selectedEvidenceIds: params.selected_evidence_ids,
           reportGoal: params.report_goal,
           signal,
           onProgress: (progress) => onUpdate?.(deps.content({ progress: true, ...progress })),
@@ -58,4 +54,3 @@ export function createReportingTools(deps: ReportingToolDependencies): SeekBrain
     }),
   ];
 }
-

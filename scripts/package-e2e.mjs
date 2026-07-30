@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,19 +30,35 @@ function run(command, args, options = {}) {
   return result;
 }
 
+async function countSkillDocuments(directory) {
+  let count = 0;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory()) count += await countSkillDocuments(join(directory, entry.name));
+    else if (entry.isFile() && entry.name === "SKILL.md") count += 1;
+  }
+  return count;
+}
+
 try {
   await mkdir(project);
   const packed = run("npm", ["pack", "--json", "--pack-destination", temporaryRoot]);
   const [manifest] = JSON.parse(packed.stdout);
   const tarball = join(temporaryRoot, manifest.filename);
   run("npm", ["install", "--global", "--prefix", prefix, "--ignore-scripts", tarball]);
-  assert.match(
-    await readFile(join(prefix, "lib", "node_modules", "seekbrain", "library", "skills", "trajectory", "INDEX.md"), "utf8"),
-    /Skill/i,
-  );
-  const installedTrajectory = join(prefix, "lib", "node_modules", "seekbrain", "library", "skills", "trajectory");
-  await access(join(installedTrajectory, "zebrafish_functional_connectivity_matrix", "scripts", "main.py"));
-  await assert.rejects(access(join(installedTrajectory, "zebrafish_functional_connectivity_matrix", "code", "main.py")));
+  const installedPackage = join(prefix, "lib", "node_modules", "seekbrain");
+  const installedRecipes = join(installedPackage, "recipes");
+  const installedExample = join(installedPackage, "examples", "zebrafish-sc-network-modules");
+  await access(join(installedPackage, "assets", "readme", "zebrafish-sc-modules-original.png"));
+  await access(join(installedPackage, "assets", "readme", "zebrafish-sc-modules-seekbrain.png"));
+  assert.match(await readFile(join(installedRecipes, "INDEX.md"), "utf8"), /Analysis Recipe Index/);
+  assert.equal(await countSkillDocuments(installedRecipes), 68);
+  const exampleRecipe = join(installedRecipes, "Single-modality", "Dynamics Modality", "ns_ana-zebrafish-ca-pearson-fc_matrix");
+  await access(join(exampleRecipe, "scripts", "reference_implementation.py"));
+  assert.match(await readFile(join(installedExample, "question.txt"), "utf8"), /hierarchical consensus algorithm/);
+  await access(join(installedExample, "dataset", "Files", "SC_matrix_directed_terminals_expanded.npy"));
+  await access(join(installedExample, "dataset", "excluded_regions.npy"));
+  await assert.rejects(access(join(exampleRecipe, "code", "reference_implementation.py")));
+  await assert.rejects(access(join(installedPackage, "library")));
 
   const command = join(prefix, "bin", "seekbrain");
   assert.match(run(command, ["-h"], { cwd: project }).stdout, /^SeekBrain /);

@@ -1,0 +1,27 @@
+{
+  "tag": "ns_multi-zebrafish-ca_behavior-vonmises-phase_locking",
+  "yaml_metadata": {
+    "name": "ns_multi-zebrafish-ca_behavior-vonmises-phase_locking",
+    "description": "Quantify bump-to-scene phase locking with von Mises concentration and a circular-shift null distribution. Use for jump or noise epochs in aligned neural-phase and visual-orientation recordings.",
+    "triggers": [
+      "Analyze quantifying neural bump-scene phase coupling via von mises concentration",
+      "Generate outputs with the ns_multi-zebrafish-ca_behavior-vonmises-phase_locking recipe",
+      "Use this recipe to test whether a neural population bump preserves a stable angular offset to a visual scene during jump or noise epochs"
+    ],
+    "tags": [
+      "analysis",
+      "zebrafish",
+      "neuroscience",
+      "reproduction"
+    ],
+    "version": "1.0"
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/implementation_notes.md",
+    "references/scientific_context.md"
+  ]
+}

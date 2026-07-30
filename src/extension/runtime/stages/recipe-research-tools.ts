@@ -11,6 +11,7 @@ export interface RecipeResearchToolDependencies {
   workflowConfig(config: Json): {
     targeted_skill_match: boolean;
     targeted_skill_generate: boolean;
+    rag_recipe_crystallization?: boolean;
     deep_research: boolean;
     [key: string]: any;
   };
@@ -59,6 +60,7 @@ export function createRecipeResearchTools(deps: RecipeResearchToolDependencies):
         project_dir: Type.Optional(Type.String()),
         recipe_enabled: Type.Optional(Type.Boolean()),
         recipe_crystallization_enabled: Type.Optional(Type.Boolean()),
+        repository_recipe_crystallization_enabled: Type.Optional(Type.Boolean({ description: "Generate or reuse a repository-scoped Recipe under from_rag. Disabled by default." })),
         model: Type.Optional(Type.String()),
         top_k: Type.Optional(Type.Number()),
         relevance_threshold: Type.Optional(Type.Number()),
@@ -72,6 +74,7 @@ export function createRecipeResearchTools(deps: RecipeResearchToolDependencies):
           skill_dir: params.recipe_dir,
           skill_enable: params.recipe_enabled,
           generate_skill_enable: params.recipe_crystallization_enabled,
+          repository_recipe_crystallization_enabled: params.repository_recipe_crystallization_enabled,
         };
         const resolved = await deps.workflow.resolveTargetedSkill({
           cwd: ctx.cwd,

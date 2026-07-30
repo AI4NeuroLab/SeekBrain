@@ -55,7 +55,7 @@ describe("Pi slash commands", () => {
     const writes: any[] = [];
     let writerCalled = false;
     let capturedPrompt = "";
-    const run = { runId: "run-1", runDir: "/run", state: { run_id: "run-1", question: "question", code: { code_files: [{ path: "analysis.py" }], statistics: { n: 10 } }, plan: { summary: "plan" } } };
+    const run = { runId: "run-1", runDir: "/run", state: { run_id: "run-1", question: "question", code_attempt: 1, validation: { pass: true, validated_code_attempt: 1 }, code: { code_files: [{ path: "analysis.py" }], statistics: { n: 10 } }, plan: { summary: "plan" } } };
     registerSaveSkillCommand(item.api, {
       workflowRoot: "/project",
       getActiveRunDir: () => undefined,
@@ -83,36 +83,67 @@ describe("Pi slash commands", () => {
     expect(item.messages[0].content).toContain("--yes");
   });
 
-  it("collects an explicit report selection before generating", async () => {
+  it("generates a Research Planning report from selected task rounds", async () => {
     const item = commandApi();
     const calls: any[] = [];
     registerReportCommand(item.api, {
       getActiveProjectPath: () => "/project",
-      listAvailable: async () => ({ available: [
-        { evidence_id: "ROUND:1", question: "first" },
-        { evidence_id: "SQ1-T1:R1", question: "task" },
-      ] }),
+      catalog: async () => ({
+        available: true, research_goal: "goal", project_dir: "/project", task_count: 1,
+        recommended_evidence_ids: ["SQ1-T1:R2"], eligible_evidence_ids: ["SQ1-T1:R1", "SQ1-T1:R2"],
+        subquestions: [{ subquestion_id: "SQ1", title: "Question", tasks: [{ task_id: "SQ1-T1", title: "Task", rounds: [{ evidence_id: "SQ1-T1:R1", round_number: 1 }, { evidence_id: "SQ1-T1:R2", round_number: 2 }] }] }],
+      }),
       generate: async (input) => {
         calls.push(input);
         return { ok: true, title: "Report", report_path: "/project/reports/report/report.md", pdf_generated: false };
       },
     });
-    const choices = ["[ ] ROUND:1 — first", "[ ] SQ1-T1:R1 — task", "Generate report from 2 selected results"];
     const widgets: any[] = [];
     const statuses: any[] = [];
-    await item.commands.get("seekbrain-report").handler("", {
+    await item.commands.get("seekbrain-report").handler("/project SQ1-T1:R1 SQ1-T1:R2", {
       ui: {
-        select: async () => choices.shift(),
         notify() {},
         setWidget: (...args: any[]) => widgets.push(args),
         setStatus: (...args: any[]) => statuses.push(args),
       },
     });
-    expect(calls[0]).toMatchObject({ projectPath: "/project", selectedEvidence: ["ROUND:1", "SQ1-T1:R1"] });
+    expect(calls[0]).toMatchObject({ projectPath: "/project", selectedEvidenceIds: ["SQ1-T1:R1", "SQ1-T1:R2"] });
     expect(calls[0].onProgress).toEqual(expect.any(Function));
     expect(item.messages[0]).toMatchObject({ customType: "seekbrain-report", display: true });
-    expect(widgets[0][1]).toContain("○ Report Agent · generating");
+    expect(widgets[0][1]).toContain("○ Report Agent · hierarchical synthesis");
     expect(widgets.at(-1)).toEqual(["seekbrain-report-progress", undefined]);
     expect(statuses.at(-1)).toEqual(["seekbrain-report", undefined]);
+  });
+
+  it("renders one hierarchical SQ-task-round card and allows multiple rounds from one task", async () => {
+    const item = commandApi();
+    const calls: any[] = [];
+    registerReportCommand(item.api, {
+      getActiveProjectPath: () => "/project",
+      catalog: async () => ({
+        available: true, project_dir: "/project", task_count: 1,
+        recommended_evidence_ids: ["SQ1-T1:R2"], eligible_evidence_ids: ["SQ1-T1:R1", "SQ1-T1:R2"],
+        subquestions: [{ subquestion_id: "SQ1", title: "Inter-individual network variation", tasks: [{ task_id: "SQ1-T1", title: "Quantify FC heterogeneity", rounds: [{ evidence_id: "SQ1-T1:R1", round_number: 1 }, { evidence_id: "SQ1-T1:R2", round_number: 2 }] }] }],
+      }),
+      generate: async (input) => { calls.push(input); return { ok: true, report_path: "/project/report.md", pdf_generated: false, task_count: 1, round_count: 2, report_scope: "complete" }; },
+    });
+    let renderedCard = "";
+    await item.commands.get("seekbrain-report").handler("", {
+      mode: "tui",
+      ui: {
+        custom: async (factory: any) => await new Promise((resolve) => {
+          const component = factory({ requestRender() {} }, { fg: (_name: string, value: string) => value, bold: (value: string) => value }, undefined, resolve);
+          renderedCard = component.render(92).join("\n");
+          component.handleInput(" ");
+          component.handleInput("g");
+        }),
+        notify() {}, setWidget() {}, setStatus() {},
+      },
+    });
+    expect(renderedCard).toContain("SQ1 · Inter-individual network variation");
+    expect(renderedCard).toContain("SQ1-T1 · Quantify FC heterogeneity");
+    expect(renderedCard).toContain("Round 1");
+    expect(renderedCard).toContain("Round 2");
+    expect(calls[0].selectedEvidenceIds).toEqual(["SQ1-T1:R2", "SQ1-T1:R1"]);
   });
 });

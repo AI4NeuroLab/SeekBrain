@@ -21,22 +21,51 @@ for (const agent of Object.values(defaultConfig.agents)) {
 }
 assert.equal(defaultConfig.workflow.seekbrain.targeted_skill_match, true);
 assert.equal(defaultConfig.workflow.seekbrain.targeted_skill_generate, true);
+assert.equal(defaultConfig.workflow.seekbrain.rag_recipe_crystallization, false);
 assert.equal(defaultConfig.workflow.seekbrain.research_planning, true);
 assert.equal(defaultConfig.workflow.seekbrain.research_survey, true);
+assert.equal(defaultConfig.workflow.seekbrain.research_planning_peer_review, false);
 assert.equal(defaultConfig.workflow.seekbrain.deep_research, false);
+assert.equal(defaultConfig.workflow.seekbrain.image_refine, false);
 assert.deepEqual(defaultConfig.literature, { providers: {} });
 assert.equal(defaultConfig.agents.seekbrain_survey.rag.top_k, 4);
 assert.deepEqual(defaultConfig.workflow.seekbrain.research_execution, { planning_concurrency: 3, execution_concurrency: 2 });
-assert.equal(defaultConfig.agents.seekbrain_research_route.thinking, "low");
+assert.deepEqual(Object.fromEntries(Object.entries(defaultConfig.agents).map(([name, agent]) => [name, agent.thinking])), {
+  seekbrain: "low",
+  seekbrain_default: "off",
+  seekbrain_data_resolve: "off",
+  seekbrain_research_route: "off",
+  seekbrain_research_planning: "high",
+  seekbrain_survey: "low",
+  seekbrain_research_reviewer: "low",
+  seekbrain_deep_research: "low",
+  seekbrain_skill_match: "off",
+  seekbrain_skill_context: "off",
+  seekbrain_skill_generate: "medium",
+  seekbrain_plan: "high",
+  seekbrain_code: "high",
+  seekbrain_validate: "low",
+  seekbrain_interpret: "high",
+  seekbrain_report: "low",
+  seekbrain_refine_image: "off",
+  seekbrain_save_skill: "off",
+});
+assert.equal(defaultConfig.agents.seekbrain_interpret.vision, false);
 assert.deepEqual(defaultConfig.modules.targeted_skill.resource_filter, { suffixes: [".md", ".py"], max_files: 5 });
-assert.ok(manifest.files.includes("library/skills/trajectory"));
+assert.ok(manifest.files.includes("recipes"));
 
 for (const prompt of [
   "entry", "data_resolve", "plan", "code", "validate", "image_refine", "interpret",
-  "continue", "deep_research", "research_survey", "save_skill", "report",
+  "continue", "deep_research", "research_survey", "recipe_crystallization", "save_skill", "report",
 ]) {
   await readFile(new URL(`prompts/${prompt}.md`, root), "utf8");
 }
+
+const entryPrompt = await readFile(new URL("prompts/entry.md", root), "utf8");
+assert.match(entryPrompt, /only a dataset directory is a dataset-profile request/);
+assert.match(entryPrompt, /Do not ask for a research[\s\S]*question first, create a research project\/run, retrieve a Recipe/);
+assert.match(entryPrompt, /recommend 3–5 concrete, feasible research directions/);
+assert.match(entryPrompt, /Dataset-only terminal branch:[\s\S]*Do not call `seekbrain_research_start`/);
 
 assert.match(runtimeSource, /const PACKAGE_ROOT =/);
 assert.match(runtimeSource, /const PROJECT_ROOT =/);

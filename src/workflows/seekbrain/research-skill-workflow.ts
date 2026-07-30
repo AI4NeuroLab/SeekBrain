@@ -5,6 +5,7 @@ import type { RunLifecycleWorkflow, WorkflowJson, WorkflowRunContext } from "./r
 export interface ResearchSkillFlags {
   targeted_skill_match: boolean;
   targeted_skill_generate: boolean;
+  rag_recipe_crystallization?: boolean;
   deep_research: boolean;
   literature_provider?: string;
   has_literature_provider?: boolean;
@@ -113,6 +114,27 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
   ].join("\n");
 }
 
+export function compactRecipeMethodContract(recipe: unknown): string {
+  const text = String(recipe || "").replace(/\r\n/g, "\n");
+  if (!text.trim()) return "";
+  const skillStart = text.indexOf("[SKILL.md]");
+  const source = skillStart >= 0 ? text.slice(skillStart + "[SKILL.md]".length) : text;
+  const title = source.match(/^#\s+(.+)$/m)?.[0] || "";
+  const wanted = new Set(["preconditions", "inputs and outputs", "procedure", "key parameters", "pitfalls"]);
+  const headings = [...source.matchAll(/^##\s+(.+)$/gm)];
+  const sections: string[] = [];
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index];
+    if (!wanted.has(String(heading[1] || "").trim().toLowerCase())) continue;
+    const start = Number(heading.index);
+    const end = index + 1 < headings.length ? Number(headings[index + 1].index) : source.length;
+    sections.push(source.slice(start, end).trim());
+  }
+  if (sections.length) return [title, ...sections].filter(Boolean).join("\n\n");
+  const withoutBundledFiles = source.split(/^##\s+Bundled files\s*$/m)[0];
+  return withoutBundledFiles.trim();
+}
+
 export class ResearchSkillWorkflow {
   constructor(readonly dependencies: ResearchSkillDependencies) {}
 
@@ -144,15 +166,22 @@ export class ResearchSkillWorkflow {
       skill_enable: true,
       match_skill_enable: input.flags.targeted_skill_match,
       generate_skill_enable: input.flags.targeted_skill_generate,
+      repository_recipe_crystallization_enabled: input.params.repository_recipe_crystallization_enabled
+        ?? (input.flags.rag_recipe_crystallization === true),
       ...(projectDir ? { project_dir: projectDir } : {}),
       root_dir: rootDir,
       trace_dir: traceDir,
     }, input.cwd, input.signal);
     const targetedSkillPath = join(run.runDir, "targeted_skill.md");
     if (result.targeted_skill) await this.dependencies.writeText(targetedSkillPath, String(result.targeted_skill));
+    const { targeted_skill: _fullSkill, targeted_skill_preview: _skillPreview, ...resultWithoutSkill } = result;
+    const summarized = this.dependencies.summarize(resultWithoutSkill);
+    const methodContract = compactRecipeMethodContract(result.targeted_skill);
+    const recipeSummary = (methodContract || String(result.targeted_skill || "")).trim().slice(0, 500);
     await this.dependencies.lifecycle.updateState(run, {
-      targeted_skill: result.targeted_skill || "",
-      targeted_skill_result: this.dependencies.summarize(result),
+      targeted_skill_path: result.targeted_skill ? targetedSkillPath : "",
+      targeted_skill_result: { ...summarized, summary: recipeSummary, method_contract: methodContract },
+      ...(result.repository_reference ? { repository_reference: result.repository_reference } : {}),
     });
     await this.dependencies.appendEvent({
       run_id: run.runId,
@@ -163,7 +192,8 @@ export class ResearchSkillWorkflow {
       trace_id: result.trace_id,
     });
     return {
-      ...result,
+      ...summarized,
+      summary: recipeSummary,
       run_id: run.runId,
       targeted_skill_path: result.targeted_skill ? targetedSkillPath : undefined,
       trace_dir: traceDir,

@@ -21,36 +21,6 @@ function paper(id: string, repositories: RepositoryCandidate[] = []): PaperRecor
   };
 }
 
-class RecordingGenerator extends RagSkillGenerator {
-  calls: Array<Record<string, any>> = [];
-
-  override async generate(input: Parameters<RagSkillGenerator["generate"]>[0]) {
-    this.calls.push(input);
-    const skillPath = join(input.outputDir, `skill-${this.calls.length}`);
-    await mkdir(skillPath, { recursive: true });
-    await writeFile(join(skillPath, "SKILL.md"), `# ${input.title}\n`);
-    return { ok: true, skill_path: skillPath, reused: false, evidence_level: input.evidenceLevel };
-  }
-}
-
-async function resolveExternal(papers: PaperRecord[], validator: (candidate: RepositoryCandidate) => Promise<any>) {
-  const root = await mkdtemp(join(tmpdir(), "seekbrain-phase5-resolver-"));
-  const generator = new RecordingGenerator();
-  const resolver = new TargetedSkillResolver({ query: async () => ({ ok: true, papers, sources: [], source_count: papers.length, warnings: [] }) }, {
-    generatedSkillDir: join(root, "skills"),
-    ragSkillGenerator: generator,
-    validateRepository: validator,
-  });
-  const result = await resolver.resolve({
-    question: "external method",
-    root_dir: root,
-    skill_dir: join(root, "empty"),
-    paper_source: "semantic_scholar",
-    compatibility: { candidate_pool_size: 10, skill_top_k: 2, prefer_repository: true, paper_only_fallback: true },
-  }, root);
-  return { root, generator, result };
-}
-
 describe("Phase 5 repository evidence", () => {
   it("extracts explicit paper repositories and classifies dependencies and citations separately", () => {
     expect(extractRepositoryCandidates("Our source code is available at https://github.com/lab/analysis.", "abstract")[0]).toMatchObject({
@@ -75,46 +45,46 @@ describe("Phase 5 repository evidence", () => {
   });
 });
 
-describe("Phase 5 external Skill selection", () => {
+describe("Phase 5 slim external Recipe selection", () => {
   const repo = (name: string): RepositoryCandidate => ({ url: `https://github.com/lab/${name}`, relation: "paper_analysis_code", discoverySource: "abstract" });
   const validate = async (candidate: RepositoryCandidate) => ({ ok: true, url: candidate.url });
 
-  it("selects two repository-backed Skills when two live associated repositories exist", async () => {
-    const { generator, result } = await resolveExternal([paper("one", [repo("one")]), paper("two", [repo("two")])], validate);
-    expect(result).toMatchObject({ ok: true, matched: true, generated: true });
-    expect(generator.calls.map((call) => call.evidenceLevel)).toEqual(["repository_backed", "repository_backed"]);
+  it("uses only the first verified repository and does not generate a speculative Skill", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-phase5-slim-"));
+    const materialized: string[] = [];
+    const resolver = new TargetedSkillResolver({ query: async () => ({ ok: true, papers: [paper("one", [repo("one")]), paper("two", [repo("two")])], sources: [], source_count: 2, warnings: [] }) }, {
+      validateRepository: validate,
+      lookupValidatedRepositoryScripts: async () => undefined,
+      materializeRepository: async (url) => {
+        materialized.push(url);
+        return { ok: true, repository_key: "github.com/lab/one", repository_url: url, source_commit: "abc", candidate_files: [{ path: "analysis.py", local_path: join(root, "analysis.py"), summary: "analysis implementation" }], reused: false };
+      },
+    });
+    const result = await resolver.resolve({ question: "external method", root_dir: root, skill_dir: join(root, "empty"), paper_source: "semantic_scholar" }, root);
+    expect(materialized).toEqual(["https://github.com/lab/one"]);
+    expect(result).toMatchObject({ ok: true, matched: true, generated: false, source: "repository_reference" });
   });
 
-  it("fills one missing repository slot with a distinct paper-only Skill", async () => {
-    const { generator, result } = await resolveExternal([paper("one", [repo("one")]), paper("two")], validate);
-    expect(generator.calls.map((call) => ({ title: call.title, evidence: call.evidenceLevel, repo: call.repoLink }))).toEqual([
-      { title: "Paper one", evidence: "repository_backed", repo: "https://github.com/lab/one" },
-      { title: "Paper two", evidence: "paper_only", repo: undefined },
-    ]);
-    expect(result.details).toMatchObject({ paper_source: "semantic_scholar", retrieved_count: 2, repository_candidate_count: 1, repository_skill_count: 1, paper_only_skill_count: 1 });
+  it("reuses a registered validated script without materializing the repository", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-phase5-reuse-"));
+    let materializeCalls = 0;
+    const resolver = new TargetedSkillResolver({ query: async () => ({ ok: true, papers: [paper("one", [repo("one")])], sources: [], source_count: 1, warnings: [] }) }, {
+      validateRepository: validate,
+      lookupValidatedRepositoryScripts: async () => ({ repository_key: "github.com/lab/one", repository_url: "https://github.com/lab/one", recipe_path: "/skills/one/SKILL.md", script_path: "/skills/one/scripts/run_analysis.py", validation_run_id: "prior", validated_at: "now" }),
+      materializeRepository: async () => { materializeCalls += 1; throw new Error("unexpected materialization"); },
+    });
+    const result = await resolver.resolve({ question: "different current wording", root_dir: root, skill_dir: join(root, "empty"), paper_source: "semantic_scholar" }, root);
+    expect(materializeCalls).toBe(0);
+    expect(result).toMatchObject({ generated: false, source: "validated_repository_recipe", details: { reused_validated_scripts: true } });
   });
 
-  it("does not generate the same normalized repository twice", async () => {
-    const shared = repo("shared");
-    const { generator } = await resolveExternal([paper("one", [shared]), paper("two", [shared])], validate);
-    expect(generator.calls.map((call) => ({ evidence: call.evidenceLevel, repo: call.repoLink }))).toEqual([
-      { evidence: "repository_backed", repo: "https://github.com/lab/shared" },
-      { evidence: "paper_only", repo: undefined },
-    ]);
-  });
-
-  it("generates two paper-only Skills when no associated repository is available", async () => {
-    const { generator } = await resolveExternal([paper("one"), paper("two")], validate);
-    expect(generator.calls.map((call) => call.evidenceLevel)).toEqual(["paper_only", "paper_only"]);
-  });
-
-  it("never duplicates a sole usable paper and generates nothing without usable evidence", async () => {
-    const single = await resolveExternal([paper("one")], validate);
-    expect(single.generator.calls).toHaveLength(1);
-    expect(single.result.warnings).toContain("Only one usable paper was retrieved; one analysis recipe was crystallized without duplication");
-    const empty = await resolveExternal([], validate);
-    expect(empty.generator.calls).toHaveLength(0);
-    expect(empty.result).toMatchObject({ ok: true, matched: false, generated: false });
+  it("keeps one compact paper reference when no repository is available", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-phase5-paper-"));
+    const resolver = new TargetedSkillResolver({ query: async () => ({ ok: true, papers: [paper("one"), paper("two")], sources: [], source_count: 2, warnings: [] }) }, { validateRepository: validate });
+    const result = await resolver.resolve({ question: "paper method", root_dir: root, skill_dir: join(root, "empty"), paper_source: "semantic_scholar" }, root);
+    expect(result).toMatchObject({ matched: true, generated: false, source: "paper_reference" });
+    expect(result.targeted_skill).toContain("Paper one");
+    expect(result.targeted_skill).not.toContain("Paper two");
   });
 });
 

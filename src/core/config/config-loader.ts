@@ -25,13 +25,14 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
     seekbrain: {
       research_planning: true,
       research_survey: true,
+      research_planning_peer_review: false,
       research_execution: {
         planning_concurrency: 3,
         execution_concurrency: 2,
       },
       report: {
         pdf: {
-          enabled: false,
+          enabled: true,
           command: "seekbrain-pdf",
           timeout_seconds: 120,
         },
@@ -39,7 +40,8 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
       deep_research: false,
       targeted_skill_match: true,
       targeted_skill_generate: true,
-      image_refine: true,
+      rag_recipe_crystallization: false,
+      image_refine: false,
       save_skill: true,
       transparency: true,
       human_review: {

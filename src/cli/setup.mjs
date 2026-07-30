@@ -33,6 +33,24 @@ const FAST_AGENTS = [
   "seekbrain_refine_image",
 ];
 
+const AGENT_THINKING = {
+  seekbrain: "low",
+  seekbrain_default: "off",
+  seekbrain_research_route: "off",
+  seekbrain_research_planning: "high",
+  seekbrain_survey: "low",
+  seekbrain_research_reviewer: "low",
+  seekbrain_deep_research: "low",
+  seekbrain_skill_match: "off",
+  seekbrain_skill_context: "off",
+  seekbrain_skill_generate: "medium",
+  seekbrain_plan: "high",
+  seekbrain_code: "high",
+  seekbrain_validate: "low",
+  seekbrain_interpret: "high",
+  seekbrain_refine_image: "off",
+};
+
 const OFFICIAL_PROVIDERS = {
   anthropic: { label: "Anthropic", relayId: "anthropic-relay" },
   openai: { label: "OpenAI", relayId: "openai-relay" },
@@ -153,12 +171,12 @@ export function applyModelRouting(document, core, fast = core) {
   for (const name of CORE_AGENTS) {
     document.setIn(["agents", name, "provider"], core.provider);
     document.setIn(["agents", name, "model"], core.model);
-    document.setIn(["agents", name, "thinking"], core.thinking || "high");
+    document.setIn(["agents", name, "thinking"], AGENT_THINKING[name] || core.thinking || "high");
   }
   for (const name of FAST_AGENTS) {
     document.setIn(["agents", name, "provider"], fast.provider);
     document.setIn(["agents", name, "model"], fast.model);
-    document.setIn(["agents", name, "thinking"], fast.thinking || "high");
+    document.setIn(["agents", name, "thinking"], AGENT_THINKING[name] || fast.thinking || "off");
   }
   return document;
 }

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import {
   ArtifactService,
   atomicWriteJson,
@@ -96,6 +96,30 @@ async function readJson(path: string, fallback: WorkflowJson): Promise<WorkflowJ
   } catch {
     return fallback;
   }
+}
+
+export async function readCanonicalMetadata(run: WorkflowRunContext): Promise<string> {
+  const storedPath = String(run.state.metadata_json_path || "").trim();
+  if (storedPath) {
+    const candidates = [...new Set([
+      isAbsolute(storedPath) ? storedPath : resolve(storedPath),
+      resolve(run.runDir, storedPath),
+    ])];
+    for (const path of candidates) {
+      try { return await readFile(path, "utf8"); } catch { /* try legacy location */ }
+    }
+    throw new Error(`Unable to read canonical metadata '${storedPath}'.`);
+  }
+  return String(run.state.data_info || "").trim();
+}
+
+function compactMetadataReference(metadata: WorkflowJson): WorkflowJson {
+  const metadataPath = String(metadata.metadata_json_path || "").trim();
+  return {
+    ...(metadataPath ? { metadata_json_path: metadataPath } : { data_info: String(metadata.data_info || "") }),
+    extra_path_info: String(metadata.extra_path_info || ""),
+    user_background: String(metadata.user_background || ""),
+  };
 }
 
 export class RunLifecycleWorkflow {
@@ -211,12 +235,12 @@ export class RunLifecycleWorkflow {
     const roundNumber = deferred ? 0 : 1;
     const roundName = deferred ? "planning" : "round1";
     const run = await this.startRun(input.cwd, join(projectDir, roundName), input.deliverables, question);
-    const metadata = {
+    const metadata = compactMetadataReference({
       data_info: String(input.metadata?.data_info || ""),
       extra_path_info: String(input.metadata?.extra_path_info || ""),
       metadata_json_path: String(input.metadata?.metadata_json_path || ""),
       user_background: String(input.metadata?.user_background || ""),
-    };
+    });
     await this.updateState(run, {
       project_id: projectId, project_dir: projectDir, round_number: roundNumber,
       round_name: roundName, metadata_locked: true, planning_context: deferred, ...metadata,
@@ -261,17 +285,14 @@ export class RunLifecycleWorkflow {
     }
     const roundName = "round1";
     const run = await this.startRun(cwd, join(projectDir, roundName), planningRun.state.deliverables, String(planningRun.state.question || ""));
-    const metadata = manifest.metadata || this.researchMetadata(planningRun.state);
+    const metadata = compactMetadataReference(manifest.metadata || this.researchMetadata(planningRun.state));
     await this.updateState(run, {
       project_id: manifest.project_id,
       project_dir: projectDir,
       round_number: 1,
       round_name: roundName,
       metadata_locked: true,
-      data_info: String(metadata.data_info || ""),
-      extra_path_info: String(metadata.extra_path_info || ""),
-      metadata_json_path: String(metadata.metadata_json_path || ""),
-      user_background: String(metadata.user_background || ""),
+      ...metadata,
       planning_source_run_id: planningRun.runId,
       planning_source_run_dir: planningRun.runDir,
       ...(Array.isArray(planningRun.state.literature_queries) ? { literature_queries: planningRun.state.literature_queries } : {}),
@@ -308,7 +329,7 @@ export class RunLifecycleWorkflow {
     const roundName = `round${roundNumber}`;
     const roundDir = join(projectDir, roundName);
     if (existsSync(roundDir)) throw new Error(`Refusing to overwrite existing round directory '${roundDir}'.`);
-    const metadata = manifest.metadata || this.researchMetadata(sourceState);
+    const metadata = compactMetadataReference(manifest.metadata || this.researchMetadata(sourceState));
     const run = await this.startRun(cwd, roundDir, deliverables, question);
     const sourceRunState = await readJson(join(sourceRound.run_dir, "state.json"), {});
     const reusableArtifacts = new ArtifactService(sourceRound.run_dir).normalizeMany(sourceRunState.artifacts || []);
@@ -316,10 +337,7 @@ export class RunLifecycleWorkflow {
       project_id: manifest.project_id, project_dir: projectDir, round_number: roundNumber,
       round_name: roundName, parent_round: sourceRound.round_number, parent_run_id: sourceRound.run_id,
       metadata_locked: true,
-      data_info: String(metadata.data_info || ""),
-      extra_path_info: String(metadata.extra_path_info || ""),
-      metadata_json_path: String(metadata.metadata_json_path || ""),
-      user_background: String(metadata.user_background || ""),
+      ...metadata,
       inherited_context: {
         source_round: sourceRound.round_number,
         source_run_id: sourceRound.run_id,
@@ -353,16 +371,9 @@ export class RunLifecycleWorkflow {
   }
 
   async reportAvailability(run: WorkflowRunContext): Promise<WorkflowJson> {
-    if (!run.state.project_dir) return { completed_round_count: 0, available: false };
-    const manifest = await readJson(join(String(run.state.project_dir), RunLifecycleWorkflow.PROJECT_MANIFEST_FILE), {});
-    const completed = (Array.isArray(manifest.rounds) ? manifest.rounds : []).filter((entry: WorkflowJson) =>
-      ["concluded", "complete", "completed"].includes(String(entry.status || "")));
     return {
-      completed_round_count: completed.length,
-      available: completed.length >= 2,
-      hint: completed.length >= 2
-        ? `${completed.length} completed rounds are available for synthesis. Type "generate a report" or run /seekbrain-report when needed.`
-        : undefined,
+      completed_round_count: 0,
+      available: false,
     };
   }
 
@@ -431,11 +442,11 @@ export class RunLifecycleWorkflow {
   }
 
   private researchMetadata(state: WorkflowJson) {
-    return {
+    return compactMetadataReference({
       data_info: String(state.data_info || ""),
       extra_path_info: String(state.extra_path_info || ""),
       metadata_json_path: String(state.metadata_json_path || ""),
       user_background: String(state.user_background || ""),
-    };
+    });
   }
 }

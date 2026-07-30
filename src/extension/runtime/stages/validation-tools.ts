@@ -26,23 +26,15 @@ export function createValidationTools(deps: ValidationToolDependencies): SeekBra
     defineTool({
     name: "seekbrain_validation_run",
     label: "Run Validation Agent",
-    description: "Run the isolated Validation Agent over actual scientific figure artifacts and store validation.json. Pass figure_path to validate only one figure.",
+    description: "Validate the current run's scientific figure artifacts and store validation.json.",
     parameters: Type.Object({
-      question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
       run_id: Type.String(),
-      figure_path: Type.Optional(Type.String()),
-      statistics: Type.Optional(Type.Any()),
-      additional_context: Type.Optional(Type.String()),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const config = await loadConfigCached(ctx.cwd);
       return content(await validateWorkflow.execute({
         cwd: ctx.cwd,
         runId: params.run_id,
-        question: params.question,
-        figurePath: params.figure_path,
-        statistics: params.statistics,
-        additionalContext: params.additional_context,
         rolePrompt: await readPrompt("validate"),
         agentConfig: pickAgentConfig(config, "seekbrain_validate"),
         finalizeSchema: Type.Object({
@@ -55,6 +47,7 @@ export function createValidationTools(deps: ValidationToolDependencies): SeekBra
           overall_mismatches: Type.Array(Type.String()),
           blocking_issues: Type.Array(Type.String()),
           methodological_caveats: Type.Array(Type.String()),
+          figure_observations: Type.Array(Type.String()),
           visual_issues: Type.Array(Type.Object({
             figure_path: Type.String(),
             feedback: Type.String(),
@@ -63,6 +56,7 @@ export function createValidationTools(deps: ValidationToolDependencies): SeekBra
           summary: Type.String(),
         }),
         maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
+        imageRefineEnabled: config.workflow?.seekbrain?.image_refine === true,
         signal,
       }));
     },

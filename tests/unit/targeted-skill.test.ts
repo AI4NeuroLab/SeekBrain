@@ -8,14 +8,15 @@ import { PaperRagClient, RagSkillGenerator, TargetedSkillResolver, normalizeSmmt
 describe("targeted skill TypeScript control plane", () => {
   it("matches a project-local skill and preserves trace artifacts", async () => {
     const root = await mkdtemp(join(tmpdir(), "seekbrain-skill-match-"));
-    const skill = join(root, "library", "skills", "trajectory", "mouse-calcium-glm");
+    const trajectory = join(root, "trajectory");
+    const skill = join(trajectory, "mouse-calcium-glm");
     const trace = join(root, "trace");
     await mkdir(skill, { recursive: true });
     await writeFile(join(skill, "SKILL.md"), "---\ndescription: Analyze mouse calcium signals with GLM\n---\n# GLM\n", "utf8");
     await mkdir(join(skill, "scripts"));
     await writeFile(join(skill, "scripts", "run_analysis.py"), "print('trajectory resource')\n", "utf8");
     const resolver = new TargetedSkillResolver(new PaperRagClient());
-    const result = await resolver.resolve({ question: "mouse calcium GLM analysis", root_dir: root, trace_dir: trace, generate_skill_enable: false });
+    const result = await resolver.resolve({ question: "mouse calcium GLM analysis", root_dir: root, skill_dir: trajectory, trace_dir: trace, generate_skill_enable: false });
     expect(result).toMatchObject({ ok: true, matched: true, source: "existing_skill", generated: false });
     expect(result.skill_paths).toEqual([skill]);
     expect(result.targeted_skill).toContain("trajectory resource");
@@ -28,9 +29,34 @@ describe("targeted skill TypeScript control plane", () => {
     await expect(resolver.resolve({ question: "unseen method", root_dir: root, generate_skill_enable: false })).resolves.toMatchObject({ ok: true, matched: false, source: "none", targeted_skill: "", generated: false });
   });
 
+  it("always prepares and searches the managed repertoire even with a legacy skill_dir override", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-managed-skill-"));
+    const managed = join(root, "managed-trajectory");
+    const skill = join(managed, "zebrafish-functional-connectivity");
+    await mkdir(skill, { recursive: true });
+    await writeFile(join(skill, "SKILL.md"), "---\ndescription: Compute zebrafish regional functional connectivity matrices\n---\n# Zebrafish FC\n", "utf8");
+    let ensureCalls = 0;
+    const resolver = new TargetedSkillResolver(new PaperRagClient(), {
+      ensureTrajectoryDir: async () => {
+        ensureCalls += 1;
+        return managed;
+      },
+    });
+    const result = await resolver.resolve({
+      question: "compute zebrafish regional functional connectivity matrices",
+      root_dir: root,
+      skill_dir: join(root, "legacy-run-local-recipes"),
+      generate_skill_enable: false,
+    });
+    expect(ensureCalls).toBe(1);
+    expect(result).toMatchObject({ ok: true, matched: true, source: "existing_skill", generated: false });
+    expect(result.skill_paths).toEqual([skill]);
+  });
+
   it("lets the model return no match without exposing lexical pre-scores", async () => {
     const root = await mkdtemp(join(tmpdir(), "seekbrain-skill-selector-"));
-    const skill = join(root, "library", "skills", "trajectory", "broadly-related-skill");
+    const trajectory = join(root, "trajectory");
+    const skill = join(trajectory, "broadly-related-skill");
     await mkdir(skill, { recursive: true });
     await writeFile(join(skill, "SKILL.md"), "---\ndescription: Broad neuroscience visualization\n---\n", "utf8");
     let selectorInput: any;
@@ -43,6 +69,7 @@ describe("targeted skill TypeScript control plane", () => {
     const result = await resolver.resolve({
       question: "specific unmatched analysis",
       root_dir: root,
+      skill_dir: trajectory,
       generate_skill_enable: false,
     });
     expect(selectorInput.threshold).toBe(0.3);
@@ -53,6 +80,32 @@ describe("targeted skill TypeScript control plane", () => {
       description: "Broad neuroscience visualization",
     });
     expect(result).toMatchObject({ ok: true, matched: false, source: "none" });
+  });
+
+  it("skips model matching for one strong unambiguous local recipe even when top_k allows more", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-skill-fast-match-"));
+    const trajectory = join(root, "trajectory");
+    const exact = join(trajectory, "zebrafish-pearson-functional-connectivity");
+    const other = join(trajectory, "mouse-cell-count-visualization");
+    await mkdir(exact, { recursive: true });
+    await mkdir(other, { recursive: true });
+    await writeFile(join(exact, "SKILL.md"), "---\ndescription: zebrafish calcium Pearson functional connectivity matrix from regional traces\n---\n", "utf8");
+    await writeFile(join(other, "SKILL.md"), "---\ndescription: count mouse cells and draw a bar chart\n---\n", "utf8");
+    let selectorCalls = 0;
+    const resolver = new TargetedSkillResolver(new PaperRagClient(), {
+      selectSkills: async () => { selectorCalls += 1; return []; },
+    });
+    const result = await resolver.resolve({
+      question: "compute zebrafish calcium Pearson functional connectivity matrix from regional traces",
+      root_dir: root,
+      skill_dir: trajectory,
+      trace_dir: join(root, "trace"),
+      generate_skill_enable: false,
+      top_k: 2,
+    });
+    expect(selectorCalls).toBe(0);
+    expect(result).toMatchObject({ ok: true, matched: true, source: "existing_skill", skill_paths: [exact] });
+    expect(JSON.parse(await readFile(result.artifacts.trace_json, "utf8"))).toMatchObject({ match_strategy: "deterministic_high_confidence" });
   });
 
   it("normalizes RAG results and degrades safely without configuration", async () => {
@@ -111,25 +164,79 @@ describe("targeted skill TypeScript control plane", () => {
     expect(await readFile(join(root, ".seekbrain", "skills", "INDEX.md"), "utf8")).toContain(result.folder_name);
   });
 
-  it("persists RAG skills in the configured user cache and reuses the same question/repository folder", async () => {
+  it("materializes only the first RAG repository and gives Plan exact files", async () => {
     const root = await mkdtemp(join(tmpdir(), "seekbrain-rag-cache-"));
-    const output = join(root, "user-skills", "from_rag");
-    const rag = new PaperRagClient(async () => new Response(JSON.stringify({ results: [{ title: "Repository paper", full_text: "Paper method context", github_links: [join(root, "missing-repository")] }] }), { status: 200 }));
-    const resolver = new TargetedSkillResolver(rag, { generatedSkillDir: output });
-    const input = { question: "repository analysis", root_dir: root, skill_dir: join(root, "empty-trajectory"), base_url: "https://rag.example" };
-    const first = await resolver.resolve(input, root);
-    expect(first).toMatchObject({ ok: true, matched: true, source: "generated_from_rag", generated: true, details: { reused_skill_paths: [] } });
-    expect(first.skill_paths[0]).toContain(output);
-    expect(await readFile(join(first.skill_paths[0], "SKILL.md"), "utf8")).toContain("repository analysis");
-    expect(await readFile(join(first.skill_paths[0], "metadata.json"), "utf8")).toContain("repo_key");
-    const second = await resolver.resolve(input, root);
-    expect(second.skill_paths).toEqual(first.skill_paths);
-    expect(second.details.reused_skill_paths).toEqual(first.skill_paths);
+    const rag = new PaperRagClient(async () => new Response(JSON.stringify({ results: [
+      { title: "Best paper", full_text: "Paper method context", github_links: ["https://github.com/example/best"] },
+      { title: "Ignored paper", full_text: "Other method", github_links: ["https://github.com/example/ignored"] },
+    ] }), { status: 200 }));
+    const materialized: string[] = [];
+    const resolver = new TargetedSkillResolver(rag, {
+      lookupValidatedRepositoryScripts: async () => undefined,
+      materializeRepository: async (url) => {
+        materialized.push(url);
+        return { ok: true, repository_key: "github.com/example/best", repository_url: url, repository_dir: join(root, "cache"), source_commit: "abc", candidate_files: [{ path: "src/analysis.py", local_path: join(root, "cache", "files", "src", "analysis.py"), summary: "def analyze(data)" }], reused: false };
+      },
+    });
+    const result = await resolver.resolve({ question: "repository analysis", root_dir: root, skill_dir: join(root, "empty-trajectory"), base_url: "https://rag.example" }, root);
+    expect(materialized).toEqual(["https://github.com/example/best"]);
+    expect(result).toMatchObject({ ok: true, matched: true, source: "repository_reference", generated: false, repository_reference: { source_commit: "abc", reused_validated_scripts: false } });
+    expect(result.targeted_skill).toContain(join(root, "cache", "files", "src", "analysis.py"));
+  });
+
+  it("crystallizes by GitHub repository identity only when the opt-in flag is enabled", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-rag-crystallize-"));
+    const output = join(root, "from_rag");
+    const skillPath = join(output, "example_best");
+    await mkdir(skillPath, { recursive: true });
+    await writeFile(join(skillPath, "SKILL.md"), "---\nname: example-best\ndescription: Repository Recipe\n---\n\n# Repository Recipe\n", "utf8");
+    let generated = 0;
+    let materialized = 0;
+    const rag = new PaperRagClient(async () => new Response(JSON.stringify({ results: [
+      { title: "Best paper", full_text: "Paper method context", github_links: ["https://github.com/example/best"] },
+    ] }), { status: 200 }));
+    const resolver = new TargetedSkillResolver(rag, {
+      generatedSkillDir: output,
+      ragSkillGenerator: { generate: async () => { generated += 1; return { ok: true, skill_path: skillPath, reused: true }; } } as any,
+      lookupValidatedRepositoryScripts: async () => undefined,
+      materializeRepository: async () => { materialized += 1; throw new Error("must not materialize before repository Recipe reuse"); },
+    });
+    const result = await resolver.resolve({
+      question: "repository analysis",
+      root_dir: root,
+      skill_dir: join(root, "empty-trajectory"),
+      base_url: "https://rag.example",
+      repository_recipe_crystallization_enabled: true,
+    }, root);
+    expect(generated).toBe(1);
+    expect(materialized).toBe(0);
+    expect(result).toMatchObject({
+      ok: true,
+      matched: true,
+      source: "generated_from_rag",
+      generated: false,
+      skill_paths: [skillPath],
+      repository_reference: { reused_crystallized_recipe: true },
+    });
+  });
+
+  it("reuses validated scripts for the same repository without materialization", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-rag-reuse-"));
+    const rag = new PaperRagClient(async () => new Response(JSON.stringify({ results: [{ title: "Paper", full_text: "Method", github_links: ["https://github.com/example/repo.git"] }] }), { status: 200 }));
+    let materializeCalls = 0;
+    const resolver = new TargetedSkillResolver(rag, {
+      lookupValidatedRepositoryScripts: async () => ({ repository_key: "github.com/example/repo", repository_url: "https://github.com/example/repo", recipe_path: "/skills/repo/SKILL.md", script_path: "/skills/repo/scripts/run_analysis.py", validation_run_id: "old-run", validated_at: "now" }),
+      materializeRepository: async () => { materializeCalls += 1; throw new Error("must not materialize"); },
+    });
+    const result = await resolver.resolve({ question: "a differently worded current task", root_dir: root, skill_dir: join(root, "empty"), base_url: "https://rag.example", repository_recipe_crystallization_enabled: true }, root);
+    expect(materializeCalls).toBe(0);
+    expect(result).toMatchObject({ source: "validated_repository_recipe", generated: false, details: { reused_validated_scripts: true } });
+    expect(result.targeted_skill).toContain("/skills/repo/scripts/run_analysis.py");
   });
 
   it("preserves structured paper-to-repository context, notebook code, and reproduction references", async () => {
     const root = await mkdtemp(join(tmpdir(), "seekbrain-rag-context-"));
-    const repo = join(root, "repo");
+    const repo = "https://github.com/example/calcium-glm";
     const output = join(root, "skills");
     const clone = join(output, ".cache", ragSkillTitleCacheKey("GLM paper"), "repo_clone");
     await mkdir(clone, { recursive: true });
@@ -153,9 +260,12 @@ describe("targeted skill TypeScript control plane", () => {
     }));
     const result = await generator.generate({ question: "fit calcium GLM", title: "GLM paper", paperText: "Paper method", repoLink: repo, outputDir: output });
     expect(result).toMatchObject({ ok: true, reused: false });
+    expect(result.skill_path).toBe(join(output, "example_calcium-glm"));
     expect(await readFile(join(result.skill_path, "references", "matched_files", "analysis.ipynb"), "utf8")).toContain("def fit_glm");
     expect(await readFile(join(result.skill_path, "references", "connection_analysis.md"), "utf8")).toContain("implements the paper GLM step");
     expect(await readFile(join(result.skill_path, "references", "reproduction_plan.md"), "utf8")).toContain("Validate coefficients");
     expect(JSON.parse(await readFile(join(result.skill_path, "metadata.json"), "utf8"))).toMatchObject({ schema_version: 2, repository_file_count: 2, matched_repo_files: ["analysis.ipynb"] });
+    const reused = await generator.generate({ question: "worded differently", title: "Another title", paperText: "Other context", repoLink: repo, outputDir: output });
+    expect(reused).toMatchObject({ ok: true, reused: true, skill_path: result.skill_path });
   });
 });

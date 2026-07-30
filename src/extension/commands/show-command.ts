@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 type Json = Record<string, any>;
 
 export interface ShowCommandAPI {
@@ -111,10 +113,15 @@ export function registerShowCommand(pi: ShowCommandAPI, dependencies: ShowComman
           run = await dependencies.resolveRun(context.cwd, ids[ids.length - 1]);
         }
       } catch (error) { context.ui?.notify?.(`Could not locate run: ${error}`, "error"); return; }
-      const full = which === "recipe" || which === "skill" ? skillFullMarkdown(run.state) : researchFullMarkdown(run.state);
-      const title = which === "recipe" || which === "skill" ? "🧩 Analysis Recipe" : "🔬 Deep Research";
+      const showRecipe = which === "recipe" || which === "skill";
+      let recipeText = String(run.state.targeted_skill || "");
+      if (showRecipe && run.state.targeted_skill_path) {
+        recipeText = await readFile(String(run.state.targeted_skill_path), "utf8").catch(() => recipeText);
+      }
+      const full = showRecipe ? skillFullMarkdown({ ...run.state, targeted_skill: recipeText }) : researchFullMarkdown(run.state);
+      const title = showRecipe ? "🧩 Analysis Recipe" : "🔬 Deep Research";
       if (context.mode === "tui") await openOverlay(context, title, full);
-      else pi.sendMessage({ customType: which === "recipe" || which === "skill" ? "seekbrain-recipe" : "seekbrain-research", content: full, display: true });
+      else pi.sendMessage({ customType: showRecipe ? "seekbrain-recipe" : "seekbrain-research", content: full, display: true });
     },
   });
 }

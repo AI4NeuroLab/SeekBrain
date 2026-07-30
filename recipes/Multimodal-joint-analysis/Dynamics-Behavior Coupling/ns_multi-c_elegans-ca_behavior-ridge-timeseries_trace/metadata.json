@@ -1,0 +1,11 @@
+{
+  "tag": "ns_multi-c_elegans-ca_behavior-ridge-timeseries_trace",
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/scientific_context.md",
+    "references/implementation_notes.md"
+  ]
+}

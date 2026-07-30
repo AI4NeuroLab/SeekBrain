@@ -1,0 +1,28 @@
+{
+  "tag": "ns_multi-zebrafish-ca_behavior_anatomy_gene-correlation_visual_response-neuronal_subtype_features",
+  "yaml_metadata": {
+    "name": "ns_multi-zebrafish-ca_behavior_anatomy_gene-correlation_visual_response-neuronal_subtype_features",
+    "description": "Integrate zebrafish calcium responses, swimming behavior, atlas coordinates, and molecular identity to characterize neuronal subtypes. Use for glyt2/gfra1a visuomotor response and anatomical mapping analyses.",
+    "triggers": [
+      "Analyze characterization of glyt2–gfra1a neuronal subtype dynamics and morphology",
+      "Generate outputs with the ns_multi-zebrafish-ca_behavior_anatomy_gene-correlation_visual_response-neuronal_subtype_features recipe",
+      "Use this recipe to compare visual responses, swimming correlations, morphology, and atlas localization across molecularly defined neuronal groups"
+    ],
+    "tags": [
+      "zebrafish",
+      "calcium-imaging",
+      "neuroinformatics",
+      "visuomotor",
+      "spatial-transcriptomics"
+    ],
+    "version": "1.0"
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/implementation_notes.md",
+    "references/scientific_context.md"
+  ]
+}

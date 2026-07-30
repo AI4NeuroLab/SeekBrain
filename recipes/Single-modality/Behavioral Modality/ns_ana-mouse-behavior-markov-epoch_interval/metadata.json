@@ -1,0 +1,26 @@
+{
+  "tag": "ns_ana-mouse-behavior-markov-epoch_interval",
+  "yaml_metadata": {
+    "name": "ns_ana-mouse-behavior-markov-epoch_interval",
+    "description": "Decomposes trial-based behavioral data into latent states like engagement and side-bias using GLM-HMM architecture and Viterbi state sequence decoding.",
+    "triggers": [
+      "How do I decompose behavioral session data into discrete states?",
+      "Identify hidden behavioral strategies using GLM-HMM",
+      "Visualize state probability traces for individual experimental sessions",
+      "How to model bias and engagement states in behavioral choice data?",
+      "Determine the optimal number of hidden states for animal behavior"
+    ],
+    "tags": [
+      "GLM-HMM",
+      "Behavioral Modeling",
+      "Latent State Inference",
+      "Expectation-Maximization",
+      "Viterbi Decoding"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

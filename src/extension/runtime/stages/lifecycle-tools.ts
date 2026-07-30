@@ -1,4 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Type } from "typebox";
@@ -70,34 +71,49 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(ctx.cwd);
         const workflowFlags = deps.workflowConfig(config);
+        let canonicalMetadataPath = params.metadata_json_path ? resolve(ctx.cwd, params.metadata_json_path) : undefined;
         let canonicalDataInfo = String(params.data_info || "");
-        if (!canonicalDataInfo.trim() && params.metadata_json_path) {
-          const metadataPath = resolve(ctx.cwd, params.metadata_json_path);
+        if (!canonicalDataInfo.trim() && canonicalMetadataPath) {
           try {
-            canonicalDataInfo = await readFile(metadataPath, "utf8");
+            canonicalDataInfo = await readFile(canonicalMetadataPath, "utf8");
           } catch (error) {
-            throw new Error(`Unable to read metadata_json_path '${metadataPath}': ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(`Unable to read metadata_json_path '${canonicalMetadataPath}': ${error instanceof Error ? error.message : String(error)}`);
           }
+        }
+        if (!canonicalMetadataPath && canonicalDataInfo.trim()) {
+          const projectDir = resolve(ctx.cwd, params.project_dir);
+          if (existsSync(join(projectDir, "project.json"))) {
+            throw new Error(`Research project already exists at '${projectDir}'. Use seekbrain_research_continue to create the next round.`);
+          }
+          canonicalMetadataPath = join(projectDir, "metadata.json");
+          let metadataContent: Json;
+          try { metadataContent = JSON.parse(canonicalDataInfo); }
+          catch { metadataContent = { description: canonicalDataInfo, data_type: "user-provided metadata" }; }
+          if (existsSync(canonicalMetadataPath)) {
+            const existing = await readFile(canonicalMetadataPath, "utf8");
+            if (JSON.stringify(JSON.parse(existing)) !== JSON.stringify(metadataContent)) {
+              throw new Error(`Refusing to overwrite existing canonical metadata '${canonicalMetadataPath}'.`);
+            }
+          } else {
+            await deps.writeJson(canonicalMetadataPath, metadataContent);
+          }
+          canonicalDataInfo = JSON.stringify(metadataContent);
         }
         const created = await deps.lifecycle.startResearch({
           cwd: ctx.cwd,
           projectPath: params.project_dir,
           question: params.question,
           deliverables: params.deliverables,
-          metadata: { data_info: canonicalDataInfo || undefined, extra_path_info: params.extra_path_info, metadata_json_path: params.metadata_json_path, user_background: params.background },
+          metadata: {
+            data_info: canonicalMetadataPath ? undefined : canonicalDataInfo || undefined,
+            extra_path_info: params.extra_path_info,
+            metadata_json_path: canonicalMetadataPath,
+            user_background: params.background,
+          },
           deferInitialRound: workflowFlags.research_planning,
         });
-        let datasetMetaSnapshotPath: string | undefined;
-        if (canonicalDataInfo || params.metadata_json_path) {
-          datasetMetaSnapshotPath = join(created.run.runDir, "dataset_meta_snapshot.json");
-          let metadataContent: any = canonicalDataInfo;
-          try { metadataContent = JSON.parse(canonicalDataInfo); } catch { /* retain text metadata */ }
-          await deps.writeJson(datasetMetaSnapshotPath, {
-            metadata_json_path: params.metadata_json_path || "",
-            metadata: metadataContent,
-            captured_at: new Date().toISOString(),
-          });
-        }
+        // metadata.json is the single canonical metadata artifact. A second round-local
+        // snapshot duplicated the same content without adding execution value.
         const suppliedAssessment = params.planning_assessment as Json | undefined;
         const explicitPlanningEvidence = verifiedExplicitResearchPlanningRequest(params.question, suppliedAssessment?.explicit_request_quote);
         let researchRoute = workflowFlags.research_planning
@@ -139,7 +155,7 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
           state_path: active.run.statePath,
           ...(active.run.runId !== created.run.runId ? { planning_run_id: created.run.runId, planning_dir: created.run.runDir } : {}),
           metadata_locked: true,
-          dataset_meta_snapshot_path: datasetMetaSnapshotPath,
+          metadata_json_path: canonicalMetadataPath,
           deliverables: active.run.state.deliverables,
           question: active.run.state.question,
           workflow_config: workflowConfigResult(config as any),
@@ -229,4 +245,3 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
     }),
   ];
 }
-

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createJiti } from "jiti";
@@ -55,18 +55,46 @@ try {
   const planningRunId = planningRun.details.run_id;
   const planningStatePath = join(cwd, "planning-run", "state.json");
   const planningState = JSON.parse(await readFile(planningStatePath, "utf8"));
+  const researchPlanPath = join(cwd, "planning-run", "research_plan", "research_plan.json");
+  const analysisTask = (title) => ({
+    id: "normalized-by-workflow",
+    title,
+    analysis_question: `${title}?`,
+    biological_hypothesis: `${title} has a measurable effect.`,
+    analysis_strategy: `Estimate the effect for ${title}.`,
+    required_data: ["recorded observations"],
+    expected_evidence: "A quantified effect.",
+    supports_conclusion_if: "The effect is robust.",
+    contradicts_conclusion_if: "The effect is absent.",
+  });
+  const researchPlan = {
+    research_goal: "Compare complementary evidence streams.",
+    planning_rationale: "The evidence streams require separate analyses.",
+    subquestions: [
+      {
+        id: "SQ1",
+        question: "Assess stream one.",
+        hypothesis: "Stream one contributes evidence.",
+        role_in_overall_conclusion: "Tests the first evidence branch.",
+        dataset_grounding: ["stream one observations"],
+        tasks: [analysisTask("Analyze stream one")],
+      },
+      {
+        id: "SQ2",
+        question: "Assess stream two.",
+        hypothesis: "Stream two contributes evidence.",
+        role_in_overall_conclusion: "Tests the second evidence branch.",
+        dataset_grounding: ["stream two observations"],
+        tasks: [analysisTask("Analyze stream two")],
+      },
+    ],
+    synthesis_strategy: "Synthesize evidence across streams.",
+  };
+  await mkdir(join(cwd, "planning-run", "research_plan"), { recursive: true });
+  await writeFile(researchPlanPath, `${JSON.stringify(researchPlan, null, 2)}\n`, "utf8");
   planningState.research_planning = {
     status: "ready_for_user_review",
-    final_plan_path: join(cwd, "planning-run", "research_plan", "research_plan.json"),
-    final_plan: {
-      research_goal: "Compare complementary evidence streams.",
-      planning_rationale: "The evidence streams require separate analyses.",
-      subquestions: [
-        { id: "SQ1", question: "Assess stream one.", tasks: [{ id: "SQ1-T1", title: "Analyze stream one" }] },
-        { id: "SQ2", question: "Assess stream two.", tasks: [{ id: "SQ2-T1", title: "Analyze stream two" }] },
-      ],
-      synthesis_strategy: "Synthesize evidence across streams.",
-    },
+    research_plan_path: researchPlanPath,
     reviewer_critique: { verdict: "accept" },
     unresolved_issues: [],
   };
@@ -74,6 +102,7 @@ try {
 
   delete process.env.SEEKBRAIN_NON_INTERACTIVE;
   let selectorCalls = 0;
+  let researchPlanChoice = 0;
   const interactiveCtx = {
     cwd,
     hasUI: true,
@@ -85,7 +114,7 @@ try {
           "Revise — provide scientific feedback",
           "Cancel — retain the plan without execution",
         ]);
-        return options[0];
+        return options[researchPlanChoice];
       },
     },
   };
@@ -101,6 +130,25 @@ try {
     interactiveCtx,
   );
   assert.equal(noPendingDecision.details.ok, false);
+
+  const cancelRun = await byName.seekbrain_run_start.execute("cancel-start", { work_dir: "cancel-run", question: "Compare complementary evidence streams." }, undefined, undefined, ctx);
+  const cancelRunId = cancelRun.details.run_id;
+  const cancelStatePath = join(cwd, "cancel-run", "state.json");
+  const cancelPlanPath = join(cwd, "cancel-run", "research_plan", "research_plan.json");
+  await mkdir(join(cwd, "cancel-run", "research_plan"), { recursive: true });
+  await writeFile(cancelPlanPath, `${JSON.stringify(researchPlan, null, 2)}\n`, "utf8");
+  const cancelState = JSON.parse(await readFile(cancelStatePath, "utf8"));
+  cancelState.research_planning = { status: "ready_for_user_review", research_plan_path: cancelPlanPath };
+  await writeFile(cancelStatePath, `${JSON.stringify(cancelState, null, 2)}\n`, "utf8");
+  researchPlanChoice = 2;
+  const cancelled = await byName.seekbrain_planning_researcher_review.execute("cancel-review", { run_id: cancelRunId }, undefined, undefined, interactiveCtx);
+  assert.equal(cancelled.details.decision, "cancel");
+  assert.equal(cancelled.details.status, "cancelled_by_user");
+  const callsAfterCancel = selectorCalls;
+  researchPlanChoice = 0;
+  const stillCancelled = await byName.seekbrain_planning_researcher_review.execute("cancel-review-again", { run_id: cancelRunId }, undefined, undefined, interactiveCtx);
+  assert.equal(stillCancelled.details.decision, "cancel");
+  assert.equal(selectorCalls, callsAfterCancel);
 
   process.env.SEEKBRAIN_NON_INTERACTIVE = "1";
   const fallbackRun = await byName.seekbrain_run_start.execute("fallback-start", { work_dir: "fallback-run", question: "Compare complementary evidence streams." }, undefined, undefined, ctx);

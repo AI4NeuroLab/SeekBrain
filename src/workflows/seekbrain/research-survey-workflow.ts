@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { StageAgentResult } from "./research-skill-workflow.ts";
-import type { RunLifecycleWorkflow, WorkflowJson } from "./run-lifecycle.ts";
+import { readCanonicalMetadata, type RunLifecycleWorkflow, type WorkflowJson, type WorkflowRunContext } from "./run-lifecycle.ts";
 
 export interface ResearchSurveyWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
@@ -30,7 +30,7 @@ export interface ResearchSurveyInput {
   signal?: AbortSignal;
 }
 
-function planningState(run: WorkflowJson): WorkflowJson {
+function planningState(run: WorkflowRunContext): WorkflowJson {
   const value = run.state.research_planning;
   return value && typeof value === "object" ? value : {};
 }
@@ -49,11 +49,11 @@ function fingerprint(value: WorkflowJson): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-function surveyQuestion(run: WorkflowJson): string {
+async function surveyQuestion(run: WorkflowRunContext): Promise<string> {
   const question = String(run.state.question || "").trim();
   if (!question) throw new Error("Research Survey requires a persisted scientific question.");
   const background = String(run.state.user_background || "").trim().slice(0, 8_000);
-  const metadata = String(run.state.data_info || "").trim().slice(0, 12_000);
+  const metadata = (await readCanonicalMetadata(run)).slice(0, 12_000);
   const extra = String(run.state.extra_path_info || "").trim().slice(0, 4_000);
   return [
     `[Scientific Question]\n${question}`,
@@ -63,7 +63,7 @@ function surveyQuestion(run: WorkflowJson): string {
   ].filter(Boolean).join("\n\n");
 }
 
-function fallbackBackground(run: WorkflowJson, paperSource: string): string {
+function fallbackBackground(run: WorkflowRunContext, paperSource: string): string {
   const userBackground = String(run.state.user_background || "").trim().slice(0, 3_000);
   return [
     "[Literature Grounding Background]",
@@ -121,8 +121,7 @@ export class ResearchSurveyWorkflow {
   async execute(input: ResearchSurveyInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const current = planningState(run);
-    const legacySubquestionsReady = current.status === "subquestions_ready" && Boolean(current.subquestions);
-    if (current.status !== "approved" && !legacySubquestionsReady) {
+    if (current.status !== "approved") {
       return {
         ok: false,
         run_id: run.runId,
@@ -143,7 +142,7 @@ export class ResearchSurveyWorkflow {
       return { ok: true, run_id: run.runId, skipped: true, reason, survey };
     }
 
-    const question = surveyQuestion(run);
+    const question = await surveyQuestion(run);
     const rag = input.agentConfig.rag && typeof input.agentConfig.rag === "object" ? input.agentConfig.rag : {};
     const paperSource = String(rag.paper_source || "ailab_rag");
     const literatureQueries = (paperSource === "semantic_scholar" || paperSource === "pubmed") && Array.isArray(run.state.literature_queries)

@@ -3,6 +3,7 @@ import { Type } from "typebox";
 import type {
   ResearchPlanningWorkflow,
   ResearchSurveyWorkflow,
+  ResearchTaskScheduler,
   RunLifecycleWorkflow,
 } from "../../../workflows/index.ts";
 import {
@@ -18,10 +19,12 @@ export interface ResearchPlanningToolDependencies {
   projectRoot: string;
   lifecycle: RunLifecycleWorkflow;
   planningWorkflow: ResearchPlanningWorkflow;
+  scheduler: ResearchTaskScheduler;
   surveyWorkflow: ResearchSurveyWorkflow;
   loadConfig(cwd: string): Promise<Json>;
   workflowConfig(config: Json): {
     research_survey: boolean;
+    research_planning_peer_review: boolean;
     has_literature_provider: boolean;
     literature_provider?: string;
   };
@@ -108,7 +111,7 @@ export function createResearchPlanningTools(
 ): SeekBrainToolDefinition[] {
   async function applyResearchTreeDecision(
     runId: string,
-    decision: "approve" | "revise" | "cancel",
+    decision: "approve" | "revise" | "restore_previous" | "cancel",
     feedback: string | undefined,
     source: string,
     signal: AbortSignal | undefined,
@@ -125,7 +128,8 @@ export function createResearchPlanningTools(
       orchestratorAgentConfig: pickResearchPlanningConfig(deps, config),
       revisionFinalizeSchema: Type.Object({
         feedback_response: Type.String(),
-        final_plan: researchTreeSchema(),
+        changed_nodes: Type.Array(Type.String()),
+        research_plan: researchTreeSchema(),
       }),
       signal,
     });
@@ -134,10 +138,25 @@ export function createResearchPlanningTools(
   async function presentResearchTreeReview(runId: string, signal: AbortSignal | undefined, ctx: Json) {
     const run = await deps.resolveRun(ctx.cwd, runId);
     const planning = run.state.research_planning || {};
+    if (planning.status === "cancelled_by_user") {
+      return {
+        ok: true,
+        run_id: runId,
+        decision: "cancel",
+        status: "cancelled_by_user",
+        needs_user_review: false,
+        message: "Hierarchical research plan is retained and execution remains cancelled.",
+      };
+    }
+    if (planning.agent_full_auto === true) {
+      return await applyResearchTreeDecision(runId, "approve", undefined, "agent_full_auto", signal, ctx);
+    }
+    const canonical = await deps.planningWorkflow.getResearchPlan(ctx.cwd, runId);
     const selection = await selectResearchTreeReview(ctx, {
-      title: researchTreeReviewTitle(planning.final_plan || {}, planning),
-      feedbackTitle: "Scientific feedback for the research plan",
-      feedbackPlaceholder: "Describe what should change in the subquestions, hypotheses, tasks, or synthesis strategy",
+      title: researchTreeReviewTitle(canonical.plan || {}, planning),
+      feedbackTitle: "",
+      feedbackPlaceholder: "",
+      rollbackAvailable: Boolean(planning.previous_research_plan_path),
     });
     if (selection.decision === "unavailable") {
       await deps.lifecycle.updateState(run, {
@@ -208,10 +227,12 @@ export function createResearchPlanningTools(
         const run = await deps.resolveRun(ctx.cwd, params.run_id);
         const assessment = run.state.research_planning?.assessment || {};
         const yesLabel = "Yes — initiate structured research decomposition";
+        const autoLabel = "Agent-Full-Auto — approve all later workflow gates";
         const noLabel = "No — proceed with the standard SeekBrain workflow";
         const selection = await selectYesNoReview(ctx, {
           title: researchPlanningReviewTitle(assessment, params.summary),
           yesLabel,
+          autoLabel,
           noLabel,
         });
         if (selection.decision === "unavailable") {
@@ -226,7 +247,7 @@ export function createResearchPlanningTools(
             run_id: params.run_id,
             needs_text_review: true,
             next_tool: "seekbrain_planning_decision_record",
-            message: "Interactive selector is unavailable. Ask the user to answer Yes or No, then record that response.",
+            message: "Interactive selector is unavailable. Ask the user to answer Yes, Agent-Full-Auto, or No, then record that response.",
           });
         }
         if (selection.decision === "cancel") {
@@ -238,7 +259,7 @@ export function createResearchPlanningTools(
           params.run_id,
           decision,
           "native_selector",
-          decision === "yes" ? yesLabel : noLabel,
+          decision === "yes" ? yesLabel : decision === "agent_full_auto" ? autoLabel : noLabel,
         );
         if (reviewed.ok && decision === "no") {
           const standard = await deps.lifecycle.materializeInitialRound(ctx.cwd, params.run_id);
@@ -262,10 +283,10 @@ export function createResearchPlanningTools(
     defineTool({
       name: "seekbrain_planning_decision_record",
       label: "Record Research Planning Response",
-      description: "Record the user's short Yes/No chat response when the native Research Planning selector is unavailable.",
+      description: "Record the user's short Research Planning choice when the native selector is unavailable.",
       parameters: Type.Object({
         run_id: Type.String(),
-        decision: Type.Union([Type.Literal("yes"), Type.Literal("no")]),
+        decision: Type.Union([Type.Literal("yes"), Type.Literal("agent_full_auto"), Type.Literal("no")]),
         response_quote: Type.String({ description: "Exact short quote of the user's latest chat response." }),
       }),
       async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -277,7 +298,7 @@ export function createResearchPlanningTools(
             message: "No text-based Research Planning decision is currently pending.",
           });
         }
-        const decision = params.decision as "yes" | "no";
+        const decision = params.decision as "yes" | "agent_full_auto" | "no";
         const reviewed = await deps.planningWorkflow.recordDecision(
           ctx.cwd,
           params.run_id,
@@ -347,10 +368,34 @@ export function createResearchPlanningTools(
           rolePrompt: await deps.readPrompt("research_subquestions"),
           agentConfig: pickResearchPlanningConfig(deps, config),
           finalizeSchema: researchTreeSchema(),
+          peerReviewRequired: workflow.research_planning_peer_review,
           signal,
         });
+        if (!prepared.ok || workflow.research_planning_peer_review) {
+          return deps.content({
+            ...prepared,
+            research_survey: {
+              status: survey.status || (survey.skipped ? "disabled" : "ready"),
+              reused: survey.reused === true,
+              source_count: Number(survey.source_count || 0),
+              context_path: survey.context_path,
+              sources_path: survey.sources_path,
+              result_path: survey.result_path,
+            },
+          });
+        }
+        let researcherReview = await presentResearchTreeReview(params.run_id, signal, ctx);
+        while (researcherReview.ok && researcherReview.decision === "revise" && researcherReview.needs_user_review === true) {
+          researcherReview = await presentResearchTreeReview(params.run_id, signal, ctx);
+        }
         return deps.content({
           ...prepared,
+          researcher_review: researcherReview,
+          ...(researcherReview.decision ? { decision: researcherReview.decision } : {}),
+          ...(researcherReview.status ? { status: researcherReview.status } : {}),
+          next_tool: researcherReview.next_tool,
+          ...(researcherReview.needs_text_review ? { needs_text_review: true } : {}),
+          needs_user_review: researcherReview.needs_user_review === true,
           research_survey: {
             status: survey.status || (survey.skipped ? "disabled" : "ready"),
             reused: survey.reused === true,
@@ -373,6 +418,19 @@ export function createResearchPlanningTools(
       }),
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(deps.projectRoot);
+        const workflow = deps.workflowConfig(config);
+        if (!workflow.research_planning_peer_review && params.explicit_user_request !== true) {
+          const canonical = await deps.planningWorkflow.getResearchPlan(ctx.cwd, params.run_id);
+          return deps.content({
+            ok: true,
+            run_id: params.run_id,
+            skipped: true,
+            skip_reason: "disabled_by_user_config",
+            research_plan_path: canonical.path,
+            needs_user_review: true,
+            next_tool: "seekbrain_planning_researcher_review",
+          });
+        }
         const peerReview = await deps.planningWorkflow.reviewResearchPlan({
           cwd: ctx.cwd,
           runId: params.run_id,
@@ -388,7 +446,7 @@ export function createResearchPlanningTools(
               explanation: Type.String(),
               changed_nodes: Type.Array(Type.String()),
             })),
-            final_plan: researchTreeSchema(),
+            research_plan: researchTreeSchema(),
             unresolved_issues: Type.Array(Type.String()),
           }),
           explicitUserRequest: params.explicit_user_request === true,
@@ -404,7 +462,7 @@ export function createResearchPlanningTools(
           researcher_review: researcherReview,
           ...(researcherReview.decision ? { decision: researcherReview.decision } : {}),
           ...(researcherReview.status ? { status: researcherReview.status } : {}),
-          ...(researcherReview.next_tool ? { next_tool: researcherReview.next_tool } : {}),
+          next_tool: researcherReview.next_tool,
           ...(researcherReview.needs_text_review ? { needs_text_review: true } : {}),
           needs_user_review: researcherReview.needs_user_review === true,
         });
@@ -427,7 +485,7 @@ export function createResearchPlanningTools(
       description: "Record an approve, revise, or cancel chat response when the native final research-plan selector is unavailable.",
       parameters: Type.Object({
         run_id: Type.String(),
-        decision: Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("cancel")]),
+        decision: Type.Union([Type.Literal("approve"), Type.Literal("revise"), Type.Literal("restore_previous"), Type.Literal("cancel")]),
         response_quote: Type.String({ description: "Exact quote of the user's latest chat response." }),
         feedback: Type.Optional(Type.String()),
       }),
@@ -452,7 +510,7 @@ export function createResearchPlanningTools(
         });
         return deps.content(await applyResearchTreeDecision(
           params.run_id,
-          params.decision as "approve" | "revise" | "cancel",
+          params.decision as "approve" | "revise" | "restore_previous" | "cancel",
           params.feedback,
           "chat_response",
           signal,
@@ -470,6 +528,29 @@ export function createResearchPlanningTools(
         return deps.content(await deps.planningWorkflow.materializeResearchTasks({ cwd: ctx.cwd, runId: params.run_id }));
       },
       renderResult: renderSeekBrainResult("seekbrain_analysis_tasks_prepare"),
+    }),
+    defineTool({
+      name: "seekbrain_research_extend",
+      label: "Extend Research Planning Project",
+      description: "Add one new single-task subquestion or one new round to a completed Research Planning project, then queue only that extension for the ordinary terminal-task pipeline.",
+      parameters: Type.Object({
+        project_path: Type.String(),
+        action: Type.Union([Type.Literal("new_sq"), Type.Literal("new_round")]),
+        question: Type.Optional(Type.String()),
+        task_id: Type.Optional(Type.String()),
+      }),
+      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+        const extended = await deps.planningWorkflow.extendResearch({
+          cwd: ctx.cwd,
+          projectPath: params.project_path,
+          action: params.action,
+          question: params.question,
+          taskId: params.task_id,
+        });
+        await deps.scheduler.upsertExtensionTask(ctx.cwd, String(extended.parent_run_id), extended.task_run || {});
+        return deps.content(extended);
+      },
+      renderResult: renderSeekBrainResult("seekbrain_research_extend"),
     }),
   ];
 }

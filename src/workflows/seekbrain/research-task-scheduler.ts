@@ -7,7 +7,7 @@ export type ResearchTaskStatus =
   | "queued"
   | "planning"
   | "awaiting_plan_review"
-  | "plan_revision_required"
+  | "revising_plan"
   | "approved"
   | "executing"
   | "validating"
@@ -75,7 +75,7 @@ const EVENT_TARGET: Record<ResearchTaskEventType, ResearchTaskStatus> = {
   deep_research_completed: "planning",
   plan_started: "planning",
   plan_ready: "awaiting_plan_review",
-  plan_revision_requested: "plan_revision_required",
+  plan_revision_requested: "revising_plan",
   plan_approved: "approved",
   execution_started: "executing",
   code_started: "executing",
@@ -120,13 +120,13 @@ const EVENT_ORDER: Record<ResearchTaskEventType, number> = {
 };
 
 const ALLOWED_FROM: Record<ResearchTaskEventType, ResearchTaskStatus[]> = {
-  planning_started: ["queued", "plan_revision_required"],
+  planning_started: ["queued"],
   skill_started: ["planning"],
   skill_resolved: ["planning"],
   deep_research_started: ["planning"],
   deep_research_completed: ["planning"],
   plan_started: ["planning"],
-  plan_ready: ["planning", "plan_revision_required"],
+  plan_ready: ["planning", "revising_plan"],
   plan_revision_requested: ["awaiting_plan_review"],
   plan_approved: ["awaiting_plan_review"],
   execution_started: ["approved"],
@@ -140,7 +140,7 @@ const ALLOWED_FROM: Record<ResearchTaskEventType, ResearchTaskStatus[]> = {
   task_completed: ["executing", "validating", "interpreting"],
   task_blocked: ["planning", "awaiting_plan_review", "approved", "executing", "validating", "interpreting"],
   task_failed: ["planning", "awaiting_plan_review", "approved", "executing", "validating", "interpreting"],
-  task_cancelled: ["queued", "planning", "awaiting_plan_review", "plan_revision_required", "approved", "executing", "validating", "interpreting", "blocked", "failed"],
+  task_cancelled: ["queued", "planning", "awaiting_plan_review", "revising_plan", "approved", "executing", "validating", "interpreting", "blocked", "failed"],
   task_execution_retry_requested: ["blocked", "failed", "cancelled"],
   task_retry_requested: ["blocked", "failed", "cancelled"],
 };
@@ -177,7 +177,7 @@ function normalizeInitialStatus(value: unknown): ResearchTaskStatus {
   if (status === "pending") return "queued";
   if (status === "concluded") return "complete";
   return [
-    "queued", "planning", "awaiting_plan_review", "plan_revision_required", "approved",
+    "queued", "planning", "awaiting_plan_review", "revising_plan", "approved",
     "executing", "validating", "interpreting", "complete", "blocked", "failed", "cancelled",
   ].includes(status) ? status as ResearchTaskStatus : "queued";
 }
@@ -198,6 +198,38 @@ function schedulerStatus(tasks: WorkflowJson[]): string {
  */
 export class ResearchTaskScheduler {
   constructor(readonly dependencies: ResearchTaskSchedulerDependencies) {}
+
+  async upsertExtensionTask(cwd: string, runId: string, taskRun: WorkflowJson): Promise<WorkflowJson> {
+    const parent = await this.parent(cwd, runId);
+    const paths = schedulerPaths(parent);
+    const scheduler = await this.requireScheduler(paths.schedulerPath);
+    const reviewQueue = await readJson(paths.reviewQueuePath) || {
+      schema_version: 1, parent_run_id: parent.runId, policy: "serialized", approve_remaining: false, items: [],
+    };
+    const tasks = scheduler.tasks as WorkflowJson[];
+    const taskId = String(taskRun.task_id || "");
+    if (!taskId) throw new Error("Extension task_id is required.");
+    const existingIndex = tasks.findIndex((item) => String(item.task_id) === taskId);
+    const now = new Date().toISOString();
+    const queued = {
+      ...taskRun,
+      ordinal: existingIndex >= 0 ? tasks[existingIndex].ordinal : tasks.length + 1,
+      status: "queued",
+      scheduler_updated_at: now,
+    };
+    scheduler.tasks = existingIndex >= 0
+      ? tasks.map((item, index) => index === existingIndex ? queued : item)
+      : [...tasks, queued];
+    scheduler.status = schedulerStatus(scheduler.tasks);
+    scheduler.updated_at = now;
+    reviewQueue.items = (Array.isArray(reviewQueue.items) ? reviewQueue.items : [])
+      .filter((item: WorkflowJson) => String(item.task_id) !== taskId);
+    reviewQueue.updated_at = now;
+    await this.dependencies.writeJson(paths.schedulerPath, scheduler);
+    await this.dependencies.writeJson(paths.reviewQueuePath, reviewQueue);
+    await this.persistParent(parent, scheduler, paths);
+    return { ...this.result(scheduler, paths, true), extension_task: queued };
+  }
 
   async initialize(input: InitializeResearchExecutionInput): Promise<WorkflowJson> {
     const parent = await this.parent(input.cwd, input.runId);
@@ -273,7 +305,7 @@ export class ResearchTaskScheduler {
     const reviewQueue = await readJson(paths.reviewQueuePath) || {
       schema_version: 1, parent_run_id: parent.runId, policy: "serialized", approve_remaining: false, items: [],
     };
-    const activeStatuses = new Set<ResearchTaskStatus>(["planning", "executing", "validating", "interpreting"]);
+    const activeStatuses = new Set<ResearchTaskStatus>(["planning", "revising_plan", "executing", "validating", "interpreting"]);
     const recovered: WorkflowJson[] = [];
     const now = new Date().toISOString();
 
@@ -294,8 +326,8 @@ export class ResearchTaskScheduler {
         scheduler_updated_at: now,
         ...(concluded ? {
           completed_at: child.state.conclusions?.completed_at || now,
-          interpretation_path: join(child.runDir, "interpretation.json"),
-          conclusions_path: join(child.runDir, "conclusions.json"),
+          interpretation_path: child.state.interpretation?.path || child.state.conclusions?.path || join(child.runDir, "conclusions.json"),
+          conclusions_path: child.state.conclusions?.path || join(child.runDir, "conclusions.json"),
           summary: child.state.conclusions?.summary || child.state.interpretation?.summary || "",
         } : {}),
       });
@@ -308,6 +340,8 @@ export class ResearchTaskScheduler {
             run_id: task.run_id,
             plan_path: task.plan_path || join(child.runDir, "plan.md"),
             plan_summary: child.state.plan?.review_summary || child.state.plan?.summary || task.plan_summary || "",
+            plan_warnings: child.state.plan?.warnings || task.plan_warnings || [],
+            plan_revision: Number(child.state.plan?.revision || 0),
             status: reviewQueue.approve_remaining === true ? "approved" : "waiting",
             enqueued_at: now,
           }];
@@ -340,7 +374,7 @@ export class ResearchTaskScheduler {
     const tasks = scheduler.tasks as WorkflowJson[];
     const active = tasks.filter((task) => ACTIVE_PLANNING.has(task.status)).length;
     const capacity = Math.max(0, Number(scheduler.limits.planning_concurrency) - active);
-    const claimedIds = tasks.filter((task) => task.status === "queued" || task.status === "plan_revision_required").slice(0, capacity).map((task) => String(task.task_id));
+    const claimedIds = tasks.filter((task) => task.status === "queued").slice(0, capacity).map((task) => String(task.task_id));
     const now = new Date().toISOString();
     scheduler.tasks = tasks.map((task) => claimedIds.includes(String(task.task_id))
       ? { ...task, status: "planning", planning_started_at: now, scheduler_updated_at: now }
@@ -423,14 +457,19 @@ export class ResearchTaskScheduler {
     taskId: string;
     decision: "approve" | "revise" | "approve_remaining";
     feedback?: string;
+    planRevision?: number;
   }): Promise<WorkflowJson> {
     await this.drainEvents(input.cwd, input.runId);
     const parent = await this.parent(input.cwd, input.runId);
     const paths = schedulerPaths(parent);
     const queue = await readJson(paths.reviewQueuePath) || { items: [] };
     const waiting = (Array.isArray(queue.items) ? queue.items : []).filter((item: WorkflowJson) => item.status === "waiting");
-    if (!waiting.some((item: WorkflowJson) => String(item.task_id) === String(input.taskId))) {
+    const currentReview = waiting.find((item: WorkflowJson) => String(item.task_id) === String(input.taskId));
+    if (!currentReview) {
       throw new Error(`Analysis task '${input.taskId}' is not waiting for methodological-schema review.`);
+    }
+    if (input.planRevision !== undefined && Number(currentReview.plan_revision || 0) !== input.planRevision) {
+      throw new Error(`Analysis task '${input.taskId}' review is stale; current Plan revision is ${Number(currentReview.plan_revision || 0)}.`);
     }
     if (input.decision === "revise" && !String(input.feedback || "").trim()) {
       throw new Error("Methodological-schema revision feedback is required.");
@@ -570,6 +609,9 @@ export class ResearchTaskScheduler {
           run_id: current.run_id,
           plan_path: event.payload.plan_path,
           plan_summary: event.payload.plan_summary,
+          plan_warnings: event.payload.plan_warnings || [],
+          plan_revision: Number(event.payload.plan_revision || 0),
+          rollback_available: event.payload.rollback_available === true,
           skill_summary: event.payload.skill_summary || current.skill_summary,
           deep_research_summary: event.payload.deep_research_summary || current.deep_research_summary,
           status: autoApprove ? "approved" : "waiting",
@@ -578,10 +620,14 @@ export class ResearchTaskScheduler {
         }];
       }
     }
+    if (event.type === "plan_ready") {
+      reviewQueue.items = (Array.isArray(reviewQueue.items) ? reviewQueue.items : []).map((item: WorkflowJson) =>
+        item.task_id === event.task_id && item.status === "revising" ? { ...item, status: "superseded", resolved_at: now } : item);
+    }
     if (["plan_approved", "plan_revision_requested", "task_cancelled"].includes(event.type)) {
       reviewQueue.items = (Array.isArray(reviewQueue.items) ? reviewQueue.items : []).map((item: WorkflowJson) =>
         item.task_id === event.task_id && item.status === "waiting"
-          ? { ...item, status: event.type === "plan_approved" ? "approved" : event.type === "plan_revision_requested" ? "revision_required" : "cancelled", resolved_at: now }
+          ? { ...item, status: event.type === "plan_approved" ? "approved" : event.type === "plan_revision_requested" ? "revising" : "cancelled", resolved_at: event.type === "plan_revision_requested" ? undefined : now }
           : item);
     }
     return { ok: true };
@@ -613,7 +659,7 @@ export class ResearchTaskScheduler {
     if (planning.task_manifest_path) {
       await this.dependencies.writeJson(String(planning.task_manifest_path), {
         parent_run_id: parent.runId,
-        research_plan_path: planning.final_plan_path,
+        research_plan_path: planning.research_plan_path,
         updated_at: new Date().toISOString(),
         task_runs: taskRuns,
       });
@@ -639,6 +685,7 @@ export class ResearchTaskScheduler {
   private result(scheduler: WorkflowJson, paths: ReturnType<typeof schedulerPaths>, reused: boolean): WorkflowJson {
     const tasks = Array.isArray(scheduler.tasks) ? scheduler.tasks : [];
     const completedTaskCount = tasks.filter((task: WorkflowJson) => task.status === "complete").length;
+    const reportAvailable = tasks.length > 0 && completedTaskCount === tasks.length;
     return {
       ok: true,
       parent_run_id: scheduler.parent_run_id,
@@ -648,9 +695,9 @@ export class ResearchTaskScheduler {
       task_count: tasks.length,
       task_status_counts: Object.fromEntries([...new Set(tasks.map((task: WorkflowJson) => task.status))].map((status) => [status, tasks.filter((task: WorkflowJson) => task.status === status).length])),
       completed_task_count: completedTaskCount,
-      report_available: completedTaskCount >= 2,
-      report_hint: completedTaskCount >= 2
-        ? `${completedTaskCount} completed analysis-task results are available for synthesis. Type "generate a report" or run /seekbrain-report when needed.`
+      report_available: reportAvailable,
+      report_hint: reportAvailable
+        ? `All ${completedTaskCount} Research Planning terminal tasks are complete. Run /seekbrain-report when you want the final academic report.`
         : undefined,
       tasks,
       scheduler_path: paths.schedulerPath,

@@ -24,6 +24,14 @@ export interface SaveSkillCommandDependencies {
   writeSkill(input: Json, cwd: string): Promise<Json>;
   updateState(run: Json, patch: Json): Promise<void>;
   appendEvent(event: Json): Promise<void>;
+  registerRepositoryScripts?(input: {
+    repositoryUrl: string;
+    recipePath: string;
+    scriptPath: string;
+    utilityPath?: string;
+    sourceCommit?: string;
+    validationRunId: string;
+  }): Promise<Json>;
 }
 
 function slug(value: unknown): string {
@@ -106,18 +114,38 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
 
       const generatedCode = join(run.runDir, "generated_code.py");
       if (!existsSync(generatedCode) && !(run.state.code?.code_files?.length > 0)) { context.ui?.notify?.("This run has no generated analysis code yet; there is no trajectory to distill.", "error"); return; }
+      const validation = run.state.validation;
+      const codeAttempt = Number(run.state.code_attempt || 0);
+      const validatedAttempt = Number(validation?.validated_code_attempt ?? -1);
+      if (validation?.pass !== true || validatedAttempt !== codeAttempt || run.state.validation_invalidated_by_code_edit === true) {
+        context.ui?.notify?.("This run has not passed Validation for its current code; no reusable analysis recipe was saved.", "error");
+        return;
+      }
       const question = String(run.state.question || "").trim();
       const digest = buildTranscriptDigest(context.sessionManager);
       const codeText = existsSync(generatedCode) ? await readFile(generatedCode, "utf8").catch(() => "") : "";
-      const statistics = run.state.code?.statistics && typeof run.state.code.statistics === "object" ? run.state.code.statistics : {};
+      const metadataText = run.state.metadata_json_path
+        ? await readFile(String(run.state.metadata_json_path), "utf8").catch(() => String(run.state.data_info || ""))
+        : String(run.state.data_info || "");
+      const planPath = String(run.state.plan?.path || join(run.runDir, "plan.md"));
+      const planText = await readFile(planPath, "utf8").catch(() => String(run.state.plan?.plan_markdown || ""));
+      const recipeText = run.state.targeted_skill_path
+        ? await readFile(String(run.state.targeted_skill_path), "utf8").catch(() => String(run.state.targeted_skill || ""))
+        : String(run.state.targeted_skill || "");
+      const statisticsPath = String(run.state.code?.statistics_path || join(run.runDir, "statistics.json"));
+      const statistics = run.state.code?.statistics && typeof run.state.code.statistics === "object"
+        ? run.state.code.statistics
+        : await dependencies.readJson(statisticsPath, {});
+      const conclusionsPath = String(run.state.conclusions?.path || join(run.runDir, "conclusions.json"));
+      const conclusions = await dependencies.readJson(conclusionsPath, run.state.conclusions || {});
       const rolePrompt = await dependencies.readRolePrompt();
       const body = [
         `Question:\n${question}`,
-        `Data info (metadata):\n${String(run.state.data_info || "").slice(0, 3000)}`,
-        `Methodological schema summary:\n${String(run.state.plan?.summary || run.state.plan?.plan_markdown || "").slice(0, 2000)}`,
+        `Data info (metadata):\n${metadataText.slice(0, 3000)}`,
+        `Methodological schema summary:\n${planText.slice(0, 2000)}`,
         "Analysis code that actually ran:\n```python\n" + codeText.slice(0, 6000) + "\n```",
         `Statistics keys: ${Object.keys(statistics).join(", ") || "(none)"}`,
-        `Conclusions:\n${JSON.stringify(run.state.conclusions || {}).slice(0, 1500)}`,
+        `Conclusions:\n${JSON.stringify(conclusions).slice(0, 1500)}`,
         `Dialogue digest (intent & corrections):\n${digest}`,
         "Finalize with { stage, species, modality, method, target, rationale, proposed_description, triggers[5], tags[4-6] }.",
       ].join("\n\n");
@@ -150,15 +178,29 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
         run_dir: run.runDir, run_id: run.state.run_id, root_dir: dependencies.workflowRoot,
         output_dir: (Array.isArray(targeted.extra_skill_dirs) && targeted.extra_skill_dirs[0]) || ".seekbrain/skills/from_expert",
         smmt, folder_name: folderName, pi_name: piName, description: result.proposed_description, triggers: result.triggers, tags: result.tags,
-        question, question_history: run.state.question_history || [], data_info: run.state.data_info || "", plan_markdown: run.state.plan?.plan_markdown || "",
-        statistics, conclusions: run.state.conclusions || {}, deep_research_context: run.state.deep_research_context || "", targeted_skill: run.state.targeted_skill || "",
-        resource_profile: run.state.resource_profile || {}, image_analyses: run.state.image_analyses || run.state.image_analysis || [], deliverables: run.state.deliverables || [],
+        question, question_history: run.state.question_history || [], data_info: metadataText, plan_markdown: planText,
+        statistics, conclusions, deep_research_context: run.state.deep_research_context || "", targeted_skill: recipeText,
+        resource_profile: run.state.resource_profile || {}, image_analyses: [], deliverables: run.state.deliverables || [],
         transcript_digest: digest, generated_code_path: existsSync(generatedCode) ? generatedCode : "", use_llm_body: true,
       };
       context.ui?.notify?.("Distilling the validated trajectory into an analysis recipe...", "info");
       const authored = await dependencies.writeSkill(payload, dependencies.workflowRoot);
       if (!authored.ok) { context.ui?.notify?.(`Analysis recipe save failed: ${authored.error || JSON.stringify(authored.errors || authored.warnings || authored)}`, "error"); return; }
-      await dependencies.updateState(run, { saved_skill: { skill_dir: authored.skill_dir, folder_name: authored.folder_name, pi_name: authored.pi_name, at: new Date().toISOString() } });
+      let repositoryRegistration: Json | undefined;
+      const repositoryReference = run.state.repository_reference;
+      const scriptPath = join(String(authored.skill_dir || ""), "scripts", "run_analysis.py");
+      if (dependencies.registerRepositoryScripts && repositoryReference?.repository_url && authored.skill_dir && existsSync(scriptPath)) {
+        const utilityPath = join(String(authored.skill_dir), "scripts", "utils.py");
+        repositoryRegistration = await dependencies.registerRepositoryScripts({
+          repositoryUrl: String(repositoryReference.repository_url),
+          recipePath: join(String(authored.skill_dir), "SKILL.md"),
+          scriptPath,
+          ...(existsSync(utilityPath) ? { utilityPath } : {}),
+          ...(repositoryReference.source_commit ? { sourceCommit: String(repositoryReference.source_commit) } : {}),
+          validationRunId: String(run.runId),
+        });
+      }
+      await dependencies.updateState(run, { saved_skill: { skill_dir: authored.skill_dir, folder_name: authored.folder_name, pi_name: authored.pi_name, at: new Date().toISOString(), ...(repositoryRegistration ? { repository_registration: repositoryRegistration } : {}) } });
       await dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_recipe_save", ok: true, folder_name: authored.folder_name });
       const piRelative = authored.skill_dir ? await registerSkillPath(dependencies.workflowRoot, String(authored.skill_dir)) : undefined;
       const validationStatus = authored.validate_skills?.status || "unknown";

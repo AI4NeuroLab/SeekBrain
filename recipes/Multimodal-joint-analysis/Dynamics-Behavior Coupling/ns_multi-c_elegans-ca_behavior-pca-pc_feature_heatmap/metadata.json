@@ -1,0 +1,11 @@
+{
+  "tag": "ns_multi-c_elegans-ca_behavior-pca-pc_feature_heatmap",
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/scientific_context.md",
+    "references/implementation_notes.md"
+  ]
+}

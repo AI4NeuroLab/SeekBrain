@@ -35,6 +35,7 @@ async function atomicJson(path: string, value: unknown) {
 }
 
 export class DatasetMetadataStore {
+  static readonly SCHEMA_VERSION = 7;
   readonly root: string;
 
   constructor(root = process.env.SEEKBRAIN_DATASET_CACHE_ROOT || join(homedir(), ".seekbrain", "datasets")) {
@@ -70,7 +71,7 @@ export class DatasetMetadataStore {
       const sameRoot = resolve(String(metadata.root_dir || "")) === identity.canonicalRoot
         && resolve(String(manifest.canonical_root || "")) === identity.canonicalRoot;
       const sameIdentity = Number(manifest.device) === identity.device && Number(manifest.inode) === identity.inode;
-      if (!sameRoot || !sameIdentity || Number(manifest.schema_version) !== 1) return undefined;
+      if (!sameRoot || !sameIdentity || Number(manifest.schema_version) !== DatasetMetadataStore.SCHEMA_VERSION) return undefined;
       return { identity, metadata, manifest };
     } catch {
       return undefined;
@@ -90,7 +91,7 @@ export class DatasetMetadataStore {
     const now = new Date().toISOString();
     const prior = await this.load(identity);
     const manifest = {
-      schema_version: 1,
+      schema_version: DatasetMetadataStore.SCHEMA_VERSION,
       dataset_id: identity.datasetId,
       canonical_root: identity.canonicalRoot,
       device: identity.device,

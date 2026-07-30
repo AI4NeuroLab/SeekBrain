@@ -40,7 +40,7 @@ describe("runtime tool registry", () => {
 });
 
 describe("Research Planning stage", () => {
-  it("owns the eight frozen Research Planning tool definitions", () => {
+  it("owns the Research Planning tool definitions", () => {
     const tools = createResearchPlanningTools({} as any);
     expect(tools.map((tool) => tool.name)).toEqual([
       "seekbrain_planning_assess",
@@ -51,6 +51,7 @@ describe("Research Planning stage", () => {
       "seekbrain_planning_researcher_review",
       "seekbrain_planning_researcher_decision_record",
       "seekbrain_analysis_tasks_prepare",
+      "seekbrain_research_extend",
     ]);
   });
 });

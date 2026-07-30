@@ -1,0 +1,33 @@
+{
+  "tag": "ns_multi-zebrafish-gene_anatomy-expression_count_mapping-spatial_density",
+  "yaml_metadata": {
+    "name": "ns_multi-zebrafish-gene_anatomy-expression_count_mapping-spatial_density",
+    "description": "Map eomesa- and pvalb7-positive cells into a common zebrafish atlas from registered EASI-FISH volumes and cell-wise spot counts. Use for whole-brain expression density and co-expression maps.",
+    "triggers": [
+      "Analyze whole-brain spatial mapping of molecularly defined neuronal populations",
+      "Generate outputs with the ns_multi-zebrafish-gene_anatomy-expression_count_mapping-spatial_density recipe",
+      "Use this recipe to register EASI-FISH brains, assign RNA spots to cells, call eomesa- and pvalb7-positive populations consistently, and map their spatial densities"
+    ],
+    "tags": [
+      "easi-fish",
+      "mapzebrain",
+      "spatial-transcriptomics",
+      "zebrafish-brain-atlas",
+      "3d-visualization"
+    ],
+    "version": "1.0"
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/implementation_notes.md",
+    "references/matched_files/containers_registration_maru.yaml",
+    "references/matched_files/containers_rs_fish_maru.yaml",
+    "references/matched_files/containers_segmentation_scripts_python_starfinity_prediction.py",
+    "references/matched_files/containers_spot_assignment_scripts_python_assign_spots.py",
+    "references/matched_files/examples_demo_medium.sh",
+    "references/scientific_context.md"
+  ]
+}

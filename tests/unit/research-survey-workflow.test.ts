@@ -27,9 +27,11 @@ describe("research survey workflow", () => {
     try {
       const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
       const run = await lifecycle.startRun(cwd, "run", undefined, "How do SC and FC relate during development?");
+      const metadataPath = join(cwd, "metadata.json");
+      await writeFile(metadataPath, JSON.stringify({ files: ["sc.npy", "fc_6dpf.npy", "fc_7dpf.npy"] }));
       await lifecycle.updateState(run, {
         user_background: "Prior observations suggest developmental reorganization.",
-        data_info: JSON.stringify({ files: ["sc.npy", "fc_6dpf.npy", "fc_7dpf.npy"] }),
+        metadata_json_path: metadataPath,
         literature_queries: ["developmental structural connectivity", "functional connectivity maturation"],
         research_planning: { status: "approved" },
       });

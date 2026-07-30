@@ -7,15 +7,16 @@ const root = process.cwd();
 for (const path of [
   "src/targeted-skill/resolver.ts",
   "src/targeted-skill/rag-client.ts",
+  "src/targeted-skill/repository-cache.ts",
   "src/targeted-skill/taxonomy.ts",
   "src/targeted-skill/skill-writer.ts",
   "src/targeted-skill/indexer.ts",
-  "src/targeted-skill/rag-skill-generator.ts",
   "src/targeted-skill/skill-library-manager.ts",
 ]) await access(join(root, path));
 
 const runtime = await readFile(join(root, "src/extension/seekbrain-runtime.ts"), "utf8");
 const runtimeServices = await readFile(join(root, "src/extension/runtime/create-runtime-services.ts"), "utf8");
+const resolver = await readFile(join(root, "src/targeted-skill/resolver.ts"), "utf8");
 const codeEditService = await readFile(join(root, "src/extension/runtime/shared/code-edit-service.ts"), "utf8");
 const saveCommand = await readFile(join(root, "src/extension/commands/save-skill-command.ts"), "utf8");
 assert.doesNotMatch(runtime, /internagent\/|runPythonScript|seekbrain_recipe_retrieve\.py|rag_paper\.py/);
@@ -24,6 +25,9 @@ assert.match(runtimeServices, /TargetedSkillResolver/);
 assert.match(runtimeServices, /PaperRagClient/);
 assert.match(runtimeServices, /SkillLibraryManager/);
 assert.match(runtimeServices, /RagSkillGenerator/);
+assert.match(runtimeServices, /recipe_crystallization/);
+assert.match(resolver, /materializeRepository/);
+assert.match(resolver, /lookupValidatedRepositoryScripts/);
 assert.match(saveCommand, /writeSkill/);
 assert.match(codeEditService, /SEEKBRAIN_PYTHON/);
 

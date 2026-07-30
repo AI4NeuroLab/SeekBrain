@@ -47,13 +47,26 @@ assert.equal(contradictory.pass, false);
 assert.equal(contradictory.route, "retry_code");
 assert.match(contradictory.next_code_feedback, /Statistic mismatch/);
 
-const visual = normalizeValidation({
+const visualInput = {
   ...base,
   visual_issues: [
     { figure_path: "figure.png", feedback: "Move the legend outside the axes." },
     { figure_path: "secondary.png", feedback: "Increase font size." },
   ],
-}, { codeAttempt: 1, refinementCount: 0 });
+};
+const disabledVisual = normalizeValidation(visualInput, {
+  codeAttempt: 1,
+  refinementCount: 0,
+  imageRefineEnabled: false,
+});
+assert.equal(disabledVisual.route, "proceed");
+assert.deepEqual(disabledVisual.visual_issues, []);
+
+const visual = normalizeValidation(visualInput, {
+  codeAttempt: 1,
+  refinementCount: 0,
+  imageRefineEnabled: true,
+});
 assert.equal(visual.route, "refine_image");
 assert.equal(visual.visual_issues.length, 1);
 assert.equal(validationNextStep(visual, "run-1").args.figure_path, "figure.png");
@@ -77,10 +90,11 @@ assert.equal(currentArtifactsValidated({
 assert.equal(fastPassRefinedValidation(visual, {}, { integrityAccepted: false }).allowed, false);
 assert.equal(fastPassRefinedValidation({ ...visual, pass: false }, {}, { integrityAccepted: true }).allowed, false);
 
-const visualAfterRefine = normalizeValidation({
-  ...base,
-  visual_issues: [{ figure_path: "figure.png", feedback: "Minor overlap remains." }],
-}, { codeAttempt: 1, refinementCount: 1 });
+const visualAfterRefine = normalizeValidation(visualInput, {
+  codeAttempt: 1,
+  refinementCount: 1,
+  imageRefineEnabled: true,
+});
 assert.equal(visualAfterRefine.route, "proceed");
 
 assert.equal(currentArtifactsValidated({

@@ -36,6 +36,7 @@ import { registerSeekBrainRuntimeHooks } from "../runtime-hooks.ts";
 import { registerSystemCommands } from "../commands/system-commands.ts";
 import { registerShowCommand } from "../commands/show-command.ts";
 import { registerSaveSkillCommand } from "../commands/save-skill-command.ts";
+import { registerValidatedRepositoryScripts } from "../../targeted-skill/repository-cache.ts";
 import { registerReportCommand } from "../commands/report-command.ts";
 import { registerTransparencyCardRenderers } from "../tui/transparency-card.ts";
 import { toPiToolResult } from "../tool-adapter.ts";
@@ -293,11 +294,16 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
       await updateState(run as RunContext, patch);
     },
     appendEvent: (event) => appendStateEntry(pi, event),
+    registerRepositoryScripts: (input) => registerValidatedRepositoryScripts(input),
   });
 
   registerReportCommand(pi, {
-    getActiveProjectPath: () => session.getActiveRunDir() ? dirname(session.getActiveRunDir()!) : undefined,
-    listAvailable: (projectPath) => reportEvidenceCompiler.listAvailable(projectPath),
+    // The evidence compiler accepts parent projects, planning runs, task
+    // projects, task rounds, and nested artifact directories. Preserve the
+    // active path so it can resolve the canonical parent without losing a
+    // directory level here.
+    getActiveProjectPath: () => session.getActiveRunDir(),
+    catalog: (projectPath) => reportEvidenceCompiler.catalog(projectPath),
     generate: generateScientificReport,
   });
 
@@ -338,6 +344,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     projectRoot: PROJECT_ROOT,
     lifecycle: runLifecycle,
     planningWorkflow: researchPlanningWorkflow,
+    scheduler: researchTaskScheduler,
     surveyWorkflow: researchSurveyWorkflow,
     loadConfig: loadConfigCached,
     workflowConfig: seekbrainWorkflowConfig,
@@ -368,6 +375,19 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   collectedToolDefinitions.push(...createReviewTools({
     workflow: reviewWorkflow,
     resolveRun,
+    revisePlan: async (input) => {
+      const config = await loadConfigCached(PROJECT_ROOT);
+      return planWorkflow.revise({
+        ...input,
+        rolePrompt: await readPrompt("plan"),
+        agentConfig: pickAgentConfig(config, "seekbrain_plan"),
+        finalizeSchema: Type.Object({
+          plan_markdown: Type.String(),
+          review_summary: Type.String(),
+          warnings: Type.Array(Type.String()),
+        }),
+      });
+    },
     content,
   }));
 

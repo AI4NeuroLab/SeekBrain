@@ -50,10 +50,11 @@ export function createResearchTaskExecutor(
     ]);
     let child = await resolveRun(cwd, task.run_id);
     if (child.state.interpretation && child.state.conclusions) {
+      const conclusionsPath = String(child.state.conclusions.path || join(child.runDir, "conclusions.json"));
       await publish("task_completed", {
         completed_at: new Date().toISOString(),
-        interpretation_path: join(child.runDir, "interpretation.json"),
-        conclusions_path: join(child.runDir, "conclusions.json"),
+        interpretation_path: conclusionsPath,
+        conclusions_path: conclusionsPath,
         summary: child.state.conclusions.summary || child.state.interpretation.summary || "",
         recovered_existing_result: true,
       });
@@ -121,11 +122,13 @@ export function createResearchTaskExecutor(
         overall_mismatches: Type.Array(Type.String()),
         blocking_issues: Type.Array(Type.String()),
         methodological_caveats: Type.Array(Type.String()),
+        figure_observations: Type.Array(Type.String()),
         visual_issues: Type.Array(Type.Object({ figure_path: Type.String(), feedback: Type.String() }), { maxItems: 1 }),
         confidence: Type.Number(),
         summary: Type.String(),
       }),
       maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
+      imageRefineEnabled: workflow.image_refine,
       signal,
     });
     if (!validation.ok) throw new Error(`Validation failed for ${task.task_id}: ${validation.error || "unknown error"}`);
@@ -182,25 +185,13 @@ export function createResearchTaskExecutor(
       rolePrompt: interpretPrompt,
       agentConfig: pickAgentConfig(config, "seekbrain_interpret"),
       finalizeSchema: Type.Object({
-        image_analysis: Type.Object({
-          figure_type: Type.String(),
-          observations: Type.Array(Type.String()),
-          quantitative_evidence: Type.Array(Type.String()),
-          biological_interpretation: Type.Array(Type.String()),
-          alternative_explanations: Type.Array(Type.String()),
-          limitations: Type.Array(Type.String()),
-        }),
         conclusions: Type.Array(Type.String()),
         summary: Type.String(),
         limitations: Type.Array(Type.String()),
-        confidence: Type.Number(),
         next_research_directions: Type.Array(Type.Object({
           title: Type.String(),
           research_question: Type.String(),
-          rationale: Type.String(),
-          reuses: Type.Array(Type.String()),
-          expected_output: Type.String(),
-        }), { minItems: 1, maxItems: 3 }),
+        })),
       }),
       signal,
     });

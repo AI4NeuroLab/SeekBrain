@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -47,7 +47,7 @@ describe("Phase 4 lifecycle workflows", () => {
         metadata: { data_info: "locked metadata", user_background: "user-supplied scientific context" },
       });
       await workflow.updateResearchRoundManifest(first.run, { status: "concluded" });
-      expect(await workflow.reportAvailability(first.run)).toMatchObject({ available: false, completed_round_count: 1 });
+      expect(await workflow.reportAvailability(first.run)).toMatchObject({ available: false, completed_round_count: 0 });
       const second = await workflow.continueResearch(cwd, first.projectDir, "round two");
       expect(second.roundNumber).toBe(2);
       expect(second.run.state).toMatchObject({
@@ -57,10 +57,35 @@ describe("Phase 4 lifecycle workflows", () => {
         question: "round two",
       });
       await workflow.updateResearchRoundManifest(second.run, { status: "concluded" });
-      expect(await workflow.reportAvailability(second.run)).toMatchObject({ available: true, completed_round_count: 2 });
+      expect(await workflow.reportAvailability(second.run)).toMatchObject({ available: false, completed_round_count: 0 });
     } finally {
       if (previous === undefined) delete process.env.SEEKBRAIN_NON_INTERACTIVE;
       else process.env.SEEKBRAIN_NON_INTERACTIVE = previous;
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("inherits a canonical metadata path without duplicating its content in state or project manifests", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-metadata-reference-"));
+    try {
+      const workflow = new RunLifecycleWorkflow(new FileRunRepository());
+      const metadataPath = join(cwd, "metadata.json");
+      await writeFile(metadataPath, JSON.stringify({ root_dir: "/data", description: "canonical metadata" }));
+      const first = await workflow.startResearch({
+        cwd,
+        projectPath: "project",
+        question: "round one",
+        metadata: { metadata_json_path: metadataPath, data_info: "must not be persisted" },
+      });
+      expect(first.run.state.metadata_json_path).toBe(metadataPath);
+      expect(first.run.state.data_info).toBeUndefined();
+      const manifest = JSON.parse(await readFile(join(first.projectDir, "project.json"), "utf8"));
+      expect(manifest.metadata.metadata_json_path).toBe(metadataPath);
+      expect(manifest.metadata.data_info).toBeUndefined();
+      const second = await workflow.continueResearch(cwd, first.projectDir, "round two");
+      expect(second.run.state.metadata_json_path).toBe(metadataPath);
+      expect(second.run.state.data_info).toBeUndefined();
+    } finally {
       await rm(cwd, { recursive: true, force: true });
     }
   });
@@ -106,11 +131,11 @@ describe("Phase 4 lifecycle workflows", () => {
     expect(capabilities).toMatchObject({
       ok: true,
       continuation_tool: "seekbrain_research_continue",
-      optional: { deep_research: "disabled_no_literature_provider", image_refine: "enabled" },
+      optional: { deep_research: "disabled_no_literature_provider", image_refine: "disabled_by_user_config" },
       literature: { provider: "none", available: false },
     });
     expect(workflowConfigResult(DEFAULT_SEEKBRAIN_CONFIG)).toMatchObject({
-      optional: { research_planning: "enabled", research_survey: "disabled_no_literature_provider", deep_research: "disabled_no_literature_provider", targeted_skill: "enabled" },
+      optional: { research_planning: "enabled", research_planning_peer_review: "disabled_by_user_config", research_survey: "disabled_no_literature_provider", deep_research: "disabled_no_literature_provider", targeted_skill: "enabled" },
       human_review: { enabled: true, gates: { plan: true } },
     });
   });

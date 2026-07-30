@@ -1,0 +1,31 @@
+{
+  "tag": "ns_ana-zebrafish-swc-nblast-morphological_metric",
+  "yaml_metadata": {
+    "name": "ns_ana-zebrafish-swc-nblast-morphological_metric",
+    "description": "Classifies cerebellar efferent neurons from registered SWC morphologies using NBLAST similarity and hierarchical clustering.",
+    "triggers": [
+      "How to reproduce For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+      "Generate For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a from zebrafish data",
+      "Analyze data for For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+      "Reproduce figure For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+      "Run analysis for For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a"
+    ],
+    "tags": [
+      "analysis",
+      "zebrafish",
+      "neuroscience",
+      "reproduction"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": [
+    "references/matched_files/commands_MakeSymmetricStandardBrain.R",
+    "references/matched_files/commands_avgcmdIterationPadOut.sh",
+    "references/matched_files/commands_makeAverageBrain-sync.sh",
+    "references/matched_files/commands_symmetricOutput.sh",
+    "references/matched_files/commands_warpcmdIteration.sh"
+  ]
+}

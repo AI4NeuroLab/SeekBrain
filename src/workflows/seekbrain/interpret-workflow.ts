@@ -1,25 +1,21 @@
-import { basename, extname, join } from "node:path";
-import { ArtifactService, type Artifact } from "../../core/index.ts";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { ArtifactService } from "../../core/index.ts";
 import type { StageAgentResult } from "./research-skill-workflow.ts";
 import type { RunLifecycleWorkflow, WorkflowJson, WorkflowRunContext } from "./run-lifecycle.ts";
-
-const VISION_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 
 export interface InterpretWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
   currentArtifactsValidated(state: WorkflowJson): boolean;
   nextStep(validation: WorkflowJson, runId: string, figurePath: string): WorkflowJson;
-  loadImages(paths: string[]): Promise<{ images: WorkflowJson[]; warnings: string[] }>;
   runAgent(input: {
     runDir: string;
     prompt: string;
     agentConfig: WorkflowJson;
     finalizeSchema: unknown;
-    images: WorkflowJson[];
     signal?: AbortSignal;
   }): Promise<StageAgentResult>;
   writeJson(path: string, value: WorkflowJson): Promise<void>;
-  writeText(path: string, value: string): Promise<void>;
   snapshot(run: WorkflowRunContext, label: string): Promise<unknown>;
   appendEvent(event: WorkflowJson): Promise<void>;
   publishTaskEvent?(event: {
@@ -33,7 +29,6 @@ export interface InterpretWorkflowDependencies {
 export interface InterpretWorkflowInput {
   cwd: string;
   runId: string;
-  additionalContext?: string;
   rolePrompt: string;
   agentConfig: WorkflowJson;
   finalizeSchema: unknown;
@@ -46,44 +41,30 @@ function resolveQuestion(run: WorkflowRunContext): string {
   return value;
 }
 
-function additionalContextBlock(value?: string): string {
-  const text = String(value || "").trim();
-  return text ? `Additional context from the main agent:\n${text}` : "";
+function compactArrays(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    if (value.length > 12) return { count: value.length, sample: value.slice(0, 5).map(compactArrays) };
+    return value.map(compactArrays);
+  }
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, compactArrays(child)]));
+  return value;
 }
 
-function visionFigures(run: WorkflowRunContext, service: ArtifactService): Artifact[] {
-  return service.normalizeMany(run.state.artifacts || [])
-    .filter((artifact) => artifact.kind === "figure" && VISION_IMAGE_EXTENSIONS.has(extname(artifact.path).toLowerCase()));
+async function readStatistics(run: WorkflowRunContext): Promise<unknown> {
+  const inline = run.state.code?.statistics;
+  if (inline && typeof inline === "object") return inline;
+  const path = String(run.state.code?.statistics_path || join(run.runDir, "statistics.json"));
+  try { return JSON.parse(await readFile(path, "utf8")); } catch { return {}; }
 }
 
-function selectMainFigure(figures: Artifact[]): Artifact | undefined {
-  return figures.find((artifact) => artifact.role === "main")
-    || figures.find((artifact) => basename(artifact.path).toLowerCase() === "figure.png")
-    || (figures.length === 1 ? figures[0] : undefined);
-}
-
-function codePathsForFigure(run: WorkflowRunContext, service: ArtifactService, figure: Artifact): string[] {
-  if (figure.produced_by) return [service.paths.resolve(figure.produced_by)];
-  return service.normalizeMany(run.state.artifacts || [])
+function codeFilePaths(run: WorkflowRunContext, artifacts: ArtifactService): string[] {
+  const declared: string[] = Array.isArray(run.state.code?.code_files)
+    ? run.state.code.code_files.map((entry: WorkflowJson) => String(entry?.path || "")).filter(Boolean)
+    : [];
+  const fallback: string[] = artifacts.normalizeMany(run.state.artifacts || [])
     .filter((artifact) => artifact.kind === "code")
-    .map((artifact) => artifact.path);
-}
-
-function imageAnalysisMarkdown(analysis: WorkflowJson): string {
-  const section = (title: string, values: unknown) => {
-    const items = Array.isArray(values) ? values.map(String).filter(Boolean) : [];
-    return [`## ${title}`, "", ...(items.length ? items.map((item) => `- ${item}`) : ["_None recorded._"])].join("\n");
-  };
-  return [
-    "# Figure analysis",
-    "",
-    analysis.figure_type ? `**Figure type:** ${analysis.figure_type}` : "",
-    section("Observations", analysis.observations),
-    section("Quantitative evidence", analysis.quantitative_evidence),
-    section("Biological interpretation", analysis.biological_interpretation),
-    section("Alternative explanations", analysis.alternative_explanations),
-    section("Figure-level limitations", analysis.limitations),
-  ].filter(Boolean).join("\n\n") + "\n";
+    .map((artifact) => String(artifact.path));
+  return [...new Set((declared.length ? declared : fallback).map((path: string) => artifacts.paths.resolve(path)))];
 }
 
 function finalizationPrompt(rolePrompt: string, body: string): string {
@@ -91,8 +72,7 @@ function finalizationPrompt(rolePrompt: string, body: string): string {
     rolePrompt.trim(),
     "",
     "You are the isolated SeekBrain Interpretation Agent.",
-    "Return only by calling the finalize tool. Do not expose scratch reasoning.",
-    "Required final tool: finalize_interpretation",
+    "Return only by calling finalize_interpretation. Do not expose scratch reasoning.",
     "",
     body,
   ].join("\n");
@@ -103,11 +83,7 @@ export class InterpretWorkflow {
 
   async execute(input: InterpretWorkflowInput): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
-    const service = new ArtifactService(run.runDir);
-    const figures = visionFigures(run, service);
-    const figure = selectMainFigure(figures);
     let reportAvailability: WorkflowJson = { available: false, completed_round_count: 0 };
-
     if (!this.dependencies.currentArtifactsValidated(run.state)) {
       return {
         ok: false,
@@ -123,45 +99,29 @@ export class InterpretWorkflow {
         run_id: run.runId,
         blocked_by_validation_policy: true,
         error: "Blocking validation issues must be repaired before interpretation.",
-        next_step: this.dependencies.nextStep(run.state.validation, run.runId, figure?.path || ""),
-      };
-    }
-    if (input.agentConfig.vision !== true) {
-      return { ok: false, run_id: run.runId, error: "configuration issue: seekbrain_interpretation_run requires vision=true. Report this to the user; do not edit seekbrain.config.yaml unless explicitly asked." };
-    }
-    if (!figure) {
-      return {
-        ok: false,
-        run_id: run.runId,
-        error: figures.length > 1
-          ? "seekbrain_interpretation_run found multiple figures but no canonical role=main or figure.png artifact"
-          : "seekbrain_interpretation_run requires one canonical vision figure artifact",
-        figure_paths: figures.map((artifact) => artifact.path),
+        next_step: this.dependencies.nextStep(run.state.validation, run.runId, ""),
       };
     }
 
-    const vision = await this.dependencies.loadImages([figure.path]);
-    if (!vision.images.length) return { ok: false, run_id: run.runId, error: "failed to load the canonical interpretation figure", figure_path: figure.path, warnings: vision.warnings };
-
-    const question = resolveQuestion(run);
-    const codePaths = codePathsForFigure(run, service, figure);
-    const dataArtifacts = service.normalizeMany(run.state.artifacts || []).filter((artifact) => artifact.kind === "data");
-    const ignoredFigures = figures.filter((artifact) => artifact.path !== figure.path).map((artifact) => artifact.path);
-    const checks = run.state.checks || {};
+    const validation = run.state.validation || {};
+    const planPath = String(run.state.plan?.path || join(run.runDir, "plan.md"));
+    const codePaths = codeFilePaths(run, new ArtifactService(run.runDir));
+    const statistics = compactArrays(await readStatistics(run));
+    const codeWarnings = Array.isArray(run.state.code?.warnings) ? run.state.code.warnings.map(String).filter(Boolean) : [];
     const prompt = finalizationPrompt(input.rolePrompt, [
-      `Question:\n${question}`,
-      `Canonical figure:\n${JSON.stringify({ path: figure.path, role: figure.role, description: figure.description, produced_by: figure.produced_by }, null, 2)}`,
-      `Methodological schema:\n${run.state.plan?.plan_markdown || ""}`,
-      `Statistics:\n${JSON.stringify(run.state.code?.statistics || {}, null, 2)}`,
-      `Validation:\n${JSON.stringify(run.state.validation || {}, null, 2)}`,
-      `Deterministic checks:\n${JSON.stringify(checks, null, 2)}`,
-      `Deep research context:\n${run.state.deep_research_context || ""}`,
-      `Execution log:\n${run.state.code?.exec_log || ""}`,
-      `Producing code paths (read only if useful):\n${codePaths.length ? codePaths.map((path) => `- ${path}`).join("\n") : "(none recorded)"}`,
-      `Data artifacts:\n${dataArtifacts.length ? dataArtifacts.map((artifact) => `- ${artifact.path}${artifact.description ? ` — ${artifact.description}` : ""}`).join("\n") : "(none recorded)"}`,
-      ignoredFigures.length ? `Non-canonical image artifacts intentionally ignored by this single-figure workflow:\n${ignoredFigures.map((path) => `- ${path}`).join("\n")}` : "",
-      additionalContextBlock(input.additionalContext),
-      "First complete image_analysis from the supplied figure and evidence. Then derive conclusions, summary, limitations, confidence, and next_research_directions from that analysis plus the supplied statistics and validation. Do not repeat the same prose in image_analysis and conclusions. Finalize only after both parts are complete.",
+      `Question:\n${resolveQuestion(run)}`,
+      `Approved plan path:\n${planPath}`,
+      `Generated code paths:\n${codePaths.length ? codePaths.join("\n") : "None recorded."}`,
+      `Essential statistics:\n${JSON.stringify(statistics, null, 2)}`,
+      `Validated visual evidence:\n${JSON.stringify({
+        summary: validation.summary || "",
+        figure_observations: validation.figure_observations || [],
+        methodological_caveats: validation.methodological_caveats || [],
+        blocking_issues: validation.blocking_issues || [],
+      }, null, 2)}`,
+      codeWarnings.length ? `Code execution limitations:\n${JSON.stringify(codeWarnings, null, 2)}` : "",
+      run.state.deep_research_context ? `Scientific background:\n${run.state.deep_research_context}` : "",
+      "Synthesize the scientific result without re-reviewing image quality, inventing new analyses, or repeating validation caveats. Directions are optional.",
     ].filter(Boolean).join("\n\n"));
 
     const agent = await this.dependencies.runAgent({
@@ -169,132 +129,100 @@ export class InterpretWorkflow {
       prompt,
       agentConfig: input.agentConfig,
       finalizeSchema: input.finalizeSchema,
-      images: vision.images,
       signal: input.signal,
     });
 
-    const interpretationPath = join(run.runDir, "interpretation.json");
-    const imageAnalysisPath = join(run.runDir, "image_analysis.md");
     const conclusionsPath = join(run.runDir, "conclusions.json");
     if (agent.ok && agent.result) {
-      const validationCaveats = Array.isArray(run.state.validation?.methodological_caveats)
-        ? run.state.validation.methodological_caveats.map(String).filter(Boolean)
+      const validationCaveats = Array.isArray(validation.methodological_caveats) ? validation.methodological_caveats.map(String).filter(Boolean) : [];
+      const unresolvedBlocking = validation.route === "conclude_with_limitations" && Array.isArray(validation.blocking_issues)
+        ? validation.blocking_issues.map((issue: unknown) => `Unresolved validation issue: ${String(issue)}`)
         : [];
-      const unresolvedBlocking = run.state.validation?.route === "conclude_with_limitations" && Array.isArray(run.state.validation?.blocking_issues)
-        ? run.state.validation.blocking_issues.map((issue: unknown) => `Unresolved validation issue: ${String(issue)}`)
-        : [];
-      const dummySignals = Array.isArray(checks.dummy_data_signals) ? checks.dummy_data_signals.map(String) : [];
-      const dataWarnings = dummySignals.length ? [`Dummy/synthetic data signals were detected: ${dummySignals.join(", ")}`] : [];
-      agent.result.limitations = [...new Set([
+      const dummySignals = Array.isArray(run.state.checks?.dummy_data_signals) ? run.state.checks.dummy_data_signals.map(String) : [];
+      const limitations = [...new Set([
         ...(Array.isArray(agent.result.limitations) ? agent.result.limitations.map(String) : []),
         ...validationCaveats,
         ...unresolvedBlocking,
-        ...dataWarnings,
+        ...codeWarnings,
+        ...(dummySignals.length ? [`Possible real-input substitution signals require caution: ${dummySignals.join(", ")}`] : []),
       ])];
-      const imageAnalysis = agent.result.image_analysis || {};
+      const completedAt = new Date().toISOString();
       const conclusion = {
-        conclusions: agent.result.conclusions || [],
-        summary: agent.result.summary || "",
-        limitations: agent.result.limitations,
-        confidence: agent.result.confidence,
-        next_research_directions: agent.result.next_research_directions || [],
+        conclusions: Array.isArray(agent.result.conclusions) ? agent.result.conclusions : [],
+        summary: String(agent.result.summary || ""),
+        limitations,
+        next_research_directions: Array.isArray(agent.result.next_research_directions) ? agent.result.next_research_directions : [],
+        completed_at: completedAt,
       };
-      const compatibilityAnalysis = {
-        path: figure.path,
-        image_analysis_text: imageAnalysisMarkdown(imageAnalysis),
-        ...imageAnalysis,
-      };
-      await this.dependencies.writeJson(interpretationPath, agent.result);
-      await this.dependencies.writeText(imageAnalysisPath, compatibilityAnalysis.image_analysis_text);
       await this.dependencies.writeJson(conclusionsPath, conclusion);
+      const compactReference = { path: conclusionsPath, summary: conclusion.summary, status: "complete", completed_at: completedAt };
       await this.dependencies.lifecycle.updateState(run, {
-        interpretation: agent.result,
-        image_analysis: compatibilityAnalysis,
-        image_analyses: [compatibilityAnalysis],
-        conclusions: conclusion,
+        interpretation: compactReference,
+        conclusions: compactReference,
         conclusion_warnings: { dummy_data_limited: dummySignals.length > 0, dummy_data_signals: dummySignals },
       });
       if (run.state.parent_run_id && run.state.research_task_id) {
+        const payload = {
+          child_run_id: run.runId,
+          completed_at: completedAt,
+          interpretation_path: conclusionsPath,
+          conclusions_path: conclusionsPath,
+          summary: conclusion.summary,
+        };
         const publishedToScheduler = await this.dependencies.publishTaskEvent?.({
-            cwd: input.cwd,
-            parentRunId: String(run.state.parent_run_id),
-            taskId: String(run.state.research_task_id),
-            payload: {
-              child_run_id: run.runId,
-              completed_at: new Date().toISOString(),
-              interpretation_path: interpretationPath,
-              conclusions_path: conclusionsPath,
-              summary: conclusion.summary,
-            },
-          }) === true;
+          cwd: input.cwd,
+          parentRunId: String(run.state.parent_run_id),
+          taskId: String(run.state.research_task_id),
+          payload,
+        }) === true;
         if (!publishedToScheduler) {
           try {
             const parent = await this.dependencies.lifecycle.resolveRun(input.cwd, String(run.state.parent_run_id));
             const planning = parent.state.research_planning || {};
             const taskRuns = Array.isArray(planning.task_runs) ? planning.task_runs : [];
             const updatedTaskRuns = taskRuns.map((item: WorkflowJson) => item.run_id === run.runId
-              ? {
-                  ...item,
-                  status: "complete",
-                  completed_at: new Date().toISOString(),
-                  interpretation_path: interpretationPath,
-                  conclusions_path: conclusionsPath,
-                  summary: conclusion.summary,
-                }
+              ? { ...item, status: "complete", ...payload }
               : item);
             const allComplete = updatedTaskRuns.length > 0 && updatedTaskRuns.every((item: WorkflowJson) => item.status === "complete");
             await this.dependencies.lifecycle.updateState(parent, {
-              research_planning: {
-                ...planning,
-                status: allComplete ? "tasks_complete" : "tasks_running",
-                task_runs: updatedTaskRuns,
-              },
+              research_planning: { ...planning, status: allComplete ? "tasks_complete" : "tasks_running", task_runs: updatedTaskRuns },
             });
             if (planning.task_manifest_path) {
               await this.dependencies.writeJson(String(planning.task_manifest_path), {
                 parent_run_id: parent.runId,
-                research_plan_path: planning.final_plan_path,
-                updated_at: new Date().toISOString(),
+                research_plan_path: planning.research_plan_path,
+                updated_at: completedAt,
                 task_runs: updatedTaskRuns,
               });
             }
-          } catch {
-            // Child conclusions remain durable even if legacy parent mirroring fails.
-          }
+          } catch { /* conclusions remain durable */ }
         }
       }
       await this.dependencies.lifecycle.updateResearchRoundManifest(run, {
         status: "concluded",
-        completed_at: new Date().toISOString(),
-        interpretation_path: interpretationPath,
+        completed_at: completedAt,
+        interpretation_path: conclusionsPath,
         conclusions_path: conclusionsPath,
         summary: conclusion.summary,
         next_research_directions: conclusion.next_research_directions,
       });
       reportAvailability = await this.dependencies.lifecycle.reportAvailability(run);
       await this.dependencies.snapshot(run, "after_interpret");
+      agent.result = conclusion;
     }
-    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_interpretation_run", ok: agent.ok, figure_path: figure.path });
+    await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_interpretation_run", ok: agent.ok });
     return {
       run_id: run.runId,
       ok: agent.ok,
       error: agent.error,
-      result: agent.result ? {
-        image_analysis: agent.result.image_analysis,
-        conclusions: agent.result.conclusions,
-        summary: agent.result.summary,
-        limitations: agent.result.limitations,
-        confidence: agent.result.confidence,
-      } : undefined,
-      interpretation_path: agent.ok ? interpretationPath : undefined,
-      image_analysis_path: agent.ok ? imageAnalysisPath : undefined,
+      result: agent.result ? { conclusions: agent.result.conclusions, summary: agent.result.summary, limitations: agent.result.limitations } : undefined,
+      interpretation_path: agent.ok ? conclusionsPath : undefined,
       conclusions_path: agent.ok ? conclusionsPath : undefined,
       next_research_directions: agent.ok ? agent.result?.next_research_directions : undefined,
       report_available: agent.ok ? reportAvailability.available : false,
       completed_round_count: agent.ok ? reportAvailability.completed_round_count : undefined,
       report_hint: agent.ok ? reportAvailability.hint : undefined,
-      ignored_figure_paths: ignoredFigures,
-      guidance: agent.ok ? "Summarize the interpretation and next research directions for the user. Do not create another round until the user accepts a direction or supplies their own." : undefined,
+      guidance: agent.ok ? "Summarize the conclusions for the user. Start no new round until the user accepts or supplies a direction." : undefined,
       output_path: agent.output_path,
       debug: { subagent_dir: agent.subagent_dir, snapshot_dir: agent.snapshot_dir },
     };

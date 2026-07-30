@@ -53,6 +53,9 @@ try {
   });
   const firstState = JSON.parse(await readFile(join(first.details.run_dir, "state.json"), "utf8"));
   assert.equal(firstState.user_background, "user-supplied scientific context");
+  assert.equal(firstState.data_info, undefined);
+  assert.equal(firstState.metadata_json_path, join(cwd, "project", "metadata.json"));
+  assert.equal(JSON.parse(await readFile(firstState.metadata_json_path, "utf8")).description, "locked metadata");
 
   const resumed = await byName.seekbrain_run_resume.execute("resume", {
     work_dir: join(cwd, "project", "round1"),
@@ -69,6 +72,8 @@ try {
   assert.equal(second.details.round_number, 2);
   const secondState = JSON.parse(await readFile(join(second.details.run_dir, "state.json"), "utf8"));
   assert.equal(secondState.user_background, "user-supplied scientific context");
+  assert.equal(secondState.data_info, undefined);
+  assert.equal(secondState.metadata_json_path, firstState.metadata_json_path);
   assert.equal(typeof second.details.workflow_config.human_review.enabled, "boolean");
 
   const ping = await byName.seekbrain_system_check.execute("ping", {}, undefined, undefined, ctx);

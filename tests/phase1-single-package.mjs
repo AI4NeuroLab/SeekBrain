@@ -7,6 +7,7 @@ const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"
 assert.equal(manifest.private, undefined, "the root package must be publishable");
 assert.equal(manifest.workspaces, undefined, "the release must not depend on npm workspaces");
 assert.equal(manifest.bin?.seekbrain, "./bin/seekbrain.mjs");
+assert.equal(manifest.bin?.["seekbrain-pdf"], "./bin/seekbrain-pdf.mjs");
 assert.deepEqual(manifest.pi?.extensions, ["./src/extension/index.ts"]);
 
 for (const path of ["bin", "src", "prompts", "config", "README.md", "LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]) {
@@ -19,6 +20,8 @@ for (const dependency of [
   "typebox",
   "yaml",
   "diff",
+  "marked",
+  "pdfkit",
 ]) {
   assert.ok(manifest.dependencies[dependency], `${dependency} must be an explicit runtime dependency`);
 }

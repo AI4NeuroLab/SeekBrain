@@ -1,0 +1,27 @@
+{
+  "tag": "ns_ana-mouse-omics-gam-expression_profile",
+  "yaml_metadata": {
+    "name": "ns_ana-mouse-omics-gam-expression_profile",
+    "description": "Analyzes and visualizes gene expression trends across developmental time points in neural lineages, classifying markers into Up, Transient, Down, or Constant trajectory patterns.",
+    "triggers": [
+      "How do I plot developmental trajectories for marker genes in mouse visual cortex?",
+      "Categorize gene expression into up-regulated or transient trends during development",
+      "Visualize lineage-specific gene dynamics using smoothed trajectory modeling",
+      "Script to classify scRNA-seq markers as constant or transient over time",
+      "Generate temporal expression heatmaps for excitatory and inhibitory cell lineages"
+    ],
+    "tags": [
+      "scRNA-seq",
+      "trajectory-analysis",
+      "developmental-biology",
+      "gene-expression",
+      "temporal-dynamics",
+      "bioinformatics"
+    ]
+  },
+  "scripts": [
+    "scripts/run_analysis.py",
+    "scripts/utils.py"
+  ],
+  "references": []
+}

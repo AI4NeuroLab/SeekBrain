@@ -63,13 +63,36 @@ function _skillOverview(targeted: string): string {
   return "";
 }
 
+function _repositoryName(reference: Json): string {
+  const url = String(reference?.repository_url || "").replace(/\/$/, "");
+  if (url) return url.replace(/^https?:\/\/(?:www\.)?github\.com\//i, "");
+  return String(reference?.repository_key || "").replace(/^github\.com\//i, "") || "repository";
+}
+
 function skillCardMarkdown(state: Json): string {
-  const targeted = String(state.targeted_skill || "");
-  const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
-  const label = source === "generated_from_rag" ? "crystallized from literature and code" : source === "existing_skill" ? "retrieved from the Neuroscience Analysis Repertoire" : "no match";
+  const result = state.targeted_skill_result || {};
+  const targeted = String(result.summary || state.targeted_skill || "");
+  const source = String(result.source || (state.targeted_skill_path || targeted ? "existing_skill" : "none"));
+  const label = source === "repository_reference" ? "repository method found"
+    : source === "validated_repository_recipe" ? "validated repository recipe reused"
+      : source === "generated_from_rag" || source === "crystallized" ? "crystallized from literature and code"
+        : source === "existing_skill" || source === "repertoire" ? "retrieved from the Neuroscience Analysis Repertoire"
+          : "no match";
   const lines = [`## 🧩 Analysis Recipe — ${label}`];
   if (!targeted.trim() || source === "none") {
     lines.push("", "_No matching analysis recipe was found for this question._");
+    return lines.join("\n");
+  }
+  const repository = result.repository_reference || {};
+  if (source === "repository_reference" || source === "validated_repository_recipe") {
+    const name = _repositoryName(repository);
+    const url = String(repository.repository_url || "");
+    lines.push("", `- **Repository:** ${url ? `[${name}](${url})` : name}`);
+    const files = Array.isArray(repository.reference_files) ? repository.reference_files : Array.isArray(result.reference_paths) ? result.reference_paths : [];
+    if (files.length) lines.push(`- **Implementation reference:** ${files.slice(0, 2).map((path: unknown) => String(path).split(/[\\/]/).pop()).join(", ")}`);
+    if (source === "repository_reference") lines.push("", "_Repository code is ready as implementation evidence; validated reusable scripts will be created only after successful execution and validation._");
+    else lines.push("", "_Previously validated repository scripts are being reused directly._");
+    lines.push("", "→ `/seekbrain-show recipe` for the full repository-backed method guidance");
     return lines.join("\n");
   }
   for (const s of _parseSkillHeaders(targeted).slice(0, 4)) {
