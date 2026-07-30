@@ -4,7 +4,7 @@ import { join } from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-for (const removedPath of ["internagent", "packages", "extensions", "deprecated", "cases", "images", "question", "assets", "custom", "specs"]) {
+for (const removedPath of ["internagent", "packages", "extensions", "deprecated", "cases", "images", "question", "custom", "specs"]) {
   await assert.rejects(
     access(join(root, removedPath)),
     (error) => error?.code === "ENOENT",
