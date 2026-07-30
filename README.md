@@ -1,8 +1,12 @@
-# SeekBrain
+# SeekBrain: A domain-specialized multi-agent framework for neuroscience discovery
 
-[![Built on pi](https://img.shields.io/badge/Built_on-pi-24292f?style=flat-square)](https://github.com/earendil-works/pi)
+[![Project Website](https://img.shields.io/badge/Project-Website-7F56D9?style=flat-square&logo=githubpages&logoColor=white)](https://ai4neurolab.github.io/SeekBrain-page/)
+[![Paper](https://img.shields.io/badge/Paper-Coming_Soon-B31B1B?style=flat-square&logo=arxiv&logoColor=white)](#paper)
+[![npm version](https://img.shields.io/npm/v/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
+[![npm downloads](https://img.shields.io/npm/dm/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
+[![Built on Pi](https://img.shields.io/badge/Built_on-Pi-24292f?style=flat-square)](https://github.com/earendil-works/pi)
 ![Node.js >=22.19](https://img.shields.io/badge/Node.js-%3E%3D22.19-339933?style=flat-square&logo=nodedotjs&logoColor=white)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-175CD3?style=flat-square)](LICENSE)
 
 SeekBrain is an open-source, domain-specialized multi-agent framework for
 semi-autonomous neuroscience discovery. It transforms broad scientific questions
@@ -11,14 +15,25 @@ executable analysis pipelines, validated figures and statistics, and
 evidence-grounded conclusions—while keeping researchers in the loop.
 
 <p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#highlights">Highlights</a> ·
+  <a href="#paper">Paper</a>
+</p>
+
+<p align="center">
   <img src="./demo.gif" alt="SeekBrain terminal demo" width="100%" />
 </p>
 
-## News
+<a id="news"></a>
+
+## 📣 News
 
 - **2026-07-17** — SeekBrain was released at the WAIC 2026 Science Frontiers Forum.
 
-## Get started
+<a id="get-started"></a>
+
+## 🚀 Get started
 
 > [!NOTE]
 > SeekBrain requires Node.js 22.19 or newer and a supported model-provider API
@@ -43,7 +58,9 @@ setup. To see all commands and options, run:
 seekbrain --help
 ```
 
-## How it works
+<a id="how-it-works"></a>
+
+## ⚙️ How it works
 
 SeekBrain adapts its workflow to the scientific question and data you provide.
 
@@ -182,7 +199,9 @@ report:
 /seekbrain-report
 ```
 
-## Highlights
+<a id="highlights"></a>
+
+## ✨ Highlights
 
 ### A neuroscience-specific analytical repertoire
 
@@ -249,7 +268,9 @@ with a title, abstract, introduction, results with cited figures, discussion,
 conclusion, and limitations. Conclusions remain traceable to their supporting
 task rounds and generated artifacts.
 
-## Paper
+<a id="paper"></a>
+
+## 📚 Paper
 
 **SeekBrain: An Autonomous Multi-Agent Framework for Accelerating Neuroscience Discovery**
 
@@ -313,7 +334,7 @@ Together, these studies show that SeekBrain can perform cross-modal analyses,
 test data-grounded hypotheses, and help researchers explore existing datasets in
 new ways.
 
-## Acknowledgements
+## 🤝 Acknowledgements
 
 SeekBrain is built on [Pi](https://github.com/earendil-works/pi), whose agent
 runtime and terminal interface provide the foundation for its interactive
@@ -332,6 +353,6 @@ We also acknowledge the neuroscience researchers and open-data initiatives whose
 public datasets, publications, and code repositories make reproducible,
 data-driven discovery possible.
 
-## License
+## 📜 License
 
 SeekBrain is released under the [MIT License](LICENSE).
