@@ -50,13 +50,20 @@ try {
   const installedExample = join(installedPackage, "examples", "zebrafish-sc-network-modules");
   await access(join(installedPackage, "assets", "readme", "zebrafish-sc-modules-original.png"));
   await access(join(installedPackage, "assets", "readme", "zebrafish-sc-modules-seekbrain.png"));
+  await access(join(installedPackage, "assets", "readme", "zebrafish-sc-atlas-original.png"));
+  await access(join(installedPackage, "assets", "readme", "zebrafish-sc-atlas-seekbrain.png"));
   assert.match(await readFile(join(installedRecipes, "INDEX.md"), "utf8"), /Analysis Recipe Index/);
   assert.equal(await countSkillDocuments(installedRecipes), 68);
   const exampleRecipe = join(installedRecipes, "Single-modality", "Dynamics Modality", "ns_ana-zebrafish-ca-pearson-fc_matrix");
   await access(join(exampleRecipe, "scripts", "reference_implementation.py"));
   assert.match(await readFile(join(installedExample, "question.txt"), "utf8"), /hierarchical consensus algorithm/);
+  assert.match(await readFile(join(installedExample, "question-atlas-overlay.txt"), "utf8"), /top and side views/);
   await access(join(installedExample, "dataset", "Files", "SC_matrix_directed_terminals_expanded.npy"));
+  await access(join(installedExample, "dataset", "Files", "SC_matrix_undirected_terminals_expanded.npy"));
   await access(join(installedExample, "dataset", "excluded_regions.npy"));
+  await access(join(installedExample, "dataset", "Atlas", "centroids.pkl"));
+  await access(join(installedExample, "dataset", "Atlas", "XY_H2BGCaMP6s.tif"));
+  await access(join(installedExample, "dataset", "Atlas", "XZ_H2BGCaMP6s.tif"));
   await assert.rejects(access(join(exampleRecipe, "code", "reference_implementation.py")));
   await assert.rejects(access(join(installedPackage, "library")));
 

@@ -10,6 +10,10 @@ and heterogeneous, multimodal brain data into hierarchical research plans,
 executable analysis pipelines, validated figures and statistics, and
 evidence-grounded conclusions—while keeping researchers in the loop.
 
+<p align="center">
+  <img src="./demo.gif" alt="SeekBrain terminal demo" width="100%" />
+</p>
+
 ## News
 
 - **2026-07-17** — SeekBrain was released at the WAIC 2026 Science Frontiers Forum.
@@ -41,13 +45,7 @@ seekbrain --help
 
 ## How it works
 
-SeekBrain adapts its workflow to what you provide.
-
-<p align="center">
-  <img src="assets/readme/workflow.png" alt="SeekBrain workflow" width="100%">
-</p>
-
-<p align="center"><em>Figure 1. SeekBrain couples a Research Planning Engine and an Analysis Execution Engine with a co-evolving Neuroscience Analysis Repertoire and hierarchical evidence reporting.</em></p>
+SeekBrain adapts its workflow to the scientific question and data you provide.
 
 ### Explore a dataset
 
@@ -76,29 +74,29 @@ How does neural activity differ between the experimental conditions?
 Dataset: path/to/dataset
 ```
 
-SeekBrain launches its standard Analysis Execution workflow:
+Each terminal task enters a four-agent Analysis Execution workflow that
+generates and examines empirical results before they are accepted for
+interpretation.
 
-```text
-dataset resolution
-  → recipe-grounded analytical formulation
-  → researcher review
-  → code generation and execution
-  → scientific validation
-  → evidence-grounded interpretation
-```
+1. **Formulate** — Turn an atomic task and its available data into a
+   recipe-grounded methodological schema.
+2. **Code** — Translate the schema into Python, then explore the data, tune
+   parameters, and resolve errors in a sandbox.
+3. **Validate** — Review the methods and outputs, returning targeted feedback
+   until the analysis is scientifically sound.
+4. **Interpret** — Synthesize validated figures and statistics while documenting
+   limitations and uncertainty.
 
-The Formulation Agent converts the question into a reviewable methodological
-schema. The Code Agent translates the approved schema into executable Python
-scripts and produces figures and quantitative statistics. A Validation Agent
-reviews the resulting evidence, and an Interpretation Agent generates a
-scientific conclusion with explicit limitations.
+**Validation criteria:** inquiry alignment, methodological fidelity,
+quantitative integrity, and visual quality.
 
-#### Example: hierarchical zebrafish SC modules
+#### Example 1: hierarchical zebrafish SC modules
 
 SeekBrain includes a compact structural-connectivity dataset from Légaré et al.,
 *Structural and genetic determinants of zebrafish functional brain networks*
-(*Science Advances*, 2025). It contains the original 70 × 70 directed SC matrix
-and the five region indices excluded in the paper's analysis.
+(*Science Advances*, 2025). It contains directed and undirected 70 × 70 SC
+matrices, the five region indices excluded in the paper's analysis, bilateral
+regional centroids, and dorsal and sagittal atlas projections.
 
 Enter the following question and bundled dataset path directly in SeekBrain:
 
@@ -109,8 +107,7 @@ dataset: "$(npm root --global)/seekbrain/examples/zebrafish-sc-network-modules"
 ```
 
 The original panel and a SeekBrain reproduction from the same two input files
-are shown below. Because the Louvain ensemble is stochastic, exact module labels
-can vary slightly between runs while preserving the consensus structure.
+are shown below.
 
 <table>
   <tr>
@@ -120,6 +117,34 @@ can vary slightly between runs while preserving the consensus structure.
     </td>
     <td align="center" width="58%">
       <img src="assets/readme/zebrafish-sc-modules-seekbrain.png" alt="SeekBrain reproduction of the structural-connectivity module analysis" width="100%"><br>
+      <em>SeekBrain reproduction.</em>
+    </td>
+  </tr>
+</table>
+
+#### Example 2: SC network overlay on the zebrafish brain atlas
+
+The same bundled dataset also supports anatomical visualization of the SC
+network. Enter the following question with the same dataset path:
+
+```text
+I want to visualize the Structural Connectivity (SC) network on the zebrafish brain atlas. Overlay the regional centroid network representation onto the top and side views of the brain projection images. Use the SC values stored in SC_matrix_undirected_terminals_expanded.npy to color the edges between regional centroids. Note that the undirected SC matrix is unilateral, a bilateral SC matrix should be created from it. Get the coordinates of left and right-brain regional centroids from the atlas folder, adjusting the y-coordinates of the centroids to match the image orientation. Before visualization, remove those regions listed in the excluded_regions.npy(the regions IDs only in a half brain, also need to double them for bilateral visualization) from the bilateral SC matrix and regional centroids.
+
+dataset: "$(npm root --global)/seekbrain/examples/zebrafish-sc-network-modules"
+```
+
+This analysis expands the unilateral SC matrix into a bilateral representation,
+removes the corresponding regions from both hemispheres, and overlays weighted
+edges between regional centroids on the top and side atlas projections.
+
+<table>
+  <tr>
+    <td align="center" width="36%">
+      <img src="assets/readme/zebrafish-sc-atlas-original.png" alt="Original Figure 2B zebrafish structural-connectivity atlas overlay" width="100%"><br>
+      <em>Original Figure 2B from Légaré et al. (2025).</em>
+    </td>
+    <td align="center" width="64%">
+      <img src="assets/readme/zebrafish-sc-atlas-seekbrain.png" alt="SeekBrain reproduction of the zebrafish structural-connectivity atlas overlay" width="100%"><br>
       <em>SeekBrain reproduction.</em>
     </td>
   </tr>
@@ -142,25 +167,19 @@ brain-network organization, and behavior are related across this dataset.
 Dataset: path/to/dataset
 ```
 
-SeekBrain may also recommend Research Planning automatically when the question
-requires multiple linked hypotheses or analyses. You remain in control of whether
-to use it.
+SeekBrain may also recommend Research Planning when a question requires several
+linked hypotheses or analyses. A **Survey Agent** supplies scientific
+background. The **Orchestrator** decomposes the question, while a **Reviewer**
+challenges and refines the plan until it is concrete and feasible.
 
-The Research Planning Engine conducts a literature-grounded background survey,
-decomposes the objective into dataset-grounded sub-questions and executable
-analysis tasks, and subjects the plan to scientific review. After researcher
-approval, task-level recipes, scientific context, and methodological schemas are
-prepared in parallel. Approved tasks enter independent execution pipelines
-without waiting for the remaining task reviews.
+- **ROOT** — General research query
+- **BRANCHES** — Sub-questions and biological hypotheses
+- **LEAVES** — Atomic analysis tasks
 
-Completed task evidence is synthesized hierarchically:
-
-```text
-task-round evidence
-  → sub-question conclusions
-  → overall scientific conclusion
-  → academic report
-```
+Independent task branches can formulate methods and run in parallel. Their
+validated evidence is aggregated from task rounds to sub-question conclusions
+and then to an overall scientific conclusion, preserving links to the supporting
+statistics, figures, and limitations.
 
 Run the following command to select completed task rounds and generate the final
 report:
@@ -257,6 +276,12 @@ On the expert-annotated BrainArena benchmark, SeekBrain outperformed Claude Code
 and Codex by 11.7% and 17.7%, respectively. The contribution extends beyond
 benchmark performance: two real-world studies demonstrate its ability to support
 both researcher-directed exploration and agent-led hypothesis testing.
+
+<p align="center">
+  <img src="assets/readme/workflow.png" alt="SeekBrain workflow" width="100%">
+</p>
+
+<p align="center"><em>Figure 1. SeekBrain couples a Research Planning Engine and an Analysis Execution Engine with a co-evolving Neuroscience Analysis Repertoire and hierarchical evidence reporting.</em></p>
 
 ### Structured neural representations of zebrafish behavior
 
