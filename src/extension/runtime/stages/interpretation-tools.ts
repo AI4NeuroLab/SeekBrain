@@ -24,7 +24,7 @@ export function createInterpretationTools(deps: InterpretationToolDependencies):
     defineTool({
     name: "seekbrain_interpretation_run",
     label: "Run Interpretation Agent",
-    description: "Synthesize final scientific conclusions from validated visual observations and statistics without loading images again.",
+    description: "Inspect validated scientific figures and synthesize final conclusions from the images, validated observations, and statistics.",
     parameters: Type.Object({
       run_id: Type.String(),
     }),

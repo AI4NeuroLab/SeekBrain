@@ -36,7 +36,7 @@ const EXPECTED_SCHEMA_HASHES = {
   seekbrain_code_edit_review: "9d6437c746b62174cbba9f331861d23fb3da890af038b7f35f51175efd3501fd",
   seekbrain_code_update_propose: "84e67e40b9fad787fc52d8b256eb442bbad0b6e4e82bc9a8275d2be17964ca14",
   seekbrain_code_update_review: "be49a3ea4af1c879f2c9409015f35ec32d5aaa9a5261ec403c60ba74b2df548e",
-  seekbrain_recipe_retrieve: "a44f5fe493988f67a92ce2e201764f50d1bda2bb931378ac552aaa62ad1650ae",
+  seekbrain_recipe_retrieve: "4d221bf065be8f07bba7c30947356ce900725203fd1ed7cf7a8e4f0f53a4b84d",
   seekbrain_deep_research: "220d14e343f883a3f2e780301e47a8ef1a4d81adcaac886cdcb7f4557aac0427",
   seekbrain_formulation_generate: "aa55b48707d44cf0ada7d79c0dbdd7e7e27632b0a18e1e0132b17f4e62738c37",
   seekbrain_code_execute: "182e2e1218489f4a0a33471937c0ff2180c1a177504bccd2d9b278c18c7a96a2",

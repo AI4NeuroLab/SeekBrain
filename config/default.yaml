@@ -9,7 +9,7 @@ literature:
 modules:
   targeted_skill:
     # Minimum model/deterministic relevance score required to accept an existing analysis recipe.
-    relevance_threshold: 0.3
+    relevance_threshold: 0.5
     # Maximum number of existing analysis recipes accepted for one task.
     top_k: 1
     compatibility:
@@ -30,8 +30,8 @@ workflow:
     # This is independent from task/ordinary-run deep_research.
     research_survey: true
     # Run an automatic Reviewer Agent over a generated Research Planning tree.
-    # Disabled by default; the generated tree still goes to researcher review.
-    research_planning_peer_review: false
+    # Enabled by default; users can disable it in their user or project config.
+    research_planning_peer_review: true
     # Used only by approved Research Planning trees; ordinary runs do not initialize it.
     research_execution:
       planning_concurrency: 3
@@ -121,7 +121,7 @@ agents:
   seekbrain_interpret:
     thinking: high
     timeout_seconds: 600
-    vision: false
+    vision: true
   seekbrain_report:
     thinking: low
     timeout_seconds: 900

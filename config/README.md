@@ -66,7 +66,7 @@ literature:
 
 modules:
   targeted_skill:
-    relevance_threshold: 0.3
+    relevance_threshold: 0.5
     top_k: 1
     compatibility:
       candidate_pool_size: 10

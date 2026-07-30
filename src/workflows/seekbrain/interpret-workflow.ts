@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { ArtifactService } from "../../core/index.ts";
+import { extname, join } from "node:path";
+import { ArtifactService, type Artifact } from "../../core/index.ts";
 import type { StageAgentResult } from "./research-skill-workflow.ts";
 import type { RunLifecycleWorkflow, WorkflowJson, WorkflowRunContext } from "./run-lifecycle.ts";
 
@@ -8,11 +9,13 @@ export interface InterpretWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
   currentArtifactsValidated(state: WorkflowJson): boolean;
   nextStep(validation: WorkflowJson, runId: string, figurePath: string): WorkflowJson;
+  loadImages(paths: string[]): Promise<{ images: WorkflowJson[]; warnings: string[] }>;
   runAgent(input: {
     runDir: string;
     prompt: string;
     agentConfig: WorkflowJson;
     finalizeSchema: unknown;
+    images: WorkflowJson[];
     signal?: AbortSignal;
   }): Promise<StageAgentResult>;
   writeJson(path: string, value: WorkflowJson): Promise<void>;
@@ -25,6 +28,8 @@ export interface InterpretWorkflowDependencies {
     payload: WorkflowJson;
   }): Promise<boolean>;
 }
+
+const VISION_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 
 export interface InterpretWorkflowInput {
   cwd: string;
@@ -67,6 +72,15 @@ function codeFilePaths(run: WorkflowRunContext, artifacts: ArtifactService): str
   return [...new Set((declared.length ? declared : fallback).map((path: string) => artifacts.paths.resolve(path)))];
 }
 
+function visionFigures(run: WorkflowRunContext, artifacts: ArtifactService): Artifact[] {
+  const isActualVisionFigure = (artifact: Artifact) => artifact.kind === "figure"
+    && VISION_IMAGE_EXTENSIONS.has(extname(artifact.path).toLowerCase())
+    && existsSync(artifacts.paths.resolve(artifact.path));
+  const indexed = artifacts.normalizeMany(run.state.artifacts || []).filter(isActualVisionFigure);
+  if (indexed.length) return indexed;
+  return artifacts.normalizeMany(run.state.deliverables || []).filter(isActualVisionFigure);
+}
+
 function finalizationPrompt(rolePrompt: string, body: string): string {
   return [
     rolePrompt.trim(),
@@ -105,11 +119,30 @@ export class InterpretWorkflow {
 
     const validation = run.state.validation || {};
     const planPath = String(run.state.plan?.path || join(run.runDir, "plan.md"));
-    const codePaths = codeFilePaths(run, new ArtifactService(run.runDir));
+    const artifacts = new ArtifactService(run.runDir);
+    const codePaths = codeFilePaths(run, artifacts);
+    const figures = visionFigures(run, artifacts);
+    if (input.agentConfig.vision !== true) {
+      return {
+        ok: false,
+        run_id: run.runId,
+        error: "configuration issue: seekbrain_interpretation_run requires vision=true. Use a vision-capable Interpretation model.",
+        figure_paths: figures.map((artifact) => artifact.path),
+      };
+    }
+    if (!figures.length) {
+      return { ok: false, run_id: run.runId, error: "seekbrain_interpretation_run requires at least one validated scientific figure artifact" };
+    }
+    const vision = await this.dependencies.loadImages(figures.map((artifact) => artifact.path));
+    if (!vision.images.length) {
+      return { ok: false, run_id: run.runId, error: "failed to load interpretation images", warnings: vision.warnings };
+    }
+    const figuresText = figures.map((artifact, index) => `(${index + 1}) ${artifact.path}${artifact.role ? ` [${artifact.role}]` : ""}${artifact.description ? ` — ${artifact.description}` : ""}`).join("\n");
     const statistics = compactArrays(await readStatistics(run));
     const codeWarnings = Array.isArray(run.state.code?.warnings) ? run.state.code.warnings.map(String).filter(Boolean) : [];
     const prompt = finalizationPrompt(input.rolePrompt, [
       `Question:\n${resolveQuestion(run)}`,
+      `Scientific figures (${figures.length}):\n${figuresText}`,
       `Approved plan path:\n${planPath}`,
       `Generated code paths:\n${codePaths.length ? codePaths.join("\n") : "None recorded."}`,
       `Essential statistics:\n${JSON.stringify(statistics, null, 2)}`,
@@ -121,7 +154,7 @@ export class InterpretWorkflow {
       }, null, 2)}`,
       codeWarnings.length ? `Code execution limitations:\n${JSON.stringify(codeWarnings, null, 2)}` : "",
       run.state.deep_research_context ? `Scientific background:\n${run.state.deep_research_context}` : "",
-      "Synthesize the scientific result without re-reviewing image quality, inventing new analyses, or repeating validation caveats. Directions are optional.",
+      "Inspect the supplied figures as scientific evidence and synthesize the result without repeating presentation-quality review, inventing new analyses, or duplicating validation caveats. Directions are optional.",
     ].filter(Boolean).join("\n\n"));
 
     const agent = await this.dependencies.runAgent({
@@ -129,6 +162,7 @@ export class InterpretWorkflow {
       prompt,
       agentConfig: input.agentConfig,
       finalizeSchema: input.finalizeSchema,
+      images: vision.images,
       signal: input.signal,
     });
 

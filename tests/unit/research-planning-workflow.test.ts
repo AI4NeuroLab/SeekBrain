@@ -130,7 +130,16 @@ describe("research planning workflow", () => {
             expect(finalizeTool).toBe("finalize_research_plan_review");
             expect(prompt).toContain("[Literature Grounding Background]\nDevelopmental evidence supports modality-specific tests.");
             return { ok: true, result: {
-              verdict: "accept",
+              review_decision: "Weak Accept",
+              total_score: 76,
+              scores: {
+                relevance: 13,
+                completeness: 15,
+                hierarchical_structure: 12,
+                non_redundancy: 12,
+                scientific_value: 11,
+                dataset_feasibility: 13,
+              },
               summary: "The research tree is coherent and feasible.",
               blocking_issues: [],
               non_blocking_suggestions: [],
@@ -242,13 +251,101 @@ describe("research planning workflow", () => {
         orchestratorAgentConfig: {},
         refinementFinalizeSchema: {},
       });
-      expect(reviewed).toMatchObject({ ok: true, verdict: "accept", refined: false, needs_user_review: true });
+      expect(reviewed).toMatchObject({ ok: true, verdict: "accept", review_decision: "Weak Accept", total_score: 76, refined: false, needs_user_review: true });
       expect(reviewerCalls).toBe(1);
       const reviewedState = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
       expect(reviewedState.research_planning.status).toBe("ready_for_user_review");
       expect(reviewedState.research_planning.reviewer_call_count).toBe(1);
       expect(events.map((event) => event.event)).toContain("seekbrain_planning_generate");
       expect(events.map((event) => event.event)).toContain("seekbrain_planning_peer_review");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("maps a Reject score to the existing blocked plan state", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-rejected-plan-"));
+    try {
+      const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
+      const run = await lifecycle.startRun(cwd, "run", undefined, "Can the locked data support this explanation?");
+      const task = (id: string) => ({
+        id,
+        title: "Test the proposed effect",
+        analysis_question: "Is the proposed effect measurable?",
+        biological_hypothesis: "The proposed effect is present.",
+        analysis_strategy: "Estimate the effect with uncertainty.",
+        required_data: ["measurements"],
+        expected_evidence: "A robust effect estimate.",
+        supports_conclusion_if: "The estimate is robust.",
+        contradicts_conclusion_if: "The estimate is absent.",
+      });
+      const plan = {
+        research_goal: "Explain the effect.",
+        planning_rationale: "Test two evidence branches.",
+        subquestions: [1, 2].map((index) => ({
+          id: `SQ${index}`,
+          question: `Does branch ${index} explain the effect?`,
+          hypothesis: `Branch ${index} contributes.`,
+          role_in_overall_conclusion: `Tests branch ${index}.`,
+          dataset_grounding: ["measurements"],
+          tasks: [task(`SQ${index}-T1`)],
+        })),
+        synthesis_strategy: "Compare both branches.",
+      };
+      const researchPlanPath = join(run.runDir, "research_plan", "research_plan.json");
+      await mkdir(dirname(researchPlanPath), { recursive: true });
+      await writeFile(researchPlanPath, JSON.stringify(plan, null, 2));
+      await lifecycle.updateState(run, {
+        data_info: JSON.stringify({ variables: ["measurements"] }),
+        research_planning: { status: "ready_for_peer_review", research_plan_path: researchPlanPath, assessment: {} },
+      });
+      const workflow = new ResearchPlanningWorkflow({
+        lifecycle,
+        runAgent: async () => ({ ok: true, result: {
+          review_decision: "Reject",
+          total_score: 35,
+          scores: {
+            relevance: 6,
+            completeness: 7,
+            hierarchical_structure: 5,
+            non_redundancy: 5,
+            scientific_value: 5,
+            dataset_feasibility: 7,
+          },
+          summary: "The plan must not proceed.",
+          blocking_issues: [],
+          non_blocking_suggestions: [],
+          missing_evidence: [],
+          redundancies: [],
+          unsupported_tasks: [],
+          blocked_reason: "The plan is not supportable in its current form.",
+          recommended_action: "Change the question or locked data.",
+        } }),
+        writeJson: async (path, value) => {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, JSON.stringify(value, null, 2));
+        },
+        appendEvent: async () => {},
+      });
+      const result = await workflow.reviewResearchPlan({
+        cwd,
+        runId: run.runId,
+        reviewerRolePrompt: "review",
+        reviewerAgentConfig: {},
+        reviewerFinalizeSchema: {},
+        orchestratorRolePrompt: "orchestrate",
+        orchestratorAgentConfig: {},
+        refinementFinalizeSchema: {},
+      });
+      expect(result).toMatchObject({
+        ok: true,
+        verdict: "blocked",
+        review_decision: "Reject",
+        total_score: 35,
+        blocked: true,
+      });
+      const state = JSON.parse(await readFile(join(run.runDir, "state.json"), "utf8"));
+      expect(state.research_planning).toMatchObject({ status: "blocked_plan", reviewer_call_count: 1 });
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -304,7 +401,16 @@ describe("research planning workflow", () => {
           if (finalizeTool === "finalize_research_plan_review") {
             reviewerCalls += 1;
             return { ok: true, result: {
-              verdict: "revise",
+              review_decision: "Revise",
+              total_score: 66,
+              scores: {
+                relevance: 12,
+                completeness: 13,
+                hierarchical_structure: 10,
+                non_redundancy: 10,
+                scientific_value: 10,
+                dataset_feasibility: 11,
+              },
               summary: "One task needs a clearer contrast.",
               blocking_issues: [{ target_id: "SQ1-T1", dimension: "hypothesis_testability", issue: "Contrast is unclear", required_change: "Define the null result" }],
               non_blocking_suggestions: [], missing_evidence: [], redundancies: [], unsupported_tasks: [], blocked_reason: "", recommended_action: "",

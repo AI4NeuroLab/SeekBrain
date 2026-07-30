@@ -31,7 +31,7 @@ const runtime = { cwd: work, homeDir: home, packageRoot: PACKAGE_ROOT, env: {} }
 try {
   let captured = capture();
   assert.equal(await main(["config", "get", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
-  assert.match(captured.output().stdout, /relevance_threshold = 0\.3/);
+  assert.match(captured.output().stdout, /relevance_threshold = 0\.5/);
   assert.match(captured.output().stdout, /Source: package default/);
 
   captured = capture();
@@ -78,7 +78,7 @@ try {
   assert.equal(await main(["config", "unset", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
   captured = capture();
   assert.equal(await main(["config", "get", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
-  assert.match(captured.output().stdout, /relevance_threshold = 0\.3/);
+  assert.match(captured.output().stdout, /relevance_threshold = 0\.5/);
   assert.match(captured.output().stdout, /Source: package default/);
 } finally {
   await rm(work, { recursive: true, force: true });

@@ -9,7 +9,7 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
   paths: {},
   modules: {
     targeted_skill: {
-      relevance_threshold: 0.3,
+      relevance_threshold: 0.5,
       top_k: 1,
       compatibility: {
         candidate_pool_size: 10,
@@ -25,7 +25,7 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
     seekbrain: {
       research_planning: true,
       research_survey: true,
-      research_planning_peer_review: false,
+      research_planning_peer_review: true,
       research_execution: {
         planning_concurrency: 3,
         execution_concurrency: 2,

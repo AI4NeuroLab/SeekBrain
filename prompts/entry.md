@@ -402,8 +402,8 @@ are related analysis versions rather than independent experiments.
    - Inputs: `run_id`; optional short `additional_context`. Do not retransmit
      question, methodological schema, statistics, validation, code, or figure paths—the workflow
      loads them from state and artifacts.
-   - Outputs to keep: `interpretation_path`, `image_analysis_path`,
-     `conclusions_path`, result conclusions/summary/limitations/confidence, and
+   - Outputs to keep: `interpretation_path`, `conclusions_path`, result
+     conclusions/summary/limitations/confidence, and
      `next_research_directions`.
    - Use: call once after Validation or a successful presentation-only Figure Refinement.
      It first performs visual analysis of the canonical `role=main`/`figure.png`

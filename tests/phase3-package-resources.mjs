@@ -24,7 +24,7 @@ assert.equal(defaultConfig.workflow.seekbrain.targeted_skill_generate, true);
 assert.equal(defaultConfig.workflow.seekbrain.rag_recipe_crystallization, false);
 assert.equal(defaultConfig.workflow.seekbrain.research_planning, true);
 assert.equal(defaultConfig.workflow.seekbrain.research_survey, true);
-assert.equal(defaultConfig.workflow.seekbrain.research_planning_peer_review, false);
+assert.equal(defaultConfig.workflow.seekbrain.research_planning_peer_review, true);
 assert.equal(defaultConfig.workflow.seekbrain.deep_research, false);
 assert.equal(defaultConfig.workflow.seekbrain.image_refine, false);
 assert.deepEqual(defaultConfig.literature, { providers: {} });
@@ -50,7 +50,7 @@ assert.deepEqual(Object.fromEntries(Object.entries(defaultConfig.agents).map(([n
   seekbrain_refine_image: "off",
   seekbrain_save_skill: "off",
 });
-assert.equal(defaultConfig.agents.seekbrain_interpret.vision, false);
+assert.equal(defaultConfig.agents.seekbrain_interpret.vision, true);
 assert.deepEqual(defaultConfig.modules.targeted_skill.resource_filter, { suffixes: [".md", ".py"], max_files: 5 });
 assert.ok(manifest.files.includes("recipes"));
 

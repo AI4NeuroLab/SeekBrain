@@ -346,6 +346,7 @@ const interpretWorkflow = new InterpretWorkflow({
   lifecycle: runLifecycle,
   currentArtifactsValidated,
   nextStep: validationNextStep,
+  loadImages: loadVisionImages,
   runAgent: async (input) => runSubagent({
     runDir: input.runDir,
     agentName: "seekbrain_interpretation_run",
@@ -354,6 +355,7 @@ const interpretWorkflow = new InterpretWorkflow({
     prompt: input.prompt,
     agentConfig: input.agentConfig,
     tools: ["read"],
+    images: input.images,
     signal: input.signal,
   }),
   writeJson,

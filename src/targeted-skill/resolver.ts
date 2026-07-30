@@ -223,7 +223,7 @@ export class TargetedSkillResolver {
 
     if (matchEnabled) {
       const all = (await Promise.all(directories.map((directory) => candidates(directory, question)))).flat();
-      const threshold = Number(input.relevance_threshold ?? 0.3);
+      const threshold = Number(input.relevance_threshold ?? 0.5);
       const topK = Math.max(1, Number(input.top_k ?? 1));
       let matched: SkillCandidate[] = confidentDeterministicMatch(all, threshold);
       let selectorSucceeded = false;

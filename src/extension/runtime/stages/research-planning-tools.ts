@@ -77,7 +77,21 @@ function researchPlanReviewSchema() {
     required_change: Type.String(),
   });
   return Type.Object({
-    verdict: Type.Union([Type.Literal("accept"), Type.Literal("revise"), Type.Literal("blocked")]),
+    review_decision: Type.Union([
+      Type.Literal("Accept"),
+      Type.Literal("Weak Accept"),
+      Type.Literal("Revise"),
+      Type.Literal("Reject"),
+    ]),
+    total_score: Type.Integer({ minimum: 0, maximum: 100 }),
+    scores: Type.Object({
+      relevance: Type.Integer({ minimum: 0, maximum: 15 }),
+      completeness: Type.Integer({ minimum: 0, maximum: 20 }),
+      hierarchical_structure: Type.Integer({ minimum: 0, maximum: 15 }),
+      non_redundancy: Type.Integer({ minimum: 0, maximum: 15 }),
+      scientific_value: Type.Integer({ minimum: 0, maximum: 15 }),
+      dataset_feasibility: Type.Integer({ minimum: 0, maximum: 20 }),
+    }),
     summary: Type.String(),
     blocking_issues: Type.Array(issue),
     non_blocking_suggestions: Type.Array(Type.String()),

@@ -72,7 +72,7 @@ describe("targeted skill TypeScript control plane", () => {
       skill_dir: trajectory,
       generate_skill_enable: false,
     });
-    expect(selectorInput.threshold).toBe(0.3);
+    expect(selectorInput.threshold).toBe(0.5);
     expect(selectorInput.candidates).toHaveLength(1);
     expect(selectorInput.candidates[0]).toEqual({
       name: "broadly-related-skill",

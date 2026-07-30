@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,6 +10,8 @@ async function fixture() {
   const cwd = await mkdtemp(join(tmpdir(), "seekbrain-interpret-stage-"));
   const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
   const research = await lifecycle.startResearch({ cwd, projectPath: "project", question: "What does the validated result show?" });
+  const figurePath = join(research.run.runDir, "figure.png");
+  await writeFile(figurePath, "test image bytes");
   await lifecycle.updateState(research.run, {
     code_attempt: 1,
     code: {
@@ -27,6 +29,7 @@ async function fixture() {
     },
     checks: { dummy_data_signals: [] },
     deep_research_context: "Prior work predicts a positive effect.",
+    artifacts: [{ name: "figure.png", path: figurePath, kind: "figure", role: "main" }],
   });
   return { cwd, lifecycle, research };
 }
@@ -36,6 +39,7 @@ function dependencies(item: Awaited<ReturnType<typeof fixture>>) {
     lifecycle: item.lifecycle,
     currentArtifactsValidated: () => true,
     nextStep: () => ({ tool: "seekbrain_code_execute" }),
+    loadImages: async () => ({ images: [{ type: "image", data: "encoded" }], warnings: [] }),
     runAgent: async () => ({ ok: false }),
     writeJson: atomicWriteJson,
     snapshot: async () => undefined,
@@ -44,15 +48,17 @@ function dependencies(item: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe("Interpret workflow", () => {
-  it("uses validated text evidence and persists only conclusions.json", async () => {
+  it("uses validated figures and text evidence and persists only conclusions.json", async () => {
     const item = await fixture();
     try {
       let capturedPrompt = "";
+      let capturedImages: any[] = [];
       const events: any[] = [];
       const workflow = new InterpretWorkflow({
         ...dependencies(item),
-        runAgent: async ({ prompt }) => {
+        runAgent: async ({ prompt, images }) => {
           capturedPrompt = prompt;
+          capturedImages = images;
           return {
             ok: true,
             result: {
@@ -65,13 +71,14 @@ describe("Interpret workflow", () => {
         },
         appendEvent: async (event) => { events.push(event); },
       });
-      const result = await workflow.execute({ cwd: item.cwd, runId: item.research.run.runId, rolePrompt: "Interpret validated evidence.", agentConfig: {}, finalizeSchema: {} });
+      const result = await workflow.execute({ cwd: item.cwd, runId: item.research.run.runId, rolePrompt: "Interpret validated evidence.", agentConfig: { vision: true }, finalizeSchema: {} });
       expect(capturedPrompt).toContain("The matrix is predominantly positive.");
       expect(capturedPrompt).toContain(`Approved plan path:\n${join(item.research.run.runDir, "plan.md")}`);
       expect(capturedPrompt).toContain(`Generated code paths:\n${join(item.research.run.runDir, "generated_code.py")}`);
       expect(capturedPrompt).toContain('"effect": 0.42');
       expect(capturedPrompt).toContain("Exploratory execution: analyzed 12 of 22 eligible fish");
-      expect(capturedPrompt).not.toContain("Canonical figure");
+      expect(capturedPrompt).toContain("Scientific figures (1):");
+      expect(capturedImages).toHaveLength(1);
       expect(result).toMatchObject({ ok: true, interpretation_path: join(item.research.run.runDir, "conclusions.json") });
       const conclusions = JSON.parse(await readFile(join(item.research.run.runDir, "conclusions.json"), "utf8"));
       expect(conclusions.limitations).toContain("Small cohort");

@@ -208,10 +208,44 @@ function normalizeResearchTree(value: WorkflowJson): WorkflowJson {
 }
 
 function normalizeReviewerCritique(value: WorkflowJson): WorkflowJson {
-  const verdict = value.verdict === "accept" || value.verdict === "blocked" ? value.verdict : "revise";
+  const scores = value.scores && typeof value.scores === "object" ? value.scores as WorkflowJson : {};
+  const scoreLimits: Record<string, number> = {
+    relevance: 15,
+    completeness: 20,
+    hierarchical_structure: 15,
+    non_redundancy: 15,
+    scientific_value: 15,
+    dataset_feasibility: 20,
+  };
+  const normalizedScores: WorkflowJson = {};
+  let scoreSum = 0;
+  for (const [key, maximum] of Object.entries(scoreLimits)) {
+    const score = Number(scores[key]);
+    if (!Number.isInteger(score) || score < 0 || score > maximum) {
+      throw new Error(`Research plan review score '${key}' must be an integer from 0 to ${maximum}.`);
+    }
+    normalizedScores[key] = score;
+    scoreSum += score;
+  }
+  const totalScore = Number(value.total_score);
+  if (!Number.isInteger(totalScore) || totalScore < 0 || totalScore > 100 || scoreSum !== totalScore) {
+    throw new Error("Research plan review dimension scores must sum exactly to total_score.");
+  }
+  const reviewDecision = totalScore >= 80
+    ? "Accept"
+    : totalScore >= 70 ? "Weak Accept" : totalScore >= 40 ? "Revise" : "Reject";
+  if (value.review_decision !== reviewDecision) {
+    throw new Error(`Research plan review decision '${String(value.review_decision || "")}' is inconsistent with total_score ${totalScore}; expected '${reviewDecision}'.`);
+  }
+  const verdict = reviewDecision === "Accept" || reviewDecision === "Weak Accept"
+    ? "accept"
+    : reviewDecision === "Revise" ? "revise" : "blocked";
   const items = (key: string) => Array.isArray(value[key]) ? value[key] : [];
   return {
     verdict,
+    review_decision: reviewDecision,
+    total_score: totalScore,
+    scores: normalizedScores,
     summary: requiredText(value.summary, "review.summary"),
     blocking_issues: items("blocking_issues"),
     non_blocking_suggestions: items("non_blocking_suggestions"),
@@ -532,7 +566,7 @@ export class ResearchPlanningWorkflow {
         surveyPromptSection(run),
         `Locked dataset metadata:\n${metadata}`,
         `Hierarchical research plan to review:\n${JSON.stringify(candidatePlan, null, 2)}`,
-        "Review the complete hierarchical research plan once. Finalize with: { verdict, summary, blocking_issues, non_blocking_suggestions, missing_evidence, redundancies, unsupported_tasks, blocked_reason, recommended_action }.",
+        "Review the complete hierarchical research plan once. Finalize with: { review_decision, total_score, scores, summary, blocking_issues, non_blocking_suggestions, missing_evidence, redundancies, unsupported_tasks, blocked_reason, recommended_action }.",
       ].join("\n\n")),
       agentConfig: input.reviewerAgentConfig,
       finalizeSchema: input.reviewerFinalizeSchema,
@@ -566,6 +600,9 @@ export class ResearchPlanningWorkflow {
         ok: true,
         run_id: run.runId,
         verdict: "blocked",
+        review_decision: critique.review_decision,
+        total_score: critique.total_score,
+        scores: critique.scores,
         summary: critique.summary,
         blocked_reason: critique.blocked_reason || critique.summary,
         recommended_action: critique.recommended_action,
@@ -641,6 +678,9 @@ export class ResearchPlanningWorkflow {
       ok: true,
       run_id: run.runId,
       verdict: critique.verdict,
+      review_decision: critique.review_decision,
+      total_score: critique.total_score,
+      scores: critique.scores,
       summary: critique.summary,
       refined: critique.verdict === "revise",
       research_plan: finalPlan,

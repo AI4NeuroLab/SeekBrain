@@ -227,9 +227,10 @@ assert.deepEqual(userConfig.workflow.seekbrain.report.pdf, {
   command: "seekbrain-pdf",
   timeout_seconds: 120,
 });
-assert.equal(userConfig.modules.targeted_skill.relevance_threshold, 0.3);
+assert.equal(userConfig.modules.targeted_skill.relevance_threshold, 0.5);
 assert.equal(userConfig.agents.seekbrain_code.timeout_seconds, 1800);
 assert.equal(userConfig.agents.seekbrain_validate.vision, true);
+assert.equal(userConfig.agents.seekbrain_interpret.vision, true);
 await rm(work, { recursive: true, force: true });
 
 const literatureWork = await mkdtemp(join(tmpdir(), "seekbrain-literature-setup-test-"));

@@ -40,8 +40,8 @@ workflow:
     # Global literature grounding before Research Planning generates its tree.
     # Independent from task/ordinary-run deep_research below.
     research_survey: false
-    # Optional automatic Reviewer Agent pass over the generated plan tree.
-    research_planning_peer_review: false
+    # Automatic Reviewer Agent pass over the generated plan tree.
+    research_planning_peer_review: true
     # Used only after a Research Planning tree has been approved and materialized.
     research_execution:
       planning_concurrency: 3
@@ -99,7 +99,7 @@ agents:
 
   seekbrain_interpret:
     thinking: high
-    vision: false
+    vision: true
 
   seekbrain_report:
     thinking: low
