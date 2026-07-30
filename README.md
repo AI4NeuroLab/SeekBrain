@@ -61,9 +61,6 @@ shapes, axis semantics, and execution-relevant relationships. It then gives you
 a compact dataset overview and recommends 3–5 concrete research directions
 supported by the available data.
 
-No analysis begins until you select one of the suggested directions or provide
-your own question.
-
 ### Run a neuroscience study
 
 Enter a research question together with the dataset:
@@ -86,9 +83,6 @@ interpretation.
    until the analysis is scientifically sound.
 4. **Interpret** — Synthesize validated figures and statistics while documenting
    limitations and uncertainty.
-
-**Validation criteria:** inquiry alignment, methodological fidelity,
-quantitative integrity, and visual quality.
 
 #### Example 1: hierarchical zebrafish SC modules
 
@@ -202,12 +196,6 @@ to its required data, processing and modeling steps, expected outputs,
 visualization logic, and corresponding executable code. SeekBrain can retrieve,
 adapt, and combine these recipes for new research questions rather than treating
 them as fixed templates.
-
-Together, the recipes form a **Neuroscience Analysis Repertoire** that supplies
-task-conditioned analytical priors for new research problems. In BrainArena,
-removing the repertoire reduced the mean score from 75.8 to 63.2
-(*P* < 0.0001), demonstrating its importance for method correctness, faithful
-figures, and scientifically valid interpretation.
 
 ### Learn from validated research trajectories
 
