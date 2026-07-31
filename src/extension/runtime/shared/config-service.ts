@@ -6,6 +6,7 @@ import {
   literatureCapabilities,
   literatureQueryConfig,
   resolveAgentConfig,
+  type ResearchPlanningStrategy,
   type SeekBrainConfig,
 } from "../../../core/index.ts";
 import type { Json } from "../runtime-types.ts";
@@ -92,13 +93,22 @@ export function createConfigService(options: ConfigServiceOptions) {
 
   function seekbrainWorkflowConfig(config: Json) {
     const configured = config.workflow?.seekbrain || {};
+    const runMode = process.env.SEEKBRAIN_RUN_MODE;
+    const researchPlanningStrategy: ResearchPlanningStrategy = configured.research_planning_strategy === "creative"
+      ? "creative"
+      : "standard";
     const boolValue = (key: string) => configured[key] !== false;
     const literature = literatureCapabilities(config);
     const humanReview = configured.human_review || {};
     const humanReviewEnabled = humanReview.enabled === true && process.env.SEEKBRAIN_NON_INTERACTIVE !== "1";
     const humanReviewGates = humanReview.gates || {};
     return {
-      research_planning: configured.research_planning === true,
+      research_planning: runMode === "standard"
+        ? false
+        : runMode === "research_planning_auto"
+          ? true
+          : configured.research_planning === true,
+      research_planning_strategy: researchPlanningStrategy,
       research_survey: literature.research_survey,
       research_planning_peer_review: configured.research_planning_peer_review === true,
       deep_research: literature.deep_research,

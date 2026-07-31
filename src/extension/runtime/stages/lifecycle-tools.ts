@@ -41,6 +41,19 @@ const deliverablesSchema = Type.Optional(Type.Array(Type.Object({
   produced_by: Type.Optional(Type.String()),
 })));
 
+function effectiveWorkflowConfigResult(config: Json): Json {
+  const result = workflowConfigResult(config as any) as Json;
+  const runMode = process.env.SEEKBRAIN_RUN_MODE;
+  if (runMode !== "standard" && runMode !== "research_planning_auto") return result;
+  return {
+    ...result,
+    optional: {
+      ...(result.optional || {}),
+      research_planning: runMode === "standard" ? "disabled_by_run_mode" : "enabled",
+    },
+  };
+}
+
 export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrainToolDefinition[] {
   return [
     defineTool({
@@ -115,13 +128,14 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
         // metadata.json is the single canonical metadata artifact. A second round-local
         // snapshot duplicated the same content without adding execution value.
         const suppliedAssessment = params.planning_assessment as Json | undefined;
+        const researchPlanningAuto = process.env.SEEKBRAIN_RUN_MODE === "research_planning_auto";
         const explicitPlanningEvidence = verifiedExplicitResearchPlanningRequest(params.question, suppliedAssessment?.explicit_request_quote);
         let researchRoute = workflowFlags.research_planning
           ? suppliedAssessment
             ? await deps.planningWorkflow.recordAssessment({
               cwd: ctx.cwd,
               runId: created.run.runId,
-              assessment: { ...suppliedAssessment, route: explicitPlanningEvidence ? "research_planning" : suppliedAssessment.route },
+              assessment: { ...suppliedAssessment, route: researchPlanningAuto || explicitPlanningEvidence ? "research_planning" : suppliedAssessment.route },
             })
             : await deps.planningWorkflow.assess({
               cwd: ctx.cwd,
@@ -134,9 +148,29 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
               signal,
             })
           : { enabled: false, route: "standard", needs_user_review: false, needs_user_clarification: false, next_tool: "seekbrain_recipe_retrieve" };
-        if (researchRoute.route === "research_planning" && explicitPlanningEvidence) {
-          const reviewed = await deps.planningWorkflow.recordDecision(ctx.cwd, created.run.runId, "yes", "explicit_user_request", explicitPlanningEvidence);
-          researchRoute = { ...researchRoute, ...reviewed, needs_user_review: false, planning_consent: "explicit_request" };
+        if (workflowFlags.research_planning && researchPlanningAuto && researchRoute.route !== "research_planning") {
+          researchRoute = await deps.planningWorkflow.recordAssessment({
+            cwd: ctx.cwd,
+            runId: created.run.runId,
+            assessment: {
+              ...researchRoute,
+              route: "research_planning",
+              reason: "Research Planning was selected by the seekbrain run command.",
+              recommended_action: "Run the hierarchical workflow in Agent-Full-Auto mode.",
+            },
+          });
+        }
+        if (researchRoute.route === "research_planning" && (researchPlanningAuto || explicitPlanningEvidence)) {
+          const decision = researchPlanningAuto ? "agent_full_auto" : "yes";
+          const source = researchPlanningAuto ? "cli_research_planning" : "explicit_user_request";
+          const consentEvidence = researchPlanningAuto ? "--research-planning" : explicitPlanningEvidence;
+          const reviewed = await deps.planningWorkflow.recordDecision(ctx.cwd, created.run.runId, decision, source, consentEvidence);
+          researchRoute = {
+            ...researchRoute,
+            ...reviewed,
+            needs_user_review: false,
+            planning_consent: researchPlanningAuto ? "agent_full_auto" : "explicit_request",
+          };
         }
         const active = workflowFlags.research_planning && researchRoute.route === "standard"
           ? await deps.lifecycle.materializeInitialRound(ctx.cwd, created.run.runId)
@@ -158,7 +192,7 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
           metadata_json_path: canonicalMetadataPath,
           deliverables: active.run.state.deliverables,
           question: active.run.state.question,
-          workflow_config: workflowConfigResult(config as any),
+          workflow_config: effectiveWorkflowConfigResult(config),
           research_route: researchRoute,
           next_tool: researchRoute.next_tool,
         };

@@ -37,6 +37,9 @@ workflow:
   seekbrain:
     # Set to false to bypass the lightweight data/question routing check.
     research_planning: true
+    # Chooses the plan-tree builder without changing automatic execution.
+    # Creative is reserved for a future multi-round planning implementation.
+    research_planning_strategy: standard
     # Global literature grounding before Research Planning generates its tree.
     # Independent from task/ordinary-run deep_research below.
     research_survey: false
@@ -173,7 +176,7 @@ Commands:
   resume <session>      Resume a SeekBrain conversation session
   run                  Run a non-interactive analysis task
   report <project>     Generate a Research Planning report from eligible task rounds
-  setup                Configure model routing and a literature provider
+  setup                Configure providers, models, and research source
   doctor               Check Node, Pi, Python, and package dependencies
   config show          Show configuration paths; add --effective for merged values
   config list [prefix] List effective public configuration values and their sources
@@ -194,6 +197,7 @@ Options:
   --query <text>       Research question
   --dataset <path>     Dataset directory, metadata JSON file, or JSON content
   --work-dir <path>    Output directory
+  --research-planning  Use Research Planning in Agent-Full-Auto mode (run only)
   --path <text>        Extra path or access notes
   --goal <text>        Optional report synthesis goal (report only)
   --session <id|path>  Resume a SeekBrain conversation session
@@ -208,6 +212,7 @@ Examples:
   seekbrain setup
   seekbrain -- --model provider/model
   seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example
+  seekbrain run --research-planning --query "Investigate linked hypotheses" --dataset metadata.json --work-dir results/study
   seekbrain report results/research-planning-project
   seekbrain config show
   seekbrain config show --effective
@@ -289,6 +294,13 @@ export function parseArgs(input) {
         return { action: "error", message: "--effective is only valid with 'config show'", code: 2 };
       }
       options.effective = true;
+      continue;
+    }
+    if (arg === "--research-planning") {
+      if (command !== "run") {
+        return { action: "error", message: "--research-planning is only valid with 'seekbrain run'", code: 2 };
+      }
+      options.researchPlanning = true;
       continue;
     }
     const key = {
@@ -443,7 +455,9 @@ export function buildTaskPrompt(options, projectRoot, nonInteractive = false) {
   if (nonInteractive) {
     sections.push(options.reportMode
       ? "## Non-interactive report policy\nGenerate only the explicitly requested report. Do not start, continue, or resume research and do not request dataset metadata."
-      : "## Non-interactive execution policy\nContinue through the workflow until seekbrain_interpretation_run succeeds and writes the final interpretation and conclusion artifacts. Do not ask follow-up questions. If blocked, report the blocking condition, missing information, and limitations.");
+      : options.researchPlanning
+        ? "## Non-interactive execution policy\nUse Research Planning in Agent-Full-Auto mode. Continue through hierarchical planning, all analysis tasks, and all workflow gates without requesting approval. Continue until the Research Planning execution is complete. If blocked by missing information or an external failure, report the blocking condition and limitations."
+        : "## Non-interactive execution policy\nUse the standard direct analysis workflow; do not route this run into Research Planning. Continue until seekbrain_interpretation_run succeeds and writes the final interpretation and conclusion artifacts. Do not ask follow-up questions. If blocked, report the blocking condition, missing information, and limitations.");
   }
   return sections.filter(Boolean).join("\n\n");
 }
@@ -487,6 +501,11 @@ export function buildPiLaunchSpec(parsed, runtime = {}) {
   if (hasTask) args.push(`/entry ${buildTaskPrompt(parsed.options, projectRoot, parsed.nonInteractive)}`);
 
   if (parsed.nonInteractive) env.SEEKBRAIN_NON_INTERACTIVE = "1";
+  if (parsed.nonInteractive && !parsed.options.reportMode) {
+    env.SEEKBRAIN_RUN_MODE = parsed.options.researchPlanning ? "research_planning_auto" : "standard";
+  } else {
+    delete env.SEEKBRAIN_RUN_MODE;
+  }
   if (parsed.options.workDir) env.SEEKBRAIN_RUN_ROOT = projectPath(parsed.options.workDir, projectRoot);
   env.SEEKBRAIN_USER_CONFIG = configs.userConfig;
   if (configs.projectConfigActive) env.SEEKBRAIN_CONFIG = configs.projectConfig;
@@ -527,7 +546,7 @@ async function runPi(parsed, io, runtime, forceSetup = false) {
     runtimeFactory: runtime.modelRuntimeFactory,
   });
   if (!usable && parsed.nonInteractive) {
-    io.stderr.write("seekbrain: no authenticated Core model is configured. Run 'seekbrain setup' first.\n");
+    io.stderr.write("seekbrain: no authenticated Primary model is configured. Run 'seekbrain setup' first.\n");
     return 1;
   }
   if (forceSetup || !usable) {
@@ -551,7 +570,7 @@ async function runPi(parsed, io, runtime, forceSetup = false) {
       }
       if (forceSetup) return 0;
     } else {
-      io.stderr.write("seekbrain: no authenticated Core model is configured. Run 'seekbrain setup' first.\n");
+      io.stderr.write("seekbrain: no authenticated Primary model is configured. Run 'seekbrain setup' first.\n");
       return 1;
     }
   }

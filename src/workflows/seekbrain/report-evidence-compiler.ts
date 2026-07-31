@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile } from "node:fs/promises";
-import { basename, dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import type { WorkflowJson } from "./run-lifecycle.ts";
 
 export interface ReportEvidenceCompilerDependencies {
@@ -157,6 +157,27 @@ function artifactPath(runDir: string, path: unknown): string {
   return resolve(runDir, String(path || ""));
 }
 
+function validatedCodePaths(runDir: string, state: WorkflowJson): string[] {
+  const root = resolve(runDir);
+  const declared = Array.isArray(state.code?.code_files) ? state.code.code_files : [];
+  const artifacts = Array.isArray(state.artifacts)
+    ? state.artifacts.filter((item: WorkflowJson) => item.kind === "code")
+    : [];
+  const candidates = [...declared, ...artifacts, { path: "generated_code.py" }];
+  const paths: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const raw = typeof candidate === "string" ? candidate : String(candidate?.path || "");
+    if (!raw) continue;
+    const path = artifactPath(root, raw);
+    if (path !== root && !path.startsWith(`${root}${sep}`)) continue;
+    if (!existsSync(path) || seen.has(path)) continue;
+    seen.add(path);
+    paths.push(path);
+  }
+  return paths;
+}
+
 function figureVariantKey(path: string): string {
   return join(dirname(path), basename(path, extname(path)));
 }
@@ -295,6 +316,7 @@ export class ReportEvidenceCompiler {
       const validation = Object.keys(state.validation || {}).length ? state.validation : await readJson(validationPath, true);
       const conclusions = await readJson(conclusionsPath, true);
       const statistics = await readJson(statisticsPath);
+      const codePaths = validatedCodePaths(runDir, state);
       const taskFigures: string[] = [];
       const taskTables: string[] = [];
 
@@ -370,9 +392,10 @@ export class ReportEvidenceCompiler {
           figure_observations: validation.figure_observations || [],
         },
         limitations: conclusions.limitations || [],
+        validated_code_paths: codePaths,
         figure_ids: taskFigures,
         table_ids: taskTables,
-        source_paths: { state: statePath, plan: planPath, statistics: statisticsPath, validation: validationPath, conclusions: conclusionsPath },
+        source_paths: { state: statePath, plan: planPath, code: codePaths, statistics: statisticsPath, validation: validationPath, conclusions: conclusionsPath },
       });
     }
 

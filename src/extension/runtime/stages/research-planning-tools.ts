@@ -1,5 +1,6 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import type { ResearchPlanningStrategy } from "../../../core/index.ts";
 import type {
   ResearchPlanningWorkflow,
   ResearchSurveyWorkflow,
@@ -23,6 +24,7 @@ export interface ResearchPlanningToolDependencies {
   surveyWorkflow: ResearchSurveyWorkflow;
   loadConfig(cwd: string): Promise<Json>;
   workflowConfig(config: Json): {
+    research_planning_strategy: ResearchPlanningStrategy;
     research_survey: boolean;
     research_planning_peer_review: boolean;
     has_literature_provider: boolean;
@@ -350,6 +352,15 @@ export function createResearchPlanningTools(
       async execute(_toolCallId, params, signal, onUpdate, ctx) {
         const config = await deps.loadConfig(deps.projectRoot);
         const workflow = deps.workflowConfig(config);
+        if (workflow.research_planning_strategy === "creative") {
+          return deps.content({
+            ok: false,
+            reserved: true,
+            error_code: "research_planning_strategy_not_implemented",
+            research_planning_strategy: "creative",
+            error: "Creative Research Planning is reserved but not implemented yet. No Standard research plan was generated.",
+          });
+        }
         onUpdate?.(deps.content({
           progress: true,
           stage: "research_survey",

@@ -26,6 +26,9 @@ workflow:
   seekbrain:
     # Disable to bypass the lightweight data/question routing check.
     research_planning: true
+    # Selects how the Research Planning tree is constructed. This is independent
+    # from Agent-Full-Auto execution. Creative is reserved for a future builder.
+    research_planning_strategy: standard
     # Parent-level literature grounding before a Research Planning tree is generated.
     # This is independent from task/ordinary-run deep_research.
     research_survey: true
@@ -62,13 +65,13 @@ workflow:
 
 agents:
   seekbrain:
-    thinking: low
+    thinking: medium
     timeout_seconds: 5400
   seekbrain_default:
     thinking: off
     timeout_seconds: 300
   seekbrain_data_resolve:
-    thinking: off
+    thinking: low
     timeout_seconds: 900
   seekbrain_research_route:
     thinking: off
@@ -77,7 +80,7 @@ agents:
     thinking: high
     timeout_seconds: 300
   seekbrain_survey:
-    thinking: low
+    thinking: medium
     timeout_seconds: 600
     rag:
       paper_source: ailab_rag
@@ -87,10 +90,10 @@ agents:
       require_github: false
       source_char_limit: 5000
   seekbrain_research_reviewer:
-    thinking: low
+    thinking: high
     timeout_seconds: 300
   seekbrain_deep_research:
-    thinking: low
+    thinking: medium
     timeout_seconds: 600
     rag:
       enable: false
@@ -99,7 +102,7 @@ agents:
       timeout: 600
       source_char_limit: 5000
   seekbrain_skill_match:
-    thinking: off
+    thinking: low
     timeout_seconds: 300
   seekbrain_skill_context:
     thinking: off
@@ -115,7 +118,7 @@ agents:
     timeout_seconds: 1800
     vision: false
   seekbrain_validate:
-    thinking: low
+    thinking: high
     timeout_seconds: 300
     vision: true
   seekbrain_interpret:
@@ -123,11 +126,11 @@ agents:
     timeout_seconds: 600
     vision: true
   seekbrain_report:
-    thinking: low
+    thinking: high
     timeout_seconds: 900
     vision: true
   seekbrain_refine_image:
-    thinking: off
+    thinking: low
     timeout_seconds: 1200
     vision: true
   seekbrain_save_skill:

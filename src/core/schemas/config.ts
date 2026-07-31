@@ -31,8 +31,14 @@ export const HumanReviewConfigSchema = Type.Object({
   }, { additionalProperties: false }),
 }, { additionalProperties: false });
 
+export const ResearchPlanningStrategySchema = Type.Union([
+  Type.Literal("standard"),
+  Type.Literal("creative"),
+]);
+
 export const SeekBrainWorkflowConfigSchema = Type.Object({
   research_planning: Type.Boolean(),
+  research_planning_strategy: ResearchPlanningStrategySchema,
   research_survey: Type.Boolean(),
   research_planning_peer_review: Type.Boolean(),
   research_execution: Type.Object({
@@ -78,4 +84,5 @@ export const SeekBrainConfigSchema = Type.Object({
 }, { additionalProperties: true });
 
 export type AgentConfig = Static<typeof AgentConfigSchema>;
+export type ResearchPlanningStrategy = Static<typeof ResearchPlanningStrategySchema>;
 export type SeekBrainConfig = Static<typeof SeekBrainConfigSchema>;

@@ -39,6 +39,7 @@ describe("ConfigLoader", () => {
       expect(config.agents.seekbrain.model).toBe("runtime-model");
       expect(config.workflow.seekbrain.deep_research).toBe(false);
       expect(config.workflow.seekbrain.research_planning).toBe(true);
+      expect(config.workflow.seekbrain.research_planning_strategy).toBe("standard");
       expect(config.workflow.seekbrain.research_survey).toBe(true);
       expect(config.modules.targeted_skill).toMatchObject({ relevance_threshold: 0.5, top_k: 1 });
       expect((config.modules.targeted_skill as any).compatibility).toMatchObject({ candidate_pool_size: 10, skill_top_k: 2, prefer_repository: true, paper_only_fallback: true });
@@ -60,6 +61,9 @@ describe("ConfigLoader", () => {
     await expect(new ConfigLoader({
       overrides: { modules: { targeted_skill: { relevance_threshold: 1.1 } } },
     }).load()).rejects.toBeInstanceOf(ConfigValidationError);
+    await expect(new ConfigLoader({
+      overrides: { workflow: { seekbrain: { research_planning_strategy: "experimental" } } },
+    }).load()).rejects.toBeInstanceOf(ConfigValidationError);
   });
 
   it("allows Research Planning to be disabled explicitly", async () => {
@@ -67,6 +71,14 @@ describe("ConfigLoader", () => {
       overrides: { workflow: { seekbrain: { research_planning: false } } },
     }).load();
     expect(config.workflow.seekbrain.research_planning).toBe(false);
+  });
+
+  it("selects Creative plan construction independently from Research Planning enablement", async () => {
+    const config = await new ConfigLoader({
+      overrides: { workflow: { seekbrain: { research_planning_strategy: "creative" } } },
+    }).load();
+    expect(config.workflow.seekbrain.research_planning).toBe(true);
+    expect(config.workflow.seekbrain.research_planning_strategy).toBe("creative");
   });
 
   it("configures Research Survey independently from Deep Research", async () => {

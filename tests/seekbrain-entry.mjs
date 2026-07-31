@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createJiti } from "jiti";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 const jiti = createJiti(import.meta.url);
 const { default: registerSeekBrain } = await jiti.import("../src/extension/index.ts");
+const entrySource = await readFile(new URL("../src/extension/index.ts", import.meta.url), "utf8");
+const shutdownLines = entrySource.split("\n").filter((line) => line.includes("ctx.shutdown()"));
+assert.ok(shutdownLines.length > 0, "standalone seekbrain setup must still close its owned Pi session");
+assert.ok(shutdownLines.every((line) => line.includes("SEEKBRAIN_SETUP")), "/seekbrain-setup must never unconditionally shut down the current session");
 
 const handlers = new Map();
 const commands = new Map();

@@ -228,7 +228,7 @@ const reporterWorkflow = new ReporterWorkflow({
     finalizeSchema: input.finalizeSchema,
     prompt: input.prompt,
     agentConfig: input.agentConfig,
-    tools: [],
+    tools: input.tools || [],
     images: input.images,
     signal: input.signal,
   }),

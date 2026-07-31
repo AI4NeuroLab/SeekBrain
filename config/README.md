@@ -13,10 +13,10 @@ Secrets do not belong in YAML files. Use Pi auth storage or provider environment
 variables.
 
 For initial model and literature configuration, use `seekbrain setup`. The
-Pi-native wizard first configures the model provider and Core/Fast routing, then
-asks for exactly one literature provider: Semantic Scholar, PubMed/PMC,
-Shanghai AI Lab Paper RAG, or None. Advanced users may override individual agent
-routes here; users should not create Pi JSON files manually.
+Pi-native Settings Card keeps only Providers, Primary/Fast models, and Research
+Source. Multiple simple providers can coexist; each provider has one Official
+or Custom connection. Research Source can be Semantic Scholar, PubMed/PMC,
+Shanghai AI Lab Paper RAG, or None. Advanced routing remains a config-file task.
 
 Model credentials remain in Pi auth storage. Semantic Scholar and PubMed keys
 are written atomically to
@@ -25,15 +25,16 @@ YAML stores only a credential reference. Selecting None disables Research
 Survey, Deep Research, and Recipe Crystallization while preserving trajectory
 recipe matching.
 
-Setup validates the chosen provider before writing credentials. It retries a
+Setup validates the chosen research source before selecting it. It retries a
 Semantic Scholar `429` once according to `Retry-After`; a continued `429` is a
 reachable-but-rate-limited warning. PubMed authentication failures and all other
 validation errors are reported without echoing keys.
 
-On later `seekbrain setup` runs, the existing model/Core/Fast routing and
-literature provider are offered for reuse. Reusing the literature selection
-loads its key from the protected store or environment, so the key is not entered
-again. The explicit setup command exits when configuration is saved.
+On later `seekbrain setup` runs, the same card reads Primary only from
+`agents.seekbrain` and Fast only from `agents.seekbrain_default`. It does not
+interpret other per-Agent routing. Changes save immediately. The standalone
+command closes its owned Pi session when the card closes; `/seekbrain-setup`
+returns to the current session.
 
 Environment credentials take precedence over the protected store:
 
@@ -131,13 +132,15 @@ agents:
   seekbrain:
     provider: your-provider
     model: your-model
-    thinking: low
+    thinking: medium
 ```
 
-SeekBrain defaults to `thinking: off` for routine subagents and opts specific
-scientific stages in: Research Planning, Formulation, Code, and Interpretation
-use `high`; Validation and the main Orchestrator use `low`; Recipe generation
-uses `medium`.
+SeekBrain reserves `high` for stages that make consequential scientific
+judgments: Research Planning and review, Formulation, Code, Validation,
+Interpretation, and Report generation. The main Orchestrator, literature Survey,
+Deep Research, and Recipe generation use `medium`. Lightweight semantic
+classification and figure repair use `low`; pure routing and unused fallback
+roles remain `off`.
 
 Explicit Pi arguments passed after `--` have the highest priority. Provider
 credentials remain in Pi auth storage or environment variables.

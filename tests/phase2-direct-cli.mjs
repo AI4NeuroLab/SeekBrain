@@ -38,6 +38,19 @@ assert.equal(parsed.action, "launch");
 assert.equal(parsed.nonInteractive, true);
 assert.deepEqual(parsed.options.piArgs, ["--offline", "--model", "provider/model"]);
 
+const researchPlanningParsed = parseArgs([
+  "run",
+  "--research-planning",
+  "--query", "question",
+  "--dataset", "metadata",
+]);
+assert.equal(researchPlanningParsed.options.researchPlanning, true);
+assert.equal(parseArgs(["--research-planning"]).action, "error");
+assert.match(parseArgs([
+  "run", "--creative", "--research-planning", "--query", "question", "--dataset", "metadata",
+]).message, /unknown option: --creative/);
+
+
 const projectRoot = await mkdtemp(join(tmpdir(), "seekbrain-phase2-project-"));
 const userHome = await mkdtemp(join(tmpdir(), "seekbrain-phase2-home-"));
 try {
@@ -66,6 +79,7 @@ try {
   assert.equal(spec.cwd, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_ROOT, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_NON_INTERACTIVE, "1");
+  assert.equal(spec.env.SEEKBRAIN_RUN_MODE, "standard");
   assert.equal(spec.env.PI_SKIP_VERSION_CHECK, "1");
   assert.equal(spec.args[0], paths.piCli);
   assert.ok(spec.args.includes("--no-extensions"));
@@ -80,6 +94,11 @@ try {
   assert.equal(spec.env.SEEKBRAIN_USER_CONFIG, userConfig);
   assert.equal(spec.env.SEEKBRAIN_CONFIG, join(projectRoot, "seekbrain.config.yaml"));
   assert.match(spec.args.at(-1), /^\/entry question/);
+  assert.match(spec.args.at(-1), /standard direct analysis workflow/);
+
+  const researchPlanningSpec = buildPiLaunchSpec(researchPlanningParsed, { cwd: projectRoot, homeDir: userHome, env: {} });
+  assert.equal(researchPlanningSpec.env.SEEKBRAIN_RUN_MODE, "research_planning_auto");
+  assert.match(researchPlanningSpec.args.at(-1), /Research Planning in Agent-Full-Auto mode/);
 
   let stdout = "";
   let stderr = "";
@@ -146,6 +165,7 @@ try {
     assert.match(stdout, /Created user configuration/);
     const initializedUser = await readFile(join(secondHome, ".config", "seekbrain", "config.yaml"), "utf8");
     assert.match(initializedUser, /research_planning: true/);
+    assert.match(initializedUser, /research_planning_strategy: standard/);
     assert.match(initializedUser, /research_survey: false/);
     assert.match(initializedUser, /deep_research: false/);
     assert.match(initializedUser, /targeted_skill_generate: false/);

@@ -130,8 +130,13 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 		setupRunning = true;
 		try {
 			const result = await runPiSetupWizard(ctx);
-			ctx.ui.notify(`Setup complete · Core: ${result.core.provider}/${result.core.model}`, "info");
-			ctx.shutdown();
+			if (result.ready) {
+				const primary = result.primary ? `${result.primary.providerName || result.primary.provider} · ${result.primary.name || result.primary.model}` : "not set";
+				ctx.ui.notify(`Setup saved · Primary: ${primary} · applies to the next run/session`, "info");
+			} else {
+				ctx.ui.notify("Setup closed · required settings are still incomplete", "warning");
+			}
+			if (process.env.SEEKBRAIN_SETUP === "1") ctx.shutdown();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			ctx.ui.notify(message === "Setup cancelled" ? message : `Setup failed: ${message}`, message === "Setup cancelled" ? "warning" : "error");
@@ -204,7 +209,7 @@ export default function registerSeekBrainEntry(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("seekbrain-setup", {
-		description: "Configure model APIs and choose Core/Fast models",
+		description: "Configure providers, Primary/Fast models, and research source",
 		handler: async (_args, ctx) => openSetup(ctx),
 	});
 

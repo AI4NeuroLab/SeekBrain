@@ -15,8 +15,10 @@ assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSe
 assert.match(workflowSource, /Possible real-input substitution signals require caution/);
 assert.match(workflowSource, /Unresolved validation issue/);
 assert.match(workflowSource, /updateResearchRoundManifest/);
-assert.doesNotMatch(workflowSource, /loadImages|imageAnalysisMarkdown|image_analysis\.md/);
+assert.match(workflowSource, /loadImages/);
+assert.match(workflowSource, /requires vision=true/);
+assert.doesNotMatch(workflowSource, /imageAnalysisMarkdown|image_analysis\.md/);
 assert.doesNotMatch(toolSource, /image_analysis|confidence|additional_context/);
 assert.match(workflowSource, /const conclusionsPath = join\(run\.runDir, "conclusions\.json"\)/);
 
-console.log("Phase 4 Interpret tool performs text-only synthesis and round completion");
+console.log("Phase 4 Interpret tool synthesizes validated visual and text evidence without legacy image-analysis artifacts");

@@ -33,24 +33,6 @@ const FAST_AGENTS = [
   "seekbrain_refine_image",
 ];
 
-const AGENT_THINKING = {
-  seekbrain: "low",
-  seekbrain_default: "off",
-  seekbrain_research_route: "off",
-  seekbrain_research_planning: "high",
-  seekbrain_survey: "low",
-  seekbrain_research_reviewer: "low",
-  seekbrain_deep_research: "low",
-  seekbrain_skill_match: "off",
-  seekbrain_skill_context: "off",
-  seekbrain_skill_generate: "medium",
-  seekbrain_plan: "high",
-  seekbrain_code: "high",
-  seekbrain_validate: "low",
-  seekbrain_interpret: "high",
-  seekbrain_refine_image: "off",
-};
-
 const OFFICIAL_PROVIDERS = {
   anthropic: { label: "Anthropic", relayId: "anthropic-relay" },
   openai: { label: "OpenAI", relayId: "openai-relay" },
@@ -144,11 +126,15 @@ function catalogModel(model) {
   return {
     id: model.id,
     name: model.name || model.id,
+    ...(model.api ? { api: model.api } : {}),
     reasoning: Boolean(model.reasoning),
+    ...(model.thinkingLevelMap ? { thinkingLevelMap: structuredClone(model.thinkingLevelMap) } : {}),
     input: [...(model.input || ["text"])],
     contextWindow: model.contextWindow,
     maxTokens: model.maxTokens,
     cost: structuredClone(model.cost),
+    ...(model.headers ? { headers: structuredClone(model.headers) } : {}),
+    ...(model.compat ? { compat: structuredClone(model.compat) } : {}),
   };
 }
 
@@ -171,12 +157,10 @@ export function applyModelRouting(document, core, fast = core) {
   for (const name of CORE_AGENTS) {
     document.setIn(["agents", name, "provider"], core.provider);
     document.setIn(["agents", name, "model"], core.model);
-    document.setIn(["agents", name, "thinking"], AGENT_THINKING[name] || core.thinking || "high");
   }
   for (const name of FAST_AGENTS) {
     document.setIn(["agents", name, "provider"], fast.provider);
     document.setIn(["agents", name, "model"], fast.model);
-    document.setIn(["agents", name, "thinking"], AGENT_THINKING[name] || fast.thinking || "off");
   }
   return document;
 }
@@ -264,22 +248,25 @@ export async function validateLiteratureProvider(literature, options = {}) {
   if (!literature || literature.source === "none") return { ok: true, warnings: [] };
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const requestSignal = () => options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(15_000)])
+    : AbortSignal.timeout(15_000);
   const request = async () => {
     if (literature.source === "semantic_scholar") {
       const url = new URL(`${literature.baseUrl.replace(/\/$/, "")}/paper/search`);
       url.search = new URLSearchParams({ query: "neuroscience", limit: "1", fields: "paperId" }).toString();
-      return await fetchImpl(url, { headers: { "x-api-key": literature.apiKey }, signal: AbortSignal.timeout(15_000) });
+      return await fetchImpl(url, { headers: { "x-api-key": literature.apiKey }, signal: requestSignal() });
     }
     if (literature.source === "pubmed") {
       const url = new URL(`${literature.baseUrl.replace(/\/$/, "")}/einfo.fcgi`);
       url.search = new URLSearchParams({ db: "pubmed", retmode: "json", tool: "seekbrain", api_key: literature.apiKey }).toString();
-      return await fetchImpl(url, { signal: AbortSignal.timeout(15_000) });
+      return await fetchImpl(url, { signal: requestSignal() });
     }
     return await fetchImpl(`${literature.baseUrl.replace(/\/$/, "")}/queryfull`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: "SeekBrain setup connectivity check", top_k: 1, require_github: false }),
-      signal: AbortSignal.timeout(15_000),
+      signal: requestSignal(),
     });
   };
   try {
@@ -321,22 +308,29 @@ export function selectableModelOptions(models) {
   }));
 }
 
-function existingModelConfiguration(settings, config) {
+export function readPrimaryModel(config) {
   const configuredCore = config.agents?.seekbrain || {};
-  const provider = String(settings.defaultProvider || configuredCore.provider || "").trim();
-  const model = String(settings.defaultModel || configuredCore.model || "").trim();
+  const provider = String(configuredCore.provider || "").trim();
+  const model = String(configuredCore.model || "").trim();
   if (!provider || !model) return undefined;
-  const core = {
-    provider,
-    model,
-    thinking: String(settings.defaultThinkingLevel || configuredCore.thinking || "high"),
-  };
+  return { provider, model };
+}
+
+export function readFastModel(config, primary = readPrimaryModel(config)) {
   const configuredFast = config.agents?.seekbrain_default || {};
-  const fast = configuredFast.provider && configuredFast.model ? {
+  if (!configuredFast.provider || !configuredFast.model) return undefined;
+  const fast = {
     provider: String(configuredFast.provider),
     model: String(configuredFast.model),
-    thinking: String(configuredFast.thinking || "high"),
-  } : core;
+  };
+  if (primary && fast.provider === primary.provider && fast.model === primary.model) return undefined;
+  return fast;
+}
+
+function existingModelConfiguration(_settings, config) {
+  const core = readPrimaryModel(config);
+  if (!core) return undefined;
+  const fast = readFastModel(config, core) || core;
   return { core, fast };
 }
 
@@ -405,11 +399,10 @@ async function persistCredentials(runtime, additions) {
   }
 }
 
-function writeSettings(settingsPath, core) {
+export function writePrimarySettings(settingsPath, core) {
   const settings = readJson(settingsPath, {});
   settings.defaultProvider = core.provider;
   settings.defaultModel = core.model;
-  settings.defaultThinkingLevel = core.thinking || "high";
   atomicWrite(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
@@ -424,9 +417,14 @@ export function applyLiteratureConfiguration(document, literature, deepResearchE
     }
   }
   document.setIn(["workflow", "seekbrain", "research_survey"], enabled);
-  document.setIn(["workflow", "seekbrain", "deep_research"], enabled && deepResearchEnabled === true);
-  document.setIn(["workflow", "seekbrain", "targeted_skill_match"], true);
   document.setIn(["workflow", "seekbrain", "targeted_skill_generate"], enabled);
+  if (!enabled) {
+    document.setIn(["workflow", "seekbrain", "deep_research"], false);
+  } else if (deepResearchEnabled === true) {
+    document.setIn(["workflow", "seekbrain", "deep_research"], true);
+  } else if (document.getIn(["workflow", "seekbrain", "deep_research"]) === undefined) {
+    document.setIn(["workflow", "seekbrain", "deep_research"], false);
+  }
 
   // Preserve the current AILab consumers exactly until the compatibility router
   // is introduced. New providers use the global literature block later.
@@ -459,6 +457,485 @@ function writeSeekBrainConfig(userConfigPath, userTemplate, core, fast, literatu
   applyModelRouting(document, core, fast);
   applyLiteratureConfiguration(document, literature, false, credentialStorePath);
   atomicWrite(userConfigPath, document.toString());
+}
+
+const PREFERRED_PROVIDER_IDS = [
+  "openai",
+  "anthropic",
+  "google",
+  "openai-codex",
+  "openrouter",
+  "deepseek",
+  "github-copilot",
+  "xai",
+  "groq",
+  "mistral",
+  "together",
+  "amazon-bedrock",
+  "azure-openai-responses",
+];
+
+// Setup intentionally exposes only providers that can be configured with one
+// straightforward credential flow. Complex cloud providers remain available
+// through Pi's own configuration and config files.
+const SIMPLE_SETUP_PROVIDER_IDS = new Set([
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "deepseek",
+  "xai",
+  "groq",
+  "mistral",
+  "together",
+  "cerebras",
+  "fireworks",
+  "huggingface",
+  "nvidia",
+  "moonshotai",
+  "moonshotai-cn",
+  "kimi-coding",
+  "minimax",
+  "minimax-cn",
+  "vercel-ai-gateway",
+  "zai",
+  "zai-coding-cn",
+]);
+
+export function literatureSourceOptions() {
+  return [
+    { id: "none", label: "None", description: "Turn off literature retrieval" },
+    ...Object.entries(LITERATURE_PROVIDERS).map(([id, provider]) => ({
+      id,
+      label: provider.label,
+      description: id === "ailab_rag" ? "Private Paper RAG deployment" : provider.defaultBaseUrl,
+      defaultBaseUrl: provider.defaultBaseUrl,
+      requiresKey: provider.requiresKey,
+    })),
+  ];
+}
+
+function setupPaths(options = {}) {
+  const userHome = options.homeDir || homedir();
+  const agentDir = options.agentDir || process.env.PI_CODING_AGENT_DIR || join(userHome, ".pi", "agent");
+  return {
+    userHome,
+    agentDir,
+    authPath: join(agentDir, "auth.json"),
+    modelsPath: join(agentDir, "models.json"),
+    settingsPath: join(agentDir, "settings.json"),
+    userConfigPath: options.userConfigPath
+      || process.env.SEEKBRAIN_USER_CONFIG
+      || join(userHome, ".config", "seekbrain", "config.yaml"),
+    literatureCredentialsPath: options.literatureCredentialsPath
+      || process.env.SEEKBRAIN_LITERATURE_CREDENTIALS
+      || join(userHome, ".config", "seekbrain", "literature-credentials.json"),
+  };
+}
+
+function customProviderId(providerId) {
+  return OFFICIAL_PROVIDERS[providerId]?.relayId || providerId + "-relay";
+}
+
+function customBaseProvider(providerId, knownProviderIds) {
+  for (const [base, provider] of Object.entries(OFFICIAL_PROVIDERS)) {
+    if (provider.relayId === providerId && knownProviderIds.has(base)) return base;
+  }
+  if (!providerId.endsWith("-relay")) return undefined;
+  const base = providerId.slice(0, -"-relay".length);
+  return knownProviderIds.has(base) ? base : undefined;
+}
+
+function providerRank(provider) {
+  const preferred = PREFERRED_PROVIDER_IDS.indexOf(provider.id);
+  return preferred === -1 ? PREFERRED_PROVIDER_IDS.length : preferred;
+}
+
+function customCatalogModel(model, providerId) {
+  const copied = catalogModel(model);
+  if (providerId === "openai") {
+    copied.api = "openai-completions";
+    delete copied.compat;
+  }
+  return copied;
+}
+
+export function customProviderConfig(provider, baseUrl, models) {
+  if (!models.length) throw new Error(provider.name + " has no models available for a custom endpoint");
+  const copied = models.map((model) => customCatalogModel(model, provider.id));
+  const apis = new Set(copied.map((model) => model.api).filter(Boolean));
+  const openAICompatible = [...apis].every((api) => api === "openai-completions" || api === "openai-responses");
+  return {
+    name: provider.name + " Custom",
+    baseUrl: normalizeUrl(baseUrl),
+    ...(apis.size === 1 ? { api: copied[0].api } : {}),
+    ...(openAICompatible ? { authHeader: true } : {}),
+    models: copied,
+  };
+}
+
+function writeModelsProvider(modelsPath, providerId, config) {
+  const models = readJson(modelsPath, { providers: {} });
+  models.providers ||= {};
+  models.providers[providerId] = config;
+  atomicWrite(modelsPath, JSON.stringify(models, null, 2) + "\n");
+}
+
+function removeModelsProvider(modelsPath, providerId) {
+  const models = readJson(modelsPath, { providers: {} });
+  if (!models.providers || !Object.hasOwn(models.providers, providerId)) return false;
+  delete models.providers[providerId];
+  atomicWrite(modelsPath, JSON.stringify(models, null, 2) + "\n");
+  return true;
+}
+
+function readConfigDocument(path, template = DEFAULT_USER_CONFIG_TEMPLATE) {
+  const existed = existsSync(path);
+  const source = existed ? readFileSync(path, "utf8") : template;
+  const document = parseDocument(source);
+  if (document.errors.length) {
+    throw new Error("Invalid SeekBrain user config: " + document.errors[0].message);
+  }
+  return { document, existed, config: document.toJS() || {} };
+}
+
+function writeAgentModels(document, names, model) {
+  for (const name of names) {
+    document.setIn(["agents", name, "provider"], model.provider);
+    document.setIn(["agents", name, "model"], model.model);
+  }
+}
+
+function migrateProviderReferences(userConfigPath, settingsPath, fromProvider, toProvider) {
+  if (fromProvider === toProvider) return;
+  if (existsSync(userConfigPath)) {
+    const { document, config } = readConfigDocument(userConfigPath);
+    for (const [name, agent] of Object.entries(config.agents || {})) {
+      if (agent && typeof agent === "object" && agent.provider === fromProvider) {
+        document.setIn(["agents", name, "provider"], toProvider);
+      }
+    }
+    atomicWrite(userConfigPath, document.toString());
+  }
+  const settings = readJson(settingsPath, {});
+  if (settings.defaultProvider === fromProvider) {
+    settings.defaultProvider = toProvider;
+    atomicWrite(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  }
+}
+
+function providerIsReferenced(userConfigPath, settingsPath, providerId) {
+  const config = readYaml(userConfigPath, {});
+  if (Object.values(config.agents || {}).some((agent) => (
+    agent && typeof agent === "object" && agent.provider === providerId
+  ))) return true;
+  return readJson(settingsPath, {}).defaultProvider === providerId;
+}
+
+function modelScore(model, family, currentModelId) {
+  if (model.id === currentModelId) return -10000;
+  const preferred = (MAINSTREAM_MODELS[family] || []).indexOf(model.id);
+  if (preferred !== -1) return preferred - 1000;
+  let score = 0;
+  if (!(model.input || []).includes("image")) score += 1000;
+  if (!model.reasoning) score += 100;
+  score -= Math.min(50, Math.floor(Number(model.contextWindow || 0) / 100000));
+  return score;
+}
+
+class SetupManager {
+  constructor(paths, runtime, options = {}) {
+    this.paths = paths;
+    this.runtime = runtime;
+    this.options = options;
+  }
+
+  async reload() {
+    await this.runtime.reloadConfig();
+  }
+
+  providerEntries() {
+    const runtimeProviders = [...this.runtime.getProviders()].filter((provider) => (
+      SIMPLE_SETUP_PROVIDER_IDS.has(provider.id)
+    ));
+    const knownIds = new Set(runtimeProviders.map((provider) => provider.id));
+    const modelsConfig = readJson(this.paths.modelsPath, { providers: {} });
+    const entries = [];
+    for (const provider of runtimeProviders) {
+      if (customBaseProvider(provider.id, knownIds)) continue;
+      const relayId = customProviderId(provider.id);
+      const customConfigured = Boolean(modelsConfig.providers?.[relayId]);
+      const runtimeId = customConfigured ? relayId : provider.id;
+      const status = this.runtime.getProviderAuthStatus(runtimeId);
+      const authOptions = [];
+      if (provider.auth?.apiKey?.login) {
+        authOptions.push({ id: "api_key", label: provider.auth.apiKey.name || "API key" });
+      }
+      if (provider.auth?.oauth) {
+        authOptions.push({
+          id: "oauth",
+          label: provider.auth.oauth.loginLabel || provider.auth.oauth.name || "OAuth",
+        });
+      }
+      entries.push({
+        id: provider.id,
+        name: provider.name || provider.id,
+        mode: customConfigured ? "custom" : status.configured ? "official" : "none",
+        runtimeProvider: runtimeId,
+        customProvider: relayId,
+        connected: Boolean(status.configured),
+        authLabel: status.label || status.source || "",
+        modelCount: this.runtime.getModels(runtimeId).length,
+        authOptions,
+        baseUrl: customConfigured
+          ? String(modelsConfig.providers?.[relayId]?.baseUrl || "")
+          : provider.baseUrl || "",
+      });
+    }
+    return entries.sort((left, right) => (
+      providerRank(left) - providerRank(right)
+      || left.name.localeCompare(right.name)
+    ));
+  }
+
+  providerEntry(providerId) {
+    const entry = this.providerEntries().find((candidate) => candidate.id === providerId);
+    if (!entry) throw new Error("Unknown provider: " + providerId);
+    return entry;
+  }
+
+  providerNameForRuntime(runtimeProvider) {
+    const entry = this.providerEntries().find((candidate) => candidate.runtimeProvider === runtimeProvider);
+    return entry?.name || this.runtime.getProvider(runtimeProvider)?.name || runtimeProvider;
+  }
+
+  modelState(reference) {
+    if (!reference) return undefined;
+    const model = this.runtime.getModel(reference.provider, reference.model);
+    return {
+      ...reference,
+      name: model?.name || reference.model,
+      providerName: this.providerNameForRuntime(reference.provider),
+      available: Boolean(model && this.runtime.hasConfiguredAuth(reference.provider)),
+    };
+  }
+
+  researchState(config) {
+    const rawSource = String(config.literature?.paper_source || "").trim();
+    if (!rawSource) {
+      return { selected: false, source: "", label: "Choose source", configured: false };
+    }
+    if (rawSource === "none") {
+      return { selected: true, source: "none", label: "None", configured: true };
+    }
+    const provider = LITERATURE_PROVIDERS[rawSource];
+    if (!provider) {
+      return { selected: true, source: rawSource, label: rawSource, configured: false };
+    }
+    const existing = existingLiteratureConfiguration(
+      config,
+      this.paths.literatureCredentialsPath,
+      this.options.env || process.env,
+    );
+    return {
+      selected: true,
+      source: rawSource,
+      label: provider.label,
+      configured: Boolean(existing),
+      baseUrl: String(config.literature?.providers?.[rawSource]?.base_url || provider.defaultBaseUrl || ""),
+    };
+  }
+
+  async snapshot() {
+    const configExists = existsSync(this.paths.userConfigPath);
+    const config = readYaml(this.paths.userConfigPath, {});
+    const primaryReference = readPrimaryModel(config);
+    const fastReference = readFastModel(config, primaryReference);
+    const providers = this.providerEntries();
+    const connectedProviders = providers.filter((provider) => provider.mode !== "none" && provider.connected);
+    const primary = this.modelState(primaryReference);
+    const fast = this.modelState(fastReference);
+    const research = this.researchState(config);
+    const hasUsableProvider = connectedProviders.length > 0 || Boolean(primary?.available) || Boolean(fast?.available);
+    const missingRequired = !hasUsableProvider || !primaryReference || !research.selected;
+    const needsAttention = Boolean(
+      (primaryReference && !primary?.available)
+      || (fastReference && !fast?.available)
+      || (research.selected && !research.configured),
+    );
+    const status = needsAttention ? "needs_attention" : missingRequired ? "needs_setup" : "ready";
+    return {
+      providers,
+      connectedProviders,
+      primary,
+      fast,
+      research,
+      status,
+      ready: status === "ready",
+      configExists,
+      firstTime: !configExists && !primaryReference && !research.selected,
+      paths: { ...this.paths },
+    };
+  }
+
+  async listModels(providerId, options = {}) {
+    const entry = this.providerEntry(providerId);
+    if (!entry.connected || entry.mode === "none") return [];
+    let models;
+    try {
+      models = [...await this.runtime.getAvailable(entry.runtimeProvider)];
+    } catch {
+      models = [];
+    }
+    if (options.requireVision !== false) {
+      models = models.filter((model) => (model.input || []).includes("image"));
+    }
+    const currentModelId = options.current?.provider === entry.runtimeProvider
+      ? options.current.model
+      : undefined;
+    return models.sort((left, right) => (
+      modelScore(left, providerId, currentModelId) - modelScore(right, providerId, currentModelId)
+      || String(left.name || left.id).localeCompare(String(right.name || right.id))
+    ));
+  }
+
+  async connectOfficial(providerId, authType, interaction) {
+    const provider = this.runtime.getProvider(providerId);
+    if (!provider) throw new Error("Unknown provider: " + providerId);
+    await this.runtime.login(providerId, authType, interaction);
+    const relayId = customProviderId(providerId);
+    const models = readJson(this.paths.modelsPath, { providers: {} });
+    if (models.providers?.[relayId]) {
+      migrateProviderReferences(
+        this.paths.userConfigPath,
+        this.paths.settingsPath,
+        relayId,
+        providerId,
+      );
+      try {
+        await this.runtime.logout(relayId);
+      } catch {}
+      removeModelsProvider(this.paths.modelsPath, relayId);
+    }
+    await this.reload();
+    return await this.snapshot();
+  }
+
+  async connectCustom(providerId, baseUrl, apiKey, signal) {
+    const provider = this.runtime.getProvider(providerId);
+    if (!provider) throw new Error("Unknown provider: " + providerId);
+    const models = [...this.runtime.getModels(providerId)];
+    const relayId = customProviderId(providerId);
+    const previousModels = readJson(this.paths.modelsPath, { providers: {} });
+    try {
+      writeModelsProvider(
+        this.paths.modelsPath,
+        relayId,
+        customProviderConfig(provider, baseUrl, models),
+      );
+      await this.reload();
+      await this.runtime.login(relayId, "api_key", {
+        signal,
+        async prompt() {
+          if (signal?.aborted) throw new Error("Login cancelled");
+          return apiKey;
+        },
+        notify() {},
+      });
+      migrateProviderReferences(
+        this.paths.userConfigPath,
+        this.paths.settingsPath,
+        providerId,
+        relayId,
+      );
+      try {
+        await this.runtime.logout(providerId);
+      } catch {}
+      await this.reload();
+      return await this.snapshot();
+    } catch (error) {
+      try {
+        await this.runtime.logout(relayId);
+      } catch {}
+      atomicWrite(this.paths.modelsPath, JSON.stringify(previousModels, null, 2) + "\n");
+      await this.reload();
+      throw error;
+    }
+  }
+
+  async disconnectProvider(providerId) {
+    const entry = this.providerEntry(providerId);
+    if (entry.mode === "none") return await this.snapshot();
+    if (providerIsReferenced(
+      this.paths.userConfigPath,
+      this.paths.settingsPath,
+      entry.runtimeProvider,
+    )) {
+      throw new Error(entry.name + " is currently used by a configured model");
+    }
+    await this.runtime.logout(entry.runtimeProvider);
+    if (entry.mode === "custom") {
+      removeModelsProvider(this.paths.modelsPath, entry.runtimeProvider);
+    }
+    await this.reload();
+    return await this.snapshot();
+  }
+
+  async setPrimary(model) {
+    if (!this.runtime.getModel(model.provider, model.model)) {
+      throw new Error("Model is not available: " + model.provider + "/" + model.model);
+    }
+    const loaded = readConfigDocument(this.paths.userConfigPath);
+    const oldPrimary = readPrimaryModel(loaded.config);
+    const fast = readFastModel(loaded.config, oldPrimary);
+    writeAgentModels(loaded.document, CORE_AGENTS, model);
+    writeAgentModels(loaded.document, FAST_AGENTS, fast || model);
+    if (!loaded.existed && !loaded.config.literature?.paper_source) {
+      loaded.document.setIn(["workflow", "seekbrain", "research_survey"], false);
+      loaded.document.setIn(["workflow", "seekbrain", "deep_research"], false);
+      loaded.document.setIn(["workflow", "seekbrain", "targeted_skill_generate"], false);
+    }
+    atomicWrite(this.paths.userConfigPath, loaded.document.toString());
+    writePrimarySettings(this.paths.settingsPath, model);
+    return await this.snapshot();
+  }
+
+  async setFast(model) {
+    const loaded = readConfigDocument(this.paths.userConfigPath);
+    const primary = readPrimaryModel(loaded.config);
+    if (!primary) throw new Error("Choose a Primary model first");
+    const effective = model || primary;
+    if (!this.runtime.getModel(effective.provider, effective.model)) {
+      throw new Error("Model is not available: " + effective.provider + "/" + effective.model);
+    }
+    writeAgentModels(loaded.document, FAST_AGENTS, effective);
+    atomicWrite(this.paths.userConfigPath, loaded.document.toString());
+    return await this.snapshot();
+  }
+
+  async setResearch(literature) {
+    writeLiteratureCredentials(this.paths.literatureCredentialsPath, literature);
+    const loaded = readConfigDocument(this.paths.userConfigPath);
+    applyLiteratureConfiguration(
+      loaded.document,
+      literature,
+      false,
+      this.paths.literatureCredentialsPath,
+    );
+    atomicWrite(this.paths.userConfigPath, loaded.document.toString());
+    return await this.snapshot();
+  }
+}
+
+export async function createSetupManager(options = {}) {
+  const paths = setupPaths(options);
+  const runtimeFactory = options.runtimeFactory || defaultRuntimeFactory;
+  const runtime = await runtimeFactory({
+    authPath: paths.authPath,
+    modelsPath: paths.modelsPath,
+    allowModelNetwork: false,
+  });
+  return new SetupManager(paths, runtime, options);
 }
 
 export async function runSetup(options = {}) {
@@ -531,7 +1008,7 @@ export async function runSetup(options = {}) {
         break;
       }
     }
-    writeSettings(settingsPath, core);
+    writePrimarySettings(settingsPath, core);
     writeLiteratureCredentials(literatureCredentialsPath, literature);
     writeSeekBrainConfig(userConfigPath, options.userTemplate, core, fast, literature, literatureCredentialsPath);
     output.write("\nSeekBrain setup complete.\n");

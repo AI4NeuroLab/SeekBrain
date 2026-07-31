@@ -24,6 +24,7 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
     debug_disk_writes: false,
     seekbrain: {
       research_planning: true,
+      research_planning_strategy: "standard",
       research_survey: true,
       research_planning_peer_review: true,
       research_execution: {

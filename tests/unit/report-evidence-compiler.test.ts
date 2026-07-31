@@ -26,6 +26,8 @@ async function researchPlanningFixture() {
   };
   await atomicWriteJson(planPath, plan);
   await writeFile(join(taskRunDir, "plan.md"), "# Plan");
+  await writeFile(join(taskRunDir, "generated_code.py"), "import numpy as np\neffect = np.mean([0.4, 0.6])\n");
+  await writeFile(join(taskProjectDir, "outside.py"), "raise RuntimeError('not selected round code')\n");
   await writeFile(join(taskRunDir, "figure.png"), "PNG");
   await writeFile(join(taskRunDir, "figure.pdf"), "%PDF");
   await writeFile(join(taskRunDir, "table.csv"), "metric,value\neffect,0.5\n");
@@ -36,9 +38,12 @@ async function researchPlanningFixture() {
     schema_version: 2, run_id: "task-run", run_dir: taskRunDir, question: "Estimate the effect.",
     parent_run_dir: planningDir, inherited_context: { parent_run_dir: planningDir },
     plan: { path: join(taskRunDir, "plan.md"), review_summary: "Estimate effect 0.5." },
-    validation: { pass: true, path: join(taskRunDir, "validation.json"), summary: "Validated", figure_observations: ["Positive effect"] },
+    code_attempt: 1,
+    code: { code_files: [{ path: "generated_code.py" }, { path: "../outside.py" }] },
+    validation: { pass: true, validated_code_attempt: 1, path: join(taskRunDir, "validation.json"), summary: "Validated", figure_observations: ["Positive effect"] },
     conclusions: { path: join(taskRunDir, "conclusions.json"), summary: "Effect 0.5" },
     artifacts: [
+      { path: "generated_code.py", kind: "code", role: "analysis_script" },
       { path: "figure.png", kind: "figure", role: "main", description: "Effect plot" },
       { path: "figure.pdf", kind: "figure", role: "main_pdf", description: "Vector effect plot" },
       { path: "table.csv", kind: "table", description: "Effect table" },
@@ -46,6 +51,7 @@ async function researchPlanningFixture() {
     ],
   });
   await writeFile(join(taskRunDir2, "plan.md"), "# Revised Plan");
+  await writeFile(join(taskRunDir2, "generated_code.py"), "import numpy as np\neffect = np.mean([0.5, 0.7])\n");
   await writeFile(join(taskRunDir2, "figure.png"), "PNG2");
   await writeFile(join(taskRunDir2, "statistics.json"), JSON.stringify({ effect: 0.6 }));
   await atomicWriteJson(join(taskRunDir2, "validation.json"), { pass: true, summary: "Validated revision" });
@@ -54,9 +60,11 @@ async function researchPlanningFixture() {
     schema_version: 2, run_id: "task-run-2", run_dir: taskRunDir2, question: "Estimate the revised effect.",
     parent_run_dir: planningDir, inherited_context: { parent_run_dir: planningDir },
     plan: { path: join(taskRunDir2, "plan.md"), review_summary: "Estimate revised effect 0.6." },
-    validation: { pass: true, path: join(taskRunDir2, "validation.json"), summary: "Validated revision" },
+    code_attempt: 1,
+    code: { code_files: [{ path: "generated_code.py" }] },
+    validation: { pass: true, validated_code_attempt: 1, path: join(taskRunDir2, "validation.json"), summary: "Validated revision" },
     conclusions: { path: join(taskRunDir2, "conclusions.json"), summary: "Effect 0.6" },
-    artifacts: [{ path: "figure.png", kind: "figure", role: "main", description: "Revised effect plot" }, { path: "statistics.json", kind: "statistics" }],
+    artifacts: [{ path: "generated_code.py", kind: "code", role: "analysis_script" }, { path: "figure.png", kind: "figure", role: "main", description: "Revised effect plot" }, { path: "statistics.json", kind: "statistics" }],
   });
   await atomicWriteJson(join(taskProjectDir, "project.json"), {
     schema_version: 1, project_id: "SQ1-T1", project_dir: taskProjectDir,
@@ -94,6 +102,8 @@ describe("ReportEvidenceCompiler", () => {
       const hierarchy = JSON.parse(await readFile(result.hierarchical_evidence_path, "utf8"));
       expect(hierarchy.kind).toBe("research_planning_hierarchical_evidence");
       expect(hierarchy.plan_evidence[0]).toMatchObject({ evidence_id: "SQ1-T1:R1", task_id: "SQ1-T1", round_number: 1, subquestion_id: "SQ1", summary: "Effect 0.5", figure_ids: ["SQ1-T1:R1:F1"], table_ids: ["SQ1-T1:R1:T1"] });
+      expect(hierarchy.plan_evidence[0].validated_code_paths).toEqual([join(fixture.taskRunDir, "generated_code.py")]);
+      expect(hierarchy.plan_evidence[0].source_paths.code).toEqual([join(fixture.taskRunDir, "generated_code.py")]);
       expect(hierarchy.plan_evidence[0].supporting_statistics.samples).toMatchObject({ count: 20 });
       expect(hierarchy.figures[0].relative_path).toBe("assets/figure-001.png");
       expect(hierarchy.figures[0].supplemental_assets[0].relative_path).toBe("assets/figure-001.pdf");

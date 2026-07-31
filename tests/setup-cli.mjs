@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml, parseDocument } from "yaml";
-import { applyLiteratureConfiguration, applyModelRouting, collectLiteratureProvider, mainstreamModels, relayProviderConfig, runSetup, selectableModelOptions, validateLiteratureProvider } from "../src/cli/setup.mjs";
+import { applyLiteratureConfiguration, applyModelRouting, collectLiteratureProvider, createSetupManager, literatureSourceOptions, mainstreamModels, readFastModel, readPrimaryModel, relayProviderConfig, runSetup, selectableModelOptions, validateLiteratureProvider } from "../src/cli/setup.mjs";
 
 let shanghaiOption;
 let literatureOptions;
@@ -94,24 +94,15 @@ for (const agent of ["seekbrain_default", "seekbrain_refine_image"]) {
   assert.equal(routedConfig.agents[agent].provider, "quick");
   assert.equal(routedConfig.agents[agent].model, "fast");
 }
-assert.deepEqual(Object.fromEntries(Object.entries(routedConfig.agents).map(([name, agent]) => [name, agent.thinking])), {
-  seekbrain: "low",
-  seekbrain_deep_research: "low",
-  seekbrain_survey: "low",
-  seekbrain_research_planning: "high",
-  seekbrain_research_reviewer: "low",
-  seekbrain_skill_match: "off",
-  seekbrain_skill_context: "off",
-  seekbrain_skill_generate: "medium",
-  seekbrain_plan: "high",
-  seekbrain_code: "high",
-  seekbrain_validate: "low",
-  seekbrain_interpret: "high",
-  seekbrain_default: "off",
-  seekbrain_research_route: "off",
-  seekbrain_refine_image: "off",
-});
+assert.ok(Object.values(routedConfig.agents).every((agent) => agent.thinking === undefined), "model routing must not create Thinking settings");
 assert.equal(routedConfig.workflow.seekbrain.deep_research, true);
+
+const preservedRouting = parseDocument("agents:\n  seekbrain:\n    thinking: max\n    timeout_seconds: 42\n  seekbrain_default:\n    thinking: off\n");
+applyModelRouting(preservedRouting, { provider: "strong", model: "core" }, { provider: "quick", model: "fast" });
+const preservedRoutingConfig = parseYaml(preservedRouting.toString());
+assert.equal(preservedRoutingConfig.agents.seekbrain.thinking, "max");
+assert.equal(preservedRoutingConfig.agents.seekbrain.timeout_seconds, 42);
+assert.equal(preservedRoutingConfig.agents.seekbrain_default.thinking, "off");
 
 const relay = relayProviderConfig({
   name: "Relay",
@@ -199,15 +190,14 @@ const settings = JSON.parse(await readFile(join(work, ".pi", "agent", "settings.
 assert.deepEqual(settings, {
   defaultProvider: "openai",
   defaultModel: "core-vision",
-  defaultThinkingLevel: "high",
 });
 const userConfig = parseYaml(await readFile(join(work, ".config", "seekbrain", "config.yaml"), "utf8"));
 assert.equal(userConfig.agents.seekbrain.model, "core-vision");
 assert.equal(userConfig.agents.seekbrain_default.model, "fast-vision");
 assert.equal(userConfig.agents.seekbrain_interpret.model, "core-vision");
-assert.equal(userConfig.agents.seekbrain.thinking, "low");
+assert.equal(userConfig.agents.seekbrain.thinking, "medium");
 assert.equal(userConfig.agents.seekbrain_default.thinking, "off");
-assert.equal(userConfig.agents.seekbrain_validate.thinking, "low");
+assert.equal(userConfig.agents.seekbrain_validate.thinking, "high");
 assert.equal(userConfig.agents.seekbrain_interpret.thinking, "high");
 assert.equal(userConfig.literature.paper_source, "none");
 assert.equal(userConfig.workflow.seekbrain.research_survey, false);
@@ -300,10 +290,189 @@ try {
     { message: "Keep existing literature setup (Semantic Scholar)?", defaultValue: true },
   ]);
   const reusedConfig = parseYaml(await readFile(configPath, "utf8"));
-  assert.equal(reusedConfig.workflow.seekbrain.deep_research, false);
+  assert.equal(reusedConfig.workflow.seekbrain.deep_research, true);
   assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
 } finally {
   await rm(literatureWork, { recursive: true, force: true });
+}
+
+assert.deepEqual(literatureSourceOptions().map((option) => option.id), [
+  "none", "semantic_scholar", "pubmed", "ailab_rag",
+]);
+assert.deepEqual(readPrimaryModel({
+  agents: {
+    seekbrain: { provider: "primary-provider", model: "primary-model" },
+    seekbrain_code: { provider: "unrelated-provider", model: "unrelated-model" },
+  },
+}), { provider: "primary-provider", model: "primary-model" });
+assert.deepEqual(readFastModel({
+  agents: {
+    seekbrain: { provider: "primary-provider", model: "primary-model" },
+    seekbrain_default: { provider: "fast-provider", model: "fast-model" },
+    seekbrain_research_route: { provider: "ignored-provider", model: "ignored-model" },
+  },
+}), { provider: "fast-provider", model: "fast-model" });
+assert.equal(readFastModel({
+  agents: {
+    seekbrain: { provider: "same", model: "same-model" },
+    seekbrain_default: { provider: "same", model: "same-model" },
+  },
+}), undefined);
+
+const managerWork = await mkdtemp(join(tmpdir(), "seekbrain-settings-manager-"));
+const managerAuth = new Map();
+const providerCatalog = [
+  {
+    id: "openai", name: "OpenAI", baseUrl: "https://api.openai.test/v1",
+    auth: { apiKey: { name: "OpenAI API key", login() {} } },
+  },
+  {
+    id: "anthropic", name: "Anthropic", baseUrl: "https://api.anthropic.test",
+    auth: { apiKey: { name: "Anthropic API key", login() {} }, oauth: { name: "Anthropic OAuth" } },
+  },
+  {
+    id: "amazon-bedrock", name: "Amazon Bedrock",
+    auth: { apiKey: { name: "AWS credentials", login() {} } },
+  },
+];
+const baseModels = {
+  openai: [
+    { id: "core-vision", name: "Core Vision", reasoning: true, input: ["text", "image"], contextWindow: 200000 },
+    { id: "core-vision-2", name: "Core Vision 2", reasoning: true, input: ["text", "image"], contextWindow: 200000 },
+  ],
+  anthropic: [
+    { id: "fast-vision", name: "Fast Vision", reasoning: true, input: ["text", "image"], contextWindow: 200000 },
+  ],
+  "amazon-bedrock": [
+    { id: "cloud-model", name: "Cloud Model", reasoning: true, input: ["text", "image"], contextWindow: 200000 },
+  ],
+};
+function baseProviderId(providerId) {
+  if (providerId === "openai-relay") return "openai";
+  if (providerId === "anthropic-relay") return "anthropic";
+  return providerId.endsWith("-relay") ? providerId.slice(0, -6) : providerId;
+}
+const managerRuntime = {
+  getProviders() { return providerCatalog; },
+  getProvider(providerId) {
+    return providerCatalog.find((provider) => provider.id === providerId)
+      || (providerId.endsWith("-relay") ? { ...providerCatalog.find((provider) => provider.id === baseProviderId(providerId)), id: providerId } : undefined);
+  },
+  getModels(providerId) {
+    return (baseModels[baseProviderId(providerId)] || []).map((model) => ({ ...model, provider: providerId }));
+  },
+  getModel(providerId, modelId) { return this.getModels(providerId).find((model) => model.id === modelId); },
+  getProviderAuthStatus(providerId) {
+    return { configured: managerAuth.has(providerId), label: managerAuth.has(providerId) ? "Stored credential" : "" };
+  },
+  hasConfiguredAuth(providerId) { return managerAuth.has(providerId); },
+  async getAvailable(providerId) { return managerAuth.has(providerId) ? this.getModels(providerId) : []; },
+  async login(providerId, type, interaction) {
+    const key = await interaction.prompt({ type: "secret", message: "Credential" });
+    if (!key) throw new Error("Credential required");
+    managerAuth.set(providerId, { type, key });
+  },
+  async logout(providerId) { managerAuth.delete(providerId); },
+  async reloadConfig() {},
+};
+try {
+  const manager = await createSetupManager({
+    homeDir: managerWork,
+    runtimeFactory: async () => managerRuntime,
+    env: {},
+  });
+  let snapshot = await manager.snapshot();
+  assert.equal(snapshot.firstTime, true);
+  assert.equal(snapshot.status, "needs_setup");
+  assert.deepEqual(snapshot.providers.map((provider) => provider.id), ["openai", "anthropic"]);
+
+  const interaction = (key) => ({ async prompt() { return key; }, notify() {} });
+  snapshot = await manager.connectOfficial("openai", "api_key", interaction("openai-key"));
+  snapshot = await manager.connectOfficial("anthropic", "api_key", interaction("anthropic-key"));
+  assert.deepEqual(snapshot.connectedProviders.map((provider) => provider.id).sort(), ["anthropic", "openai"]);
+  await assert.rejects(readFile(join(managerWork, ".config", "seekbrain", "config.yaml"), "utf8"), /ENOENT/);
+
+  const settingsPath = join(managerWork, ".pi", "agent", "settings.json");
+  await mkdir(join(managerWork, ".pi", "agent"), { recursive: true });
+  await writeFile(settingsPath, JSON.stringify({ defaultThinkingLevel: "max", unrelated: true }), "utf8");
+  snapshot = await manager.setPrimary({ provider: "openai", model: "core-vision" });
+  assert.equal(snapshot.firstTime, false);
+  assert.equal(snapshot.research.selected, false, "first setup must require an explicit Research Source choice");
+  const fullConfigPath = join(managerWork, ".config", "seekbrain", "config.yaml");
+  let fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
+  assert.equal(fullConfig.agents.seekbrain.model, "core-vision");
+  assert.equal(fullConfig.agents.seekbrain_default.model, "core-vision");
+  assert.equal(fullConfig.agents.seekbrain.thinking, "medium");
+  assert.equal(fullConfig.agents.seekbrain_interpret.thinking, "high");
+  assert.equal(fullConfig.workflow.seekbrain.research_survey, false);
+  assert.equal(fullConfig.workflow.seekbrain.deep_research, false);
+  assert.equal(fullConfig.workflow.seekbrain.targeted_skill_generate, false);
+  assert.equal(fullConfig.workflow.seekbrain.targeted_skill_match, true);
+  assert.equal(fullConfig.workflow.seekbrain.research_planning, true);
+  const preservedSettings = JSON.parse(await readFile(settingsPath, "utf8"));
+  assert.equal(preservedSettings.defaultThinkingLevel, "max");
+  assert.equal(preservedSettings.unrelated, true);
+
+  const editedDocument = parseDocument(await readFile(fullConfigPath, "utf8"));
+  editedDocument.setIn(["agents", "seekbrain_code", "provider"], "manual-provider");
+  editedDocument.setIn(["agents", "seekbrain_code", "model"], "manual-model");
+  editedDocument.setIn(["agents", "seekbrain_code", "thinking"], "max");
+  editedDocument.setIn(["agents", "user_custom"], { provider: "custom", model: "custom-model", thinking: "medium" });
+  await writeFile(fullConfigPath, editedDocument.toString(), "utf8");
+  snapshot = await manager.snapshot();
+  assert.equal(snapshot.primary.model, "core-vision", "other Agent routes must not affect the Setup anchor");
+
+  snapshot = await manager.setFast({ provider: "anthropic", model: "fast-vision" });
+  assert.equal(snapshot.fast.model, "fast-vision");
+  snapshot = await manager.setPrimary({ provider: "openai", model: "core-vision-2" });
+  fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
+  assert.equal(fullConfig.agents.seekbrain_code.model, "core-vision-2");
+  assert.equal(fullConfig.agents.seekbrain_code.thinking, "max");
+  assert.deepEqual(fullConfig.agents.user_custom, { provider: "custom", model: "custom-model", thinking: "medium" });
+  assert.equal(fullConfig.agents.seekbrain_default.model, "fast-vision", "changing Primary must preserve a separate Fast model");
+
+  snapshot = await manager.setFast(undefined);
+  assert.equal(snapshot.fast, undefined);
+  fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
+  assert.equal(fullConfig.agents.seekbrain_default.model, "core-vision-2");
+
+  snapshot = await manager.setResearch({ source: "none", label: "None" });
+  assert.equal(snapshot.ready, true);
+  fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
+  assert.equal(fullConfig.literature.paper_source, "none");
+  assert.equal(fullConfig.workflow.seekbrain.research_survey, false);
+  assert.equal(fullConfig.workflow.seekbrain.deep_research, false);
+  assert.equal(fullConfig.workflow.seekbrain.targeted_skill_generate, false);
+  assert.equal(fullConfig.workflow.seekbrain.targeted_skill_match, true);
+  assert.equal(fullConfig.workflow.seekbrain.research_planning, true);
+
+  const deepResearchDocument = parseDocument(await readFile(fullConfigPath, "utf8"));
+  deepResearchDocument.setIn(["workflow", "seekbrain", "deep_research"], true);
+  await writeFile(fullConfigPath, deepResearchDocument.toString(), "utf8");
+  snapshot = await manager.setResearch({
+    source: "semantic_scholar",
+    label: "Semantic Scholar",
+    baseUrl: "https://api.semanticscholar.test/graph/v1",
+    credentialRef: "semantic_scholar_default",
+    apiKey: "literature-secret",
+  });
+  fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
+  assert.equal(fullConfig.workflow.seekbrain.deep_research, true, "choosing a source must preserve Deep Research");
+  assert.doesNotMatch(await readFile(fullConfigPath, "utf8"), /literature-secret/);
+
+  snapshot = await manager.connectCustom("openai", "https://relay.example/v1", "relay-key");
+  assert.equal(snapshot.providers.find((provider) => provider.id === "openai").mode, "custom");
+  assert.equal(snapshot.providers.find((provider) => provider.id === "anthropic").mode, "official");
+  assert.equal(snapshot.primary.provider, "openai-relay");
+  assert.equal(managerAuth.has("openai"), false);
+  assert.equal(managerAuth.has("openai-relay"), true);
+  snapshot = await manager.connectOfficial("openai", "api_key", interaction("new-openai-key"));
+  assert.equal(snapshot.providers.find((provider) => provider.id === "openai").mode, "official");
+  assert.equal(snapshot.primary.provider, "openai");
+  assert.equal(managerAuth.has("openai-relay"), false);
+  await assert.rejects(manager.disconnectProvider("openai"), /currently used/);
+} finally {
+  await rm(managerWork, { recursive: true, force: true });
 }
 
 // Exercise Pi's real credential store in an isolated home. This verifies that

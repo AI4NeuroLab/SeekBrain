@@ -17,6 +17,7 @@ const cwd = await mkdtemp(join(tmpdir(), "seekbrain-research-tool-contract-"));
 const previousRoot = process.env.SEEKBRAIN_ROOT;
 const previousUser = process.env.SEEKBRAIN_USER_CONFIG;
 const previousNonInteractive = process.env.SEEKBRAIN_NON_INTERACTIVE;
+const previousRunMode = process.env.SEEKBRAIN_RUN_MODE;
 process.env.SEEKBRAIN_ROOT = cwd;
 process.env.SEEKBRAIN_USER_CONFIG = join(cwd, "missing-user.yaml");
 process.env.SEEKBRAIN_NON_INTERACTIVE = "1";
@@ -25,6 +26,7 @@ literature:
   paper_source: ailab_rag
 workflow:
   seekbrain:
+    research_planning_strategy: creative
     deep_research: false
     targeted_skill_match: false
     targeted_skill_generate: false
@@ -85,6 +87,50 @@ try {
   assert.equal(explicitlyRequested.details.research_route.needs_user_review, false);
   assert.equal(explicitlyRequested.details.research_route.next_tool, "seekbrain_planning_generate");
 
+  process.env.SEEKBRAIN_RUN_MODE = "research_planning_auto";
+  const automaticPlanning = await byName.seekbrain_research_start.execute("automatic-planning", {
+    project_dir: "automatic-planning-project",
+    question: "Investigate linked hypotheses across the dataset.",
+    planning_assessment: {
+      route: "standard",
+      reason: "The supplied assessment selected a standard run.",
+    },
+  }, undefined, undefined, ctx);
+  assert.equal(automaticPlanning.details.research_route.route, "research_planning");
+  assert.equal(automaticPlanning.details.research_route.decision, "agent_full_auto");
+  assert.equal(automaticPlanning.details.research_route.agent_full_auto, true);
+  assert.equal(automaticPlanning.details.research_route.needs_user_review, false);
+  assert.equal(automaticPlanning.details.research_route.next_tool, "seekbrain_planning_generate");
+
+  const creativeReserved = await byName.seekbrain_planning_generate.execute(
+    "creative-reserved",
+    { run_id: automaticPlanning.details.run_id },
+    undefined,
+    undefined,
+    ctx,
+  );
+  assert.equal(creativeReserved.details.ok, false);
+  assert.equal(creativeReserved.details.reserved, true);
+  assert.equal(creativeReserved.details.error_code, "research_planning_strategy_not_implemented");
+  assert.equal(creativeReserved.details.research_planning_strategy, "creative");
+  assert.match(creativeReserved.details.error, /No Standard research plan was generated/);
+
+  process.env.SEEKBRAIN_RUN_MODE = "standard";
+  const forcedStandard = await byName.seekbrain_research_start.execute("forced-standard", {
+    project_dir: "forced-standard-project",
+    question: "Use Research Planning for this study.",
+    planning_assessment: {
+      route: "research_planning",
+      reason: "The question requested hierarchical planning.",
+      explicit_request_quote: "Use Research Planning for this study.",
+    },
+  }, undefined, undefined, ctx);
+  assert.equal(forcedStandard.details.research_route.route, "standard");
+  assert.equal(forcedStandard.details.research_route.enabled, false);
+  assert.equal(forcedStandard.details.workflow_config.optional.research_planning, "disabled_by_run_mode");
+
+  delete process.env.SEEKBRAIN_RUN_MODE;
+
   const started = await byName.seekbrain_run_start.execute("start", { work_dir: "run", question: "question" }, undefined, undefined, ctx);
   const skill = await byName.seekbrain_recipe_retrieve.execute("skill", { run_id: started.details.run_id }, undefined, undefined, ctx);
   const research = await byName.seekbrain_deep_research.execute("research", { run_id: started.details.run_id }, undefined, undefined, ctx);
@@ -96,6 +142,7 @@ try {
   if (previousRoot === undefined) delete process.env.SEEKBRAIN_ROOT; else process.env.SEEKBRAIN_ROOT = previousRoot;
   if (previousUser === undefined) delete process.env.SEEKBRAIN_USER_CONFIG; else process.env.SEEKBRAIN_USER_CONFIG = previousUser;
   if (previousNonInteractive === undefined) delete process.env.SEEKBRAIN_NON_INTERACTIVE; else process.env.SEEKBRAIN_NON_INTERACTIVE = previousNonInteractive;
+  if (previousRunMode === undefined) delete process.env.SEEKBRAIN_RUN_MODE; else process.env.SEEKBRAIN_RUN_MODE = previousRunMode;
   await rm(cwd, { recursive: true, force: true });
 }
 

@@ -23,9 +23,9 @@ sessions into patterns instead of listing equivalent metadata repeatedly.
 ## Method
 State parameters, operation order, exclusions, alignment, aggregation, and
 fail-fast structural conditions. Preserve genuine scientific assumptions.
-Do not include recipe-relevance commentary, background essays, Python-library
-tutorials, line-by-line implementation advice, exhaustive QC inventories, or
-large lists of prohibitions. Do not over-design statistics or plotting details.
+Do not include background essays, Python-library tutorials, line-by-line
+implementation advice, exhaustive QC inventories, or large lists of
+prohibitions. Do not over-design statistics or plotting details.
 When the accepted method source lists repository candidate files, name only the
 exact files Code should inspect and the step each one supports. When it lists a
 validated script, name that script as the implementation base. Do not copy

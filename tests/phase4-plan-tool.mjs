@@ -18,7 +18,6 @@ assert.match(promptSource, /## Inputs/);
 assert.match(promptSource, /## Method/);
 assert.match(promptSource, /## Outputs/);
 assert.match(promptSource, /## Assumptions and Warnings/);
-assert.match(promptSource, /Do not score, rank, or re-evaluate its relevance/);
 assert.doesNotMatch(promptSource, /## Recipe Relevance/);
 assert.doesNotMatch(toolSource, /data_info|analysis_recipe|methodological_schema|confidence/);
 assert.doesNotMatch(workflowSource, /plan_markdown: agent\.result/);

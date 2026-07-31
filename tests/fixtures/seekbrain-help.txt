@@ -13,7 +13,7 @@ Commands:
   resume <session>      Resume a SeekBrain conversation session
   run                  Run a non-interactive analysis task
   report <project>     Generate a Research Planning report from eligible task rounds
-  setup                Configure model routing and a literature provider
+  setup                Configure providers, models, and research source
   doctor               Check Node, Pi, Python, and package dependencies
   config show          Show configuration paths; add --effective for merged values
   config list [prefix] List effective public configuration values and their sources
@@ -34,6 +34,7 @@ Options:
   --query <text>       Research question
   --dataset <path>     Dataset directory, metadata JSON file, or JSON content
   --work-dir <path>    Output directory
+  --research-planning  Use Research Planning in Agent-Full-Auto mode (run only)
   --path <text>        Extra path or access notes
   --goal <text>        Optional report synthesis goal (report only)
   --session <id|path>  Resume a SeekBrain conversation session
@@ -48,6 +49,7 @@ Examples:
   seekbrain setup
   seekbrain -- --model provider/model
   seekbrain run --query "Compare the conditions" --dataset metadata.json --work-dir results/example
+  seekbrain run --research-planning --query "Investigate linked hypotheses" --dataset metadata.json --work-dir results/study
   seekbrain report results/research-planning-project
   seekbrain config show
   seekbrain config show --effective
