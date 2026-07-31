@@ -1,7 +1,7 @@
 # SeekBrain: A domain-specialized multi-agent framework for neuroscience discovery
 
-[![Project Website](https://img.shields.io/badge/Project-Website-7F56D9?style=flat-square&logo=githubpages&logoColor=white)](https://ai4neurolab.github.io/SeekBrain-page/)
 [![Paper](https://img.shields.io/badge/Paper-Coming_Soon-B31B1B?style=flat-square&logo=arxiv&logoColor=white)](#paper)
+[![Project Website](https://img.shields.io/badge/Project-Website-7F56D9?style=flat-square&logo=githubpages&logoColor=white)](https://ai4neurolab.github.io/SeekBrain-page/)
 [![npm version](https://img.shields.io/npm/v/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
 [![npm downloads](https://img.shields.io/npm/dm/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
 [![Built on Pi](https://img.shields.io/badge/Built_on-Pi-24292f?style=flat-square)](https://github.com/earendil-works/pi)
@@ -23,8 +23,8 @@ evidence-grounded conclusions—while keeping researchers in the loop.
 ## ✨ Highlights
 
 - **🧰 Neuroscience Analysis Repertoire** — Foundational recipes spanning four data modalities and eight analysis families, from preprocessing to visualization.
-- **🌳 Research Planning Engine** — Orchestrator–Reviewer debate decomposes each query into hypotheses and atomic tasks, producing a transparent research tree traceable to the original question.
 - **🔬 Analysis Execution Engine** — A recipe-grounded four-phase workflow—Formulate → Code → Validate → Interpret—adapts established neuroscience methods to new data and guards against methodological hallucinations before final interpretation.
+- **🌳 Research Planning Engine** — Orchestrator–Reviewer debate decomposes each query into hypotheses and atomic tasks, producing a transparent research tree traceable to the original question.
 - **🧑‍🔬 Researcher in the Loop** — Scientists guide planning, methodology, and analysis at every stage, turning expert feedback into persistent learning signals.
 - **🔄 Co-Evolving Analysis Repertoire** — Distills validated research traces and expert feedback into reusable recipes, allowing the repertoire to grow across sessions, studies, and the research community.
 - **📄 Traceable Scientific Reports** — Produces publication-style Markdown and PDF reports whose conclusions remain linked to supporting task rounds, statistics, figures, and limitations.
@@ -88,50 +88,23 @@ Run `seekbrain -h` to see all available commands and options.
 
 ## 🧭 How It Works
 
-### 🌳 Research Planning Engine
-
-Research Planning turns complex questions into a traceable tree: **query →
-hypotheses → atomic tasks**. When literature access is configured, a Survey Agent
-supplies context; the Orchestrator and Reviewer refine the plan before researcher
-review and parallel execution.
-
-After launching SeekBrain, ask:
-
-```text
-Use Research Planning to investigate how individual variability,
-brain-network organization, and behavior are related across this dataset.
-
-Dataset: /path/to/dataset
-```
-
-Or let SeekBrain run the full workflow automatically:
-
-```bash
-seekbrain run \
-  --research-planning \
-  --query "Investigate how individual variability, brain-network organization, and behavior are related" \
-  --dataset /path/to/dataset \
-  --work-dir results/study
-```
-
-> [!NOTE]
-> `seekbrain run --research-planning` carries the plan through subsequent
-> approval gates automatically.
-
-After the selected research tasks finish, generate an academic report with:
-
-```text
-/seekbrain-report
-```
-
 ### 🔬 Analysis Execution Engine
 
-Each atomic task follows a recipe-grounded four-phase workflow: **Formulate → Code
+Each analysis follows a recipe-grounded four-phase workflow: **Formulate → Code
 → Validate → Interpret**. Established neuroscience methods are adapted to new
 data, while the Validation Agent catches methodological errors before final
 interpretation.
 
-Let SeekBrain run a single analysis automatically:
+After launching SeekBrain, ask:
+
+```text
+Compare neural activity between the experimental conditions and identify the
+strongest group differences.
+
+Dataset: /path/to/dataset
+```
+
+Or let SeekBrain run the same analysis automatically:
 
 ```bash
 seekbrain run \
@@ -139,6 +112,10 @@ seekbrain run \
   --dataset /path/to/dataset \
   --work-dir results/analysis
 ```
+
+> [!NOTE]
+> `seekbrain run` carries the workflow through subsequent approval gates
+> automatically.
 
 After a run passes Validation, save its executed workflow as a reusable analysis
 recipe:
@@ -214,6 +191,29 @@ Dataset: "$(npm root --global)/seekbrain/examples/zebrafish-sc-network-modules"
 </table>
 
 </details>
+
+### 🌳 Research Planning Engine
+
+Research Planning turns complex questions into a traceable tree: **query →
+hypotheses → atomic tasks**. When literature access is configured, a Survey Agent
+supplies context; the Orchestrator and Reviewer refine the plan before researcher
+review and parallel execution.
+
+For questions that require multiple linked hypotheses, enable Research Planning:
+
+```bash
+seekbrain run \
+  --research-planning \
+  --query "Investigate how individual variability, brain-network organization, and behavior are related" \
+  --dataset /path/to/dataset \
+  --work-dir results/study
+```
+
+After the selected research tasks finish, generate an academic report with:
+
+```text
+/seekbrain-report
+```
 
 <a id="paper"></a>
 
