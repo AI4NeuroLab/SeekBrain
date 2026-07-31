@@ -29,12 +29,6 @@ evidence-grounded conclusions—while keeping researchers in the loop.
 - **🔄 Co-Evolving Analysis Repertoire** — Distills validated research traces and expert feedback into reusable recipes, allowing the repertoire to grow across sessions, studies, and the research community.
 - **📄 Traceable Scientific Reports** — Produces publication-style Markdown and PDF reports whose conclusions remain linked to supporting task rounds, statistics, figures, and limitations.
 
-<a id="news"></a>
-
-## 📣 News
-
-- **2026-07-17** — SeekBrain was released at the WAIC 2026 Science Frontiers Forum.
-
 ## 📦 Install
 
 > [!NOTE]
@@ -110,7 +104,7 @@ brain-network organization, and behavior are related across this dataset.
 Dataset: /path/to/dataset
 ```
 
-Or run the same workflow non-interactively:
+Or let SeekBrain run the full workflow automatically:
 
 ```bash
 seekbrain run \
@@ -121,8 +115,14 @@ seekbrain run \
 ```
 
 > [!NOTE]
-> `seekbrain run --research-planning` automatically handles subsequent approval
-> gates in non-interactive mode.
+> `seekbrain run --research-planning` carries the plan through subsequent
+> approval gates automatically.
+
+After the selected research tasks finish, generate an academic report with:
+
+```text
+/seekbrain-report
+```
 
 ### 🔬 Analysis Execution Engine
 
@@ -131,13 +131,20 @@ Each atomic task follows a recipe-grounded four-phase workflow: **Formulate → 
 data, while the Validation Agent catches methodological errors before final
 interpretation.
 
-Run a single analysis non-interactively:
+Let SeekBrain run a single analysis automatically:
 
 ```bash
 seekbrain run \
   --query "Compare neural activity between the experimental conditions" \
   --dataset /path/to/dataset \
   --work-dir results/analysis
+```
+
+After a run passes Validation, save its executed workflow as a reusable analysis
+recipe:
+
+```text
+/seekbrain-save-recipe
 ```
 
 <details>
@@ -226,17 +233,6 @@ Execution Engine, scientific validation, and researcher-in-the-loop feedback.
 </p>
 
 <p align="center"><em>Figure 1. SeekBrain couples a Research Planning Engine and an Analysis Execution Engine with a co-evolving Neuroscience Analysis Repertoire and hierarchical evidence reporting.</em></p>
-
-### BibTeX
-
-```bibtex
-@article{seekbrain2026,
-  title   = {SeekBrain: An Autonomous Multi-Agent Framework
-             for Accelerating Neuroscience Discovery},
-  year    = {2026},
-  note    = {Manuscript}
-}
-```
 
 ### Real-World Case Studies
 
