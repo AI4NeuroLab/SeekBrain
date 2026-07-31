@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-175CD3?style=flat-square)](LICENSE)
 
 SeekBrain is an open-source, domain-specialized multi-agent framework for
-semi-autonomous neuroscience discovery. It transforms broad scientific questions
+autonomous neuroscience discovery. It transforms broad scientific questions
 and heterogeneous, multimodal brain data into hierarchical research plans,
 executable analysis pipelines, validated figures and statistics, and
 evidence-grounded conclusions—while keeping researchers in the loop.
