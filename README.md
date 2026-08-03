@@ -1,4 +1,4 @@
-# SeekBrain: A domain-specialized multi-agent framework for neuroscience discovery
+# SeekBrain: An Autonomous Multi-Agent System for Accelerating Neuroscience Discovery
 
 [![Paper](https://img.shields.io/badge/Paper-arXiv-B31B1B?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2607.29347)
 [![Project Website](https://img.shields.io/badge/Project-Website-7F56D9?style=flat-square&logo=githubpages&logoColor=white)](https://ai4neurolab.github.io/SeekBrain-page/)
