@@ -1,6 +1,6 @@
 # SeekBrain: A domain-specialized multi-agent framework for neuroscience discovery
 
-[![Paper](https://img.shields.io/badge/Paper-Coming_Soon-B31B1B?style=flat-square&logo=arxiv&logoColor=white)](#paper)
+[![Paper](https://img.shields.io/badge/Paper-arXiv-B31B1B?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2607.29347)
 [![Project Website](https://img.shields.io/badge/Project-Website-7F56D9?style=flat-square&logo=githubpages&logoColor=white)](https://ai4neurolab.github.io/SeekBrain-page/)
 [![npm version](https://img.shields.io/npm/v/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
 [![npm downloads](https://img.shields.io/npm/dm/seekbrain?style=flat-square&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/seekbrain)
@@ -294,3 +294,21 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses and notices.
 ## 📜 License
 
 SeekBrain is released under the [MIT License](LICENSE).
+
+## 📝 Citation
+
+If you find **SeekBrain** useful in your research, please consider citing our paper:
+
+```bibtex
+@article{wu2026seekbrain,
+  title         = {{SeekBrain}: An Autonomous Multi-Agent System for Accelerating Neuroscience Discovery},
+  author        = {Wu, Jiamin and Xiang, Peishan and Chen, Jingyang and Zhu, Yuqing and Li, Yuxi and Luo, Ling and Zheng, Qihao and Zu, Jialiang and Wu, Yongchao and Liu, Mindong and Wu, Haitao and Hu, Chaofan and Sun, Yijie and Hang, Yuqi and Zhu, Yu and Li, Shuo and Fan, Yue and Feng, Shiyang and Xu, Wanghan and Zhang, Tianlei and Zhang, Jie and Zhang, Wenlong and Zhang, Bo and Wang, Kai and Bai, Lei and Liu, Mianxin and Ouyang, Wanli and Du, Jiulin and Song, Chunfeng},
+  journal       = {arXiv preprint arXiv:2607.29347},
+  year          = {2026},
+  eprint        = {2607.29347},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.MA},
+  url           = {https://arxiv.org/abs/2607.29347}
+}
+```
+
