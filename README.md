@@ -301,14 +301,10 @@ If you find **SeekBrain** useful in your research, please consider citing our pa
 
 ```bibtex
 @article{wu2026seekbrain,
-  title         = {{SeekBrain}: An Autonomous Multi-Agent System for Accelerating Neuroscience Discovery},
+  title         = {SeekBrain: An Autonomous Multi-Agent System for Accelerating Neuroscience Discovery},
   author        = {Wu, Jiamin and Xiang, Peishan and Chen, Jingyang and Zhu, Yuqing and Li, Yuxi and Luo, Ling and Zheng, Qihao and Zu, Jialiang and Wu, Yongchao and Liu, Mindong and Wu, Haitao and Hu, Chaofan and Sun, Yijie and Hang, Yuqi and Zhu, Yu and Li, Shuo and Fan, Yue and Feng, Shiyang and Xu, Wanghan and Zhang, Tianlei and Zhang, Jie and Zhang, Wenlong and Zhang, Bo and Wang, Kai and Bai, Lei and Liu, Mianxin and Ouyang, Wanli and Du, Jiulin and Song, Chunfeng},
   journal       = {arXiv preprint arXiv:2607.29347},
   year          = {2026},
-  eprint        = {2607.29347},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.MA},
-  url           = {https://arxiv.org/abs/2607.29347}
 }
 ```
 
