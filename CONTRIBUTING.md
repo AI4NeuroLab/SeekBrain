@@ -14,7 +14,10 @@ Use Node.js 24 when possible. Install dependencies with `npm install`, copy
   `src/extension`.
 - `src/extension/index.ts` is the only published Pi extension entry and should
   remain a thin composition boundary.
-- Historical launchers, experimental extensions, evaluation datasets, and
+- `BrainArena/` contains benchmark queries, rubrics, paper references, and
+  data-link metadata only. Do not add evaluation code, source-paper figures,
+  paper PDFs, or research data files there.
+- Historical launchers, experimental extensions, raw evaluation datasets, and
   archived implementations do not belong in this repository.
 
 Preserve existing user changes in a dirty worktree. Never commit credentials,

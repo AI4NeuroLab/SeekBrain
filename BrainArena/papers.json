@@ -1,0 +1,231 @@
+{
+  "schema_version": "1.0",
+  "status": "draft_for_review",
+  "data_links_status": "draft_for_review",
+  "papers": [
+    {
+      "paper_id": "atanas_2023",
+      "title": "Brain-wide representations of behavior spanning multiple timescales and states in C. elegans",
+      "authors_short": "Atanas, Kim et al.",
+      "venue": "Cell",
+      "year": 2023,
+      "doi": "10.1016/j.cell.2023.07.035",
+      "paper_url": "https://doi.org/10.1016/j.cell.2023.07.035",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Processed data and trained weights (paper-cited record)",
+          "url": "https://doi.org/10.5281/zenodo.8150515"
+        }
+      ],
+      "data_instructions": "DATASETS.md#c-elegans-brain-wide-activity-and-behavior",
+      "notes": "",
+      "queries_dir": "queries/atanas_2023",
+      "rubrics_dir": "rubrics/atanas_2023"
+    },
+    {
+      "paper_id": "marquez_legorreta_2026",
+      "title": "Whole-Brain Co-Mapping of Gene Expression and Neuronal Activity at Cellular Resolution in Behaving Zebrafish",
+      "authors_short": "Marquez-Legorreta et al.",
+      "venue": "bioRxiv",
+      "year": 2026,
+      "doi": "10.64898/2026.02.07.704095",
+      "paper_url": "https://doi.org/10.64898/2026.02.07.704095",
+      "publication_type": "preprint",
+      "data_links": [
+        {
+          "label": "Dataset 1: main three fish (preprocessed data)",
+          "url": "https://figshare.com/s/d1d19b105c4f74865c32"
+        }
+      ],
+      "data_instructions": "DATASETS.md#zebrafish-activity-gene-expression-co-mapping",
+      "notes": "The exact preprint version used for the figure annotations still needs confirmation.",
+      "queries_dir": "queries/marquez_legorreta_2026",
+      "rubrics_dir": "rubrics/marquez_legorreta_2026"
+    },
+    {
+      "paper_id": "genkin_2025",
+      "title": "The dynamics and geometry of choice in the premotor cortex",
+      "authors_short": "Genkin et al.",
+      "venue": "Nature",
+      "year": 2025,
+      "doi": "10.1038/s41586-025-09199-1",
+      "paper_url": "https://doi.org/10.1038/s41586-025-09199-1",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Neural recording data, version 1",
+          "url": "https://doi.org/10.6084/m9.figshare.29052116.v1"
+        }
+      ],
+      "data_instructions": "DATASETS.md#premotor-cortex-decision-making-data",
+      "notes": "",
+      "queries_dir": "queries/genkin_2025",
+      "rubrics_dir": "rubrics/genkin_2025"
+    },
+    {
+      "paper_id": "findling_2025",
+      "title": "Brain-wide representations of prior information in mouse decision-making",
+      "authors_short": "Findling, Hubert, International Brain Laboratory et al.",
+      "venue": "Nature",
+      "year": 2025,
+      "doi": "10.1038/s41586-025-09226-1",
+      "paper_url": "https://doi.org/10.1038/s41586-025-09226-1",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Shared IBL brain-wide map release",
+          "url": "https://int-brain-lab.github.io/iblenv/notebooks_external/2025_data_release_brainwidemap.html"
+        },
+        {
+          "label": "Widefield data download instructions",
+          "url": "https://int-brain-lab.github.io/iblenv/notebooks_external/loading_widefield_data.html"
+        },
+        {
+          "label": "Region information table",
+          "url": "https://raw.githubusercontent.com/int-brain-lab/paper-brain-wide-map/plotting/brainwidemap/meta/region_info.csv"
+        },
+        {
+          "label": "Swanson atlas resources",
+          "url": "https://int-brain-lab.github.io/iblenv/notebooks_external/atlas_swanson_flatmap.html"
+        }
+      ],
+      "data_instructions": "DATASETS.md#ibl-brain-wide-map-and-widefield-data",
+      "notes": "",
+      "queries_dir": "queries/findling_2025",
+      "rubrics_dir": "rubrics/findling_2025"
+    },
+    {
+      "paper_id": "ibl_2025",
+      "title": "A brain-wide map of neural activity during complex behaviour",
+      "authors_short": "International Brain Laboratory et al.",
+      "venue": "Nature",
+      "year": 2025,
+      "doi": "10.1038/s41586-025-09235-0",
+      "paper_url": "https://doi.org/10.1038/s41586-025-09235-0",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Shared IBL brain-wide map release",
+          "url": "https://int-brain-lab.github.io/iblenv/notebooks_external/2025_data_release_brainwidemap.html"
+        },
+        {
+          "label": "Swanson atlas resources",
+          "url": "https://int-brain-lab.github.io/iblenv/notebooks_external/atlas_swanson_flatmap.html"
+        }
+      ],
+      "data_instructions": "DATASETS.md#ibl-brain-wide-map-and-widefield-data",
+      "notes": "",
+      "queries_dir": "queries/ibl_2025",
+      "rubrics_dir": "rubrics/ibl_2025"
+    },
+    {
+      "paper_id": "yu_2025",
+      "title": "Cholinergic feedback for modality- and context-specific modulation of sensory representations",
+      "authors_short": "Yu et al.",
+      "venue": "Science",
+      "year": 2025,
+      "doi": "10.1126/science.ads9152",
+      "paper_url": "https://doi.org/10.1126/science.ads9152",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "OSF processed data: five result archives; exclude code_flow.zip",
+          "url": "https://doi.org/10.17605/OSF.IO/293CS"
+        }
+      ],
+      "data_instructions": "DATASETS.md#cholinergic-sensory-modulation-data",
+      "notes": "",
+      "queries_dir": "queries/yu_2025",
+      "rubrics_dir": "rubrics/yu_2025"
+    },
+    {
+      "paper_id": "legare_2025",
+      "title": "Structural and genetic determinants of zebrafish functional brain networks",
+      "authors_short": "Légaré et al.",
+      "venue": "Science Advances",
+      "year": 2025,
+      "doi": "10.1126/sciadv.adv7576",
+      "paper_url": "https://doi.org/10.1126/sciadv.adv7576",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Borealis processed data and supporting resources",
+          "url": "https://doi.org/10.5683/SP3/IIVGOB"
+        }
+      ],
+      "data_instructions": "DATASETS.md#zebrafish-functional-brain-network-data",
+      "notes": "",
+      "queries_dir": "queries/legare_2025",
+      "rubrics_dir": "rubrics/legare_2025"
+    },
+    {
+      "paper_id": "tanaka_2026",
+      "title": "Plastic landmark anchoring in zebrafish compass neurons",
+      "authors_short": "Tanaka and Portugues",
+      "venue": "Nature",
+      "year": 2026,
+      "doi": "10.1038/s41586-025-09888-x",
+      "paper_url": "https://doi.org/10.1038/s41586-025-09888-x",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Zenodo data collection: all ten data archives",
+          "url": "https://doi.org/10.5281/zenodo.17233579"
+        }
+      ],
+      "data_instructions": "DATASETS.md#zebrafish-compass-neuron-data",
+      "notes": "",
+      "queries_dir": "queries/tanaka_2026",
+      "rubrics_dir": "rubrics/tanaka_2026"
+    },
+    {
+      "paper_id": "basnak_2025",
+      "title": "Multimodal cue integration and learning in a neural representation of head direction",
+      "authors_short": "Basnak et al.",
+      "venue": "Nature Neuroscience",
+      "year": 2025,
+      "doi": "10.1038/s41593-024-01823-z",
+      "paper_url": "https://doi.org/10.1038/s41593-024-01823-z",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Experimental data: DANDI 000289",
+          "url": "https://dandiarchive.org/dandiset/000289"
+        }
+      ],
+      "data_instructions": "DATASETS.md#drosophila-head-direction-data",
+      "notes": "",
+      "queries_dir": "queries/basnak_2025",
+      "rubrics_dir": "rubrics/basnak_2025"
+    },
+    {
+      "paper_id": "gao_2025",
+      "title": "Continuous cell-type diversification in mouse visual cortex development",
+      "authors_short": "Gao et al.",
+      "venue": "Nature",
+      "year": 2025,
+      "doi": "10.1038/s41586-025-09644-1",
+      "paper_url": "https://doi.org/10.1038/s41586-025-09644-1",
+      "publication_type": "journal_article",
+      "data_links": [
+        {
+          "label": "Processed 10x scRNA-seq",
+          "url": "https://allen-developmental-mouse-atlas.s3.amazonaws.com/scRNA/DevVIS_scRNA_processed.h5ad"
+        },
+        {
+          "label": "Processed Multiome snRNA-seq",
+          "url": "https://allen-developmental-mouse-atlas.s3.us-west-2.amazonaws.com/Multiome/DevVIS_multiome_snRNA_processed.h5ad"
+        },
+        {
+          "label": "Processed Multiome snATAC-seq",
+          "url": "https://allen-developmental-mouse-atlas.s3.amazonaws.com/Multiome/DevVIS_multiome_snATAC_processed.h5ad"
+        }
+      ],
+      "data_instructions": "DATASETS.md#developing-mouse-visual-cortex-devvis",
+      "notes": "",
+      "queries_dir": "queries/gao_2025",
+      "rubrics_dir": "rubrics/gao_2025"
+    }
+  ]
+}

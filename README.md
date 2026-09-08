@@ -215,6 +215,27 @@ After the selected research tasks finish, generate an academic report with:
 /seekbrain-report
 ```
 
+## 🎯 BrainArena
+
+[BrainArena](BrainArena/README.md) is a benchmark designed to test how well LLM
+agents handle complex analyses of multimodal neuroscience data. It includes 32
+tasks constructed from selected neuroscience studies. Each task includes an
+expert-annotated analysis query and a scoring rubric.
+
+Browse the [queries and rubrics](BrainArena/README.md#queries-and-rubrics) and
+follow the [data preparation guide](BrainArena/DATASETS.md). Give the agent an
+analysis query file and one accessible data-root path, for example from the
+repository root:
+
+```text
+Read the analysis query file, inspect the dataset, and complete the analysis.
+
+query: BrainArena/queries/atanas_2023/Fig_1H.md
+dataset: /path/to/data
+```
+
+Rubrics are for evaluation and are not part of the agent's task input.
+
 <a id="paper"></a>
 
 ## 📚 Paper
@@ -307,4 +328,3 @@ If you find **SeekBrain** useful in your research, please consider citing our pa
   year          = {2026},
 }
 ```
-
