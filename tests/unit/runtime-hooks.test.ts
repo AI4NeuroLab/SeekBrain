@@ -11,6 +11,7 @@ function fixture() {
     appendEntry(customType: string, data: any) { entries.push({ customType, data }); },
   };
   registerSeekBrainRuntimeHooks(pi, {
+    restoreSessionRun: () => { activeRunDir = undefined; calls.push(["restore-session"]); },
     getActiveRunDir: () => activeRunDir,
     setActiveRunDir: (path) => { activeRunDir = path; },
     startConfigWatcher: (cwd, notify) => { calls.push(["watch", cwd, Boolean(notify)]); },
@@ -21,6 +22,7 @@ function fixture() {
     appendUsage: async (runDir, component, entry) => { calls.push(["usage", runDir, component, entry.tokens.total]); },
     readableLogEntries: (event) => [{ type: event.type || event.toolName || "message" }],
     appendReadableLog: async (runDir, entry) => { calls.push(["log", runDir, entry.type]); },
+    appendRawCotLog: async (runDir, entry) => { calls.push(["cot", runDir, entry.type || entry.toolName]); },
     transparencyEnabled: async () => true,
     readRunState: async () => ({ run_id: "run-1", artifacts: [{ path: "figure.png" }] }),
     researchCard: () => "research card",
@@ -45,17 +47,18 @@ describe("Pi runtime hooks", () => {
     expect(item.getActive()).toBe("/run");
     expect(item.calls).toContainEqual(["usage", "/run", "main", 5]);
     expect(item.calls).toContainEqual(["log", "/run", "message_end"]);
+    expect(item.calls).toContainEqual(["cot", "/run", "message_end"]);
     await item.handlers.get("session_shutdown")?.();
     expect(item.calls.slice(-2)).toEqual([["stop"], ["flush"]]);
+    await item.handlers.get("session_start")?.({}, { cwd: "/another-project", ui: { notify() {} } });
+    expect(item.getActive()).toBeUndefined();
   });
 
   it("surfaces transparency, compaction and dummy-data warnings", async () => {
     const item = fixture();
     await item.handlers.get("tool_execution_end")?.({ toolName: "seekbrain_run_start", result: { details: { run_dir: "/run" } } });
-    await item.handlers.get("tool_execution_end")?.({ toolName: "seekbrain_deep_research", result: { details: {} } });
-    expect(item.entries[0]).toMatchObject({ customType: "seekbrain-research-card", data: { content: "research card", run_id: "run-1", tool: "seekbrain_deep_research" } });
     await item.handlers.get("tool_execution_end")?.({ toolName: "seekbrain_recipe_retrieve", result: { details: {} } });
-    expect(item.entries[1]).toMatchObject({ customType: "seekbrain-skill-card", data: { content: "skill card", run_id: "run-1", tool: "seekbrain_recipe_retrieve" } });
+    expect(item.entries[0]).toMatchObject({ customType: "seekbrain-skill-card", data: { content: "skill card", run_id: "run-1", tool: "seekbrain_recipe_retrieve" } });
     const compact = await item.handlers.get("session_before_compact")?.({ preparation: { firstKeptEntryId: "entry", tokensBefore: 100 } });
     expect(compact.compaction).toMatchObject({ firstKeptEntryId: "entry", tokensBefore: 100 });
     expect(compact.compaction.summary).toContain("run-1");

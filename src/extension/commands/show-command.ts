@@ -15,33 +15,24 @@ export interface ShowCommandDependencies {
   runIndexPath(cwd: string): string;
 }
 
-function year(value: unknown): string {
-  const match = String(value || "").match(/(?:19|20)\d{2}/);
-  return match?.[0] || "";
-}
-
 export function researchFullMarkdown(state: Json): string {
-  const context = String(state.deep_research_context || "").replace(/^\[Deep Research Background\]\s*/, "").trim();
-  const sources: Json[] = Array.isArray(state.deep_research_sources) ? state.deep_research_sources : [];
-  const parts = ["# 🔬 Deep Research", "", context || "_No synthesized background was produced._"];
-  if (sources.length) {
-    parts.push("", `## Sources (${sources.length})`);
-    for (const source of sources) {
-      const meta = [String(source.magazine || "").trim(), year(source.pub_time)].filter(Boolean).join(" · ");
-      parts.push("", `### ${String(source.title || "(untitled paper)").trim()}`);
-      if (meta) parts.push(`*${meta}*`);
-      if (Array.isArray(source.github_links) && source.github_links.length) parts.push(source.github_links.map((link: string) => `[repo](${link})`).join(" · "));
-      const text = String(source.text || "").trim();
-      if (text) parts.push("", text);
-    }
-  }
-  return parts.join("\n");
+  const research = state.deep_research;
+  if (!research?.rounds) return "# Deep Research\n\nNo research rounds recorded.";
+  return ["# Deep Research", `Round ${research.round} · ${research.phase}`,
+    ...research.rounds.map((round: Json) => `\n## Round ${round.number}\n\n${round.decision?.reason || "In progress"}${round.report ? `\n\nReport: ${round.report.original_path}` : ""}`)].join("\n\n");
 }
 
 export function skillFullMarkdown(state: Json): string {
   const targeted = String(state.targeted_skill || "").trim();
   const source = String(state.targeted_skill_result?.source || (targeted ? "existing_skill" : "none"));
-  const label = source === "generated_from_rag" ? "crystallized from literature and code" : source === "existing_skill" ? "retrieved from the Neuroscience Analysis Repertoire" : "no match";
+  const label = source === "method_pack" ? "scientific method pack assembled"
+    : source === "composed_recipe_set" ? "composed from local and RAG candidates"
+    : source === "repository_reference" ? "repository method found"
+      : source === "validated_repository_recipe" ? "validated repository recipe reused"
+        : source === "paper_reference" ? "literature method found"
+          : source === "generated_from_rag" || source === "crystallized" ? "crystallized from literature and code"
+            : source === "existing_skill" || source === "repertoire" ? "retrieved from the Neuroscience Analysis Repertoire"
+              : "no match";
   return targeted ? `# 🧩 Analysis Recipe — ${label}\n\n${targeted}` : `# 🧩 Analysis Recipe — ${label}\n\n_No matching analysis recipe was found for this question._`;
 }
 
@@ -82,9 +73,9 @@ async function openOverlay(context: Json, title: string, markdown: string): Prom
 
 export function registerShowCommand(pi: ShowCommandAPI, dependencies: ShowCommandDependencies): void {
   pi.registerCommand("seekbrain-show", {
-    description: "Show the Deep Research background or analysis-recipe content for a run (scrollable). Usage: /seekbrain-show research|recipe [run_id]",
+    description: "Show the Deep Research rounds or analysis-recipe content for a run (scrollable). Usage: /seekbrain-show research|recipe [run_id]",
     getArgumentCompletions: (prefix: string) => {
-      const items = [{ value: "research", label: "research — the Deep Research background" }, { value: "recipe", label: "recipe — the analysis recipe" }];
+      const items = [{ value: "research", label: "research — the Deep Research rounds" }, { value: "recipe", label: "recipe — the analysis recipe" }];
       const filtered = items.filter((item) => item.value.startsWith(prefix));
       return filtered.length ? filtered : null;
     },
@@ -92,7 +83,7 @@ export function registerShowCommand(pi: ShowCommandAPI, dependencies: ShowComman
       const tokens = String(args || "").trim().split(/\s+/).filter(Boolean);
       let which = tokens.find((token) => token === "research" || token === "recipe" || token === "skill");
       if (!which && context.hasUI) {
-        const selected = await context.ui.select("Show which?", ["Deep Research background", "Analysis recipe"]);
+        const selected = await context.ui.select("Show which?", ["Deep Research rounds", "Analysis recipe"]);
         if (!selected) return;
         which = selected === "Analysis recipe" ? "recipe" : "research";
       }

@@ -127,7 +127,7 @@ export class PubMedRetriever implements LiteratureQueryClient {
       const pmids = [...new Set(successful.flat())].slice(0, candidatePoolSize);
       if (!pmids.length) return {
         ok: true, trace_id: traceId, paper_source: "pubmed", sources: [], source_count: 0,
-        warnings: [...warnings, "PubMed returned no usable sources"], ...(input.require_github === true ? { papers: [] } : {}),
+        warnings: [...warnings, "PubMed returned no usable sources"], ...((input.require_github === true || input.include_papers === true) ? { papers: [] } : {}),
         metrics: { query_variant_count: variants.length, retrieved_count: 0, enriched_full_text_count: 0 },
       };
 
@@ -187,7 +187,7 @@ export class PubMedRetriever implements LiteratureQueryClient {
         sources,
         source_count: sources.length,
         warnings,
-        ...(input.require_github === true ? { papers: selected } : {}),
+        ...((input.require_github === true || input.include_papers === true) ? { papers: selected } : {}),
         metrics: {
           query_variant_count: variants.length,
           retrieved_count: papers.length,

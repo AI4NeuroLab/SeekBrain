@@ -6,7 +6,11 @@ const extensionSource = await readFile(new URL("src/extension/runtime/index.ts",
 const hooksSource = await readFile(new URL("src/extension/runtime-hooks.ts", root), "utf8");
 
 assert.match(extensionSource, /registerSeekBrainRuntimeHooks\(pi/);
-assert.doesNotMatch(extensionSource, /pi\.on\(/);
+// Composition may refresh the mode-specific tool list from configuration;
+// lifecycle persistence and observability remain delegated to runtime-hooks.
+const directHooks = [...extensionSource.matchAll(/pi\.on\("([^"]+)",\s*(\w+)\)/g)].map(match => [match[1], match[2]]);
+assert.deepEqual(directHooks, [["session_start", "refreshWebAccess"], ["before_agent_start", "refreshWebAccess"]]);
+assert.equal([...extensionSource.matchAll(/pi\.on\(/g)].length, directHooks.length);
 assert.match(hooksSource, /pi\.on\("session_start"/);
 assert.match(hooksSource, /pi\.on\("tool_execution_end"/);
 assert.match(hooksSource, /pi\.on\("session_before_compact"/);

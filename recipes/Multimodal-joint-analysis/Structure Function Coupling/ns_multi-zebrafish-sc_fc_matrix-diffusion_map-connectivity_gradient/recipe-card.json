@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-sc_fc_matrix-diffusion_map-connectivity_gradient",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Compute connectivity gradients from both the structural connectome (SC) and the group-average functional connectivity matrix (FC) of the larval zebrafish brain using the diffusion map embedding algorithm (brainspace.gradient.embedding.diffusion_mapping, alpha=0.5), correlate the first two SC and FC gradients against each other, and project them onto the Mapzebrain atlas as bilateral centroid overlays in top (XY) and…",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "fc",
+    "matrix",
+    "diffusion"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_gradient"
+  ],
+  "use_when": [
+    "Analyze structural and functional connectivity gradients by diffusion map embedding",
+    "Generate structural and functional connectivity gradients by diffusion map embedding outputs",
+    "Apply the ns_multi-zebrafish-sc_fc_matrix-diffusion_map-connectivity_gradient recipe"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

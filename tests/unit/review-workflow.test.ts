@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FileRunRepository } from "../../src/core/index.ts";
+import { atomicWriteJson, FileRunRepository } from "../../src/core/index.ts";
 import { ReviewWorkflow, RunLifecycleWorkflow } from "../../src/workflows/index.ts";
 
 async function fixture() {
@@ -13,6 +13,7 @@ async function fixture() {
   const workflow = new ReviewWorkflow({
     lifecycle,
     writeText: (path, value) => writeFile(path, value),
+    writeJson: atomicWriteJson,
     appendEvent: async (event) => { events.push(event); },
   });
   return { cwd, lifecycle, run, events, workflow };

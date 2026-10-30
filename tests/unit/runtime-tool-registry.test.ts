@@ -47,6 +47,9 @@ describe("Research Planning stage", () => {
       "seekbrain_planning_decision_review",
       "seekbrain_planning_decision_record",
       "seekbrain_planning_generate",
+      "seekbrain_creative_search",
+      "seekbrain_creative_update",
+      "seekbrain_creative_select",
       "seekbrain_planning_peer_review",
       "seekbrain_planning_researcher_review",
       "seekbrain_planning_researcher_decision_record",
@@ -75,7 +78,6 @@ describe("Phase 4 stages", () => {
     ]);
     expect(createRecipeResearchTools({} as any).map((tool) => tool.name)).toEqual([
       "seekbrain_recipe_retrieve",
-      "seekbrain_deep_research",
     ]);
   });
 });

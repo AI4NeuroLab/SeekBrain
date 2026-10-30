@@ -1,19 +1,20 @@
-/**
- * SeekBrain's single public workflow entrypoint.
- *
- * Loaded automatically by the `seekbrain` CLI.
- */
-
+/** SeekBrain terminal entry: modes, activity and actual outputs. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
-import { existsSync, readFileSync } from "node:fs";
+import { Text } from "@earendil-works/pi-tui";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import registerSeekBrain from "./seekbrain-extension.ts";
 import { applySeekBrainDefaults } from "./tui/extension-defaults.ts";
-import { runPiSetupWizard } from "./tui/setup-wizard.ts";
-
+import { activateSetupPrimaryModel, runPiSetupWizard } from "./tui/setup-wizard.ts";
+import { registerModeCommands } from "./runtime/mode-controller.ts";
+import { applyAssistantPrompt } from "./runtime/shared/assistant-prompt.ts";
+import { activityLines } from "./tui/research-activity.ts";
+import type { SeekBrainRuntimeOptions } from "./runtime/runtime-options.ts";
 export * from "./existing-pi-agent-adapter.ts";
+export * from "./public-web-search.ts";
+export * from "./scientific-inspiration-tool.ts";
+export * from "./scientific-inspiration-search.ts";
 export * from "./tool-adapter.ts";
 export * from "./runtime-hooks.ts";
 export * from "./commands/system-commands.ts";
@@ -25,232 +26,82 @@ export * from "./tui/review-selectors.ts";
 export * from "./tui/transparency-card.ts";
 export { default as registerSeekBrainTools } from "./seekbrain-extension.ts";
 
-type StageStatus = "pending" | "running" | "done" | "error";
 
-interface StageState {
-	name: string;
-	status: StageStatus;
-	elapsed: number;
-	lastWork: string;
-	startedAt?: number;
-}
-
-const EXT_DIR = dirname(fileURLToPath(import.meta.url));
-const ENTRY_PROMPT = join(EXT_DIR, "..", "..", "prompts", "entry.md");
-const STAGE_NAMES = ["Recipe", "Analytical Formulation", "Code Generation & Execution", "Validation", "Result Interpretation"];
-const CLASSIC_STAGE_LABELS: Record<string, { full: string; compact: string; short: string }> = {
-	Recipe: { full: "Recipe", compact: "Recipe", short: "R" },
-	"Analytical Formulation": { full: "Analytical Formulation", compact: "Formulate", short: "F" },
-	"Code Generation & Execution": { full: "Code & Execution", compact: "Execute", short: "C" },
-	Validation: { full: "Validation", compact: "Validate", short: "V" },
-	"Result Interpretation": { full: "Interpretation", compact: "Interpret", short: "I" },
-};
-const TOOL_STAGES: Record<string, string> = {
-	seekbrain_recipe_retrieve: "Recipe",
-	seekbrain_formulation_generate: "Analytical Formulation",
-	seekbrain_code_execute: "Code Generation & Execution",
-	seekbrain_validation_run: "Validation",
-	seekbrain_figure_refine: "Validation",
-	seekbrain_interpretation_run: "Result Interpretation",
-};
-const NEW_RUN_TOOLS = new Set([
-	"seekbrain_research_start",
-	"seekbrain_research_continue",
-	"seekbrain_run_start",
-	"seekbrain_run_resume",
-	"seekbrain_planning_decision_review",
-	"seekbrain_planning_decision_record",
-]);
-
-function resetStages(): StageState[] {
-	return STAGE_NAMES.map((name) => ({ name, status: "pending", elapsed: 0, lastWork: "" }));
-}
-
-function promptText() {
-	if (!existsSync(ENTRY_PROMPT)) {
-		return "You are SeekBrain. Use the registered SeekBrain tools to run the research workflow.";
-	}
-	return readFileSync(ENTRY_PROMPT, "utf8");
-}
-
-function renderPipeline(stages: StageState[], width: number, theme: any, roundLabel: string): string[] {
-	const labelMode = width >= 120 ? "full" : width >= 72 ? "compact" : "short";
-	const parts = stages.map((stage, index) => {
-		const icon = stage.status === "pending" ? "○"
-			: stage.status === "running" ? "◉"
-			: stage.status === "done" ? "✓" : "×";
-		const color = stage.status === "pending" ? "dim"
-			: stage.status === "running" ? "accent"
-			: stage.status === "done" ? "success" : "error";
-		const elapsed = stage.status === "pending" ? "" : theme.fg("dim", ` ${Math.round(stage.elapsed / 1000)}s`);
-		const label = CLASSIC_STAGE_LABELS[stage.name]?.[labelMode] || stage.name;
-		const stageText = theme.fg(color, `${icon} ${label}`) + elapsed;
-		if (index === 0) return stageText;
-		const previous = stages[index - 1];
-		const connectorColor = previous.status === "done" ? "success"
-			: previous.status === "running" ? "accent" : "dim";
-		return theme.fg(connectorColor, " ── ") + stageText;
-	});
-	const pipeline = parts.join("");
-	if (!roundLabel) return [truncateToWidth(` ${pipeline}`, width, "")];
-	const round = theme.fg("accent", theme.bold(roundLabel));
-	return [truncateToWidth(` ${round}${theme.fg("dim", "  │  ")}${pipeline}`, width, "")];
-}
-
-function summary(stages: StageState[]) {
-	const failed = stages.find((stage) => stage.status === "error");
-	if (failed) return `SeekBrain: ${failed.name} failed`;
-	return `SeekBrain: ${stages.filter((stage) => stage.status === "done").length}/${stages.length} stages`;
-}
-
-function toolDetails(event: any): any {
-	return event.result?.details || event.result || event.output?.details || event.output || {};
-}
-
-function researchRoundLabel(details: any) {
-	const roundName = String(details?.round_name || details?.result?.round_name || "").trim();
-	const roundMatch = /^round(\d+)$/i.exec(roundName);
-	if (roundMatch) return `Round ${roundMatch[1]}`;
-	const runId = String(details?.run_id || details?.result?.run_id || "").trim();
-	const runMatch = /(?:^|[-_])round(\d+)$/i.exec(runId);
-	return runMatch ? `Round ${runMatch[1]}` : roundName;
-}
-
-export default function registerSeekBrainEntry(pi: ExtensionAPI) {
-	registerSeekBrain(pi);
-
-	let stages = resetStages();
-	let activeRoundLabel = "";
-	let widgetCtx: any;
-	let pipelineVisible = false;
-	let setupRunning = false;
-
-	async function openSetup(ctx: any) {
-		if (setupRunning) return;
-		setupRunning = true;
-		try {
-			const result = await runPiSetupWizard(ctx);
-			if (result.ready) {
-				const primary = result.primary ? `${result.primary.providerName || result.primary.provider} · ${result.primary.name || result.primary.model}` : "not set";
-				ctx.ui.notify(`Setup saved · Primary: ${primary} · applies to the next run/session`, "info");
-			} else {
-				ctx.ui.notify("Setup closed · required settings are still incomplete", "warning");
-			}
-			if (process.env.SEEKBRAIN_SETUP === "1") ctx.shutdown();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			ctx.ui.notify(message === "Setup cancelled" ? message : `Setup failed: ${message}`, message === "Setup cancelled" ? "warning" : "error");
-			if (process.env.SEEKBRAIN_SETUP === "1") ctx.shutdown();
-		} finally {
-			setupRunning = false;
-		}
-	}
-
-	function updateWidget() {
-		if (!widgetCtx) return;
-		if (!pipelineVisible) {
-			widgetCtx.ui.setWidget("seekbrain-workflow", undefined);
-			return;
-		}
-		widgetCtx.ui.setWidget("seekbrain-workflow", (_tui: any, theme: any) => {
-			const text = new Text("", 0, 1);
-			return {
-				render(width: number): string[] {
-					text.setText(renderPipeline(stages, width, theme, activeRoundLabel).join("\n"));
-					return text.render(width);
-				},
-				invalidate() { text.invalidate(); },
-			};
-		});
-	}
-
-	function activate(ctx: any, notify = false) {
-		widgetCtx = ctx;
-		stages = resetStages();
-		activeRoundLabel = "";
-		pipelineVisible = false;
-		updateWidget();
-		ctx.ui.setStatus("seekbrain", undefined);
-		if (notify) ctx.ui.notify("SeekBrain workflow ready", "info");
-	}
-
-	function beginOrdinaryRound(details: any) {
-		const roundLabel = researchRoundLabel(details);
-		if (!/^Round \d+$/.test(roundLabel)) return false;
-		stages = resetStages();
-		activeRoundLabel = roundLabel;
-		pipelineVisible = true;
-		updateWidget();
-		widgetCtx?.ui.setStatus("seekbrain", summary(stages));
-		return true;
-	}
-
-	function setStageFromTool(toolName: string, status: StageStatus, detail: string) {
-		if (!pipelineVisible) return;
-		const stageName = TOOL_STAGES[toolName];
-		if (!stageName) return;
-		const stage = stages.find((item) => item.name === stageName);
-		if (!stage) return;
-		if (status === "running") {
-			stage.startedAt = Date.now();
-			stage.elapsed = 0;
-		} else if (stage.startedAt) {
-			stage.elapsed = Date.now() - stage.startedAt;
-		}
-		stage.status = status;
-		stage.lastWork = detail;
-		updateWidget();
-		widgetCtx?.ui.setStatus("seekbrain", summary(stages));
-	}
-
-	pi.registerCommand("seekbrain", {
-		description: "Activate the SeekBrain research workflow",
-		handler: async (_args, ctx) => activate(ctx, true),
-	});
-
-	pi.registerCommand("seekbrain-setup", {
-		description: "Configure providers, Primary/Fast models, and research source",
-		handler: async (_args, ctx) => openSetup(ctx),
-	});
-
-	pi.on("tool_execution_start", async (event: any) => {
-		const toolName = event.toolName || event.name;
-		if (typeof toolName === "string" && NEW_RUN_TOOLS.has(toolName)) {
-			pipelineVisible = false;
-			activeRoundLabel = "";
-			updateWidget();
-			widgetCtx?.ui.setStatus("seekbrain", undefined);
-		}
-		if (typeof toolName === "string") setStageFromTool(toolName, "running", "running");
-	});
-
-	pi.on("tool_execution_end", async (event: any) => {
-		const toolName = event.toolName || event.name;
-		if (typeof toolName !== "string") return;
-		const details = toolDetails(event);
-		if (NEW_RUN_TOOLS.has(toolName) && !event.isError && details.ok !== false) {
-			beginOrdinaryRound(details);
-		}
-		setStageFromTool(toolName, event.isError ? "error" : "done", event.isError ? "failed" : "complete");
-	});
-
-	pi.on("before_agent_start", async (_event, ctx) => {
-		widgetCtx = ctx;
-		updateWidget();
-		return {
-			systemPrompt: [
-				"You are running SeekBrain's research workflow.",
-				"Use the registered SeekBrain tools and never edit state.json directly.",
-				"After the user provides the question, dataset, work_dir, or path, follow the workflow instructions below.",
-				"",
-				promptText(),
-			].join("\n"),
-		};
-	});
-
-	pi.on("session_start", async (_event, ctx) => {
-		applySeekBrainDefaults(ctx);
-		activate(ctx);
-		if (process.env.SEEKBRAIN_SETUP === "1") await openSetup(ctx);
-	});
+const PROMPT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "prompts");
+const ASSISTANT_PROMPT = readFileSync(join(PROMPT_DIR, "assistant.md"), "utf8");
+const RESEARCH_PROMPT = readFileSync(join(PROMPT_DIR, "research.md"), "utf8");
+export default function registerSeekBrainEntry(pi: ExtensionAPI, options: SeekBrainRuntimeOptions = {}) {
+  const env = { ...(options.env ?? process.env) };
+  const mode = registerModeCommands(pi, env);
+  registerSeekBrain(pi, { ...options, env });
+  let ctx: any, setupRunning = false, activity = "";
+  let activityStartedAt: number | undefined, activityTimer: ReturnType<typeof setInterval> | undefined;
+  let activityTool: { name: string; id?: string } | undefined;
+  const tasks = new Map<string, { status: string; instruction?: string }>();
+  let outputs: string[] = [];
+  function stopActivityTimer() {
+    if (activityTimer !== undefined) clearInterval(activityTimer);
+    activityTimer = undefined; activityStartedAt = undefined; activityTool = undefined;
+  }
+  function update() {
+    if (!ctx?.ui) return;
+    const elapsedMs = activityStartedAt === undefined ? undefined : performance.now() - activityStartedAt;
+    const view = { projectPath: mode.project, activity, elapsedMs, tasks: ["research", "deep-research"].includes(mode.mode) ? [...tasks.entries()].map(([id, value]) => ({ id, ...value })) : [], outputs };
+    ctx.ui.setWidget("seekbrain-workflow", activityLines(view).length ? (_tui: any, theme: any) => new Text(activityLines(view, theme).join("\n"), 1, 0) : undefined);
+  }
+  mode.onChange = () => { stopActivityTimer(); activity = ""; tasks.clear(); outputs = []; update(); };
+  async function openSetup(context: any) {
+    if (setupRunning) return; setupRunning = true;
+    try { const result = await runPiSetupWizard(context, { onPrimaryChanged: reference => activateSetupPrimaryModel(pi, context, reference) }); context.ui.notify(result.ready ? "Setup saved" : "Setup closed", result.ready ? "info" : "warning"); }
+    catch (error) { context.ui.notify(String(error), "error"); }
+    finally { setupRunning = false; if (env.SEEKBRAIN_SETUP === "1") context.shutdown(); }
+  }
+  pi.registerCommand("seekbrain", { description: "Switch to Research", handler: async (args, context) => {
+    await mode.switchTo("research", context); pi.appendEntry("seekbrain-mode", { mode: mode.mode, project: mode.project });
+    context.ui.setStatus("seekbrain-mode", "Research"); if (args.trim()) pi.sendUserMessage(args.trim());
+  } });
+  pi.registerCommand("seekbrain-setup", { description: "Configure providers, models, and research source", handler: async (_args, context) => openSetup(context) });
+  const activities: Record<string, string> = { seekbrain_research_start: "Preparing workspace", seekbrain_plan_generate: "Exploring materials and writing plans", seekbrain_formulation_generate: "Preparing tasks", seekbrain_execution_run: "Executing tasks", seekbrain_report_generate: "Writing report and exporting requested files", seekbrain_research_decide: "Recording research decision and finalizing files" };
+  pi.on("tool_execution_start", async (event: any, context) => {
+    ctx = context; if (!activities[event.toolName]) return;
+    stopActivityTimer(); activityStartedAt = performance.now(); activityTool = { name: event.toolName, id: event.toolCallId };
+    if (context.hasUI) { activityTimer = setInterval(update, 1000); activityTimer.unref(); }
+    activity = mode.mode === "deep-research" && event.toolName === "seekbrain_report_generate" ? "Updating research report" : activities[event.toolName]; outputs = []; tasks.clear(); update();
+  });
+  pi.on("tool_execution_update", async (event: any) => {
+    if (!activityTool || (activityTool.id && event.toolCallId ? activityTool.id !== event.toolCallId : activityTool.name !== event.toolName)) return;
+    const detail = event.partialResult?.details || event.result?.details || {};
+    const progress = detail.progress === true ? detail : detail.progress || detail;
+    if (progress.task_id) tasks.set(progress.task_id, { status: progress.status || progress.task_status || (progress.stage === "task_completed" ? "complete" : progress.stage === "task_failed" ? "failed" : progress.stage === "task_interrupted" ? "pending" : "running") });
+    update();
+  });
+  pi.on("tool_execution_end", async (event: any, context) => {
+    ctx = context;
+    const isCurrentActivity = activityTool && (activityTool.id && event.toolCallId ? activityTool.id === event.toolCallId : activityTool.name === event.toolName);
+    if (activities[event.toolName] && !isCurrentActivity) return;
+    if (isCurrentActivity) stopActivityTimer();
+    const detail = event.result?.details || {};
+    if (detail.graph?.tasks) for (const task of detail.graph.tasks) tasks.set(task.id, { ...task });
+    if (isCurrentActivity) for (const task of tasks.values()) if (task.status === "running") task.status = "pending";
+    if (activities[event.toolName]) activity = event.isError || detail.ok === false ? "Interrupted or incomplete; completed files are retained." : detail.report_status === "draft" ? "Report draft saved; PDF export needs attention." : detail.partial || detail.graph?.status === "complete_with_failures" ? "Completed with partial results." : detail.needs_plan_selection ? "Select the plan or plans to execute." : "";
+    outputs = [...new Set([...(detail.plan_paths || []), detail.report_path, detail.pdf_path].filter(Boolean))]; update();
+  });
+  pi.on("before_agent_start", async (event, context) => {
+    ctx = context;
+    pi.setActiveTools(pi.getAllTools().map(tool => tool.name).filter(name => mode.allows(name)));
+    update();
+    applyAssistantPrompt(event.systemPromptOptions, { common: ASSISTANT_PROMPT, research: RESEARCH_PROMPT,
+      mode: mode.mode, context: mode.prompt(), nonInteractive: env.SEEKBRAIN_NON_INTERACTIVE === "1" });
+  });
+  pi.on("session_start", async (_event, context) => {
+    ctx = context; stopActivityTimer(); activity = ""; tasks.clear(); outputs = []; applySeekBrainDefaults(context); update();
+    pi.setActiveTools(pi.getAllTools().map(tool => tool.name).filter(name => mode.allows(name)));
+    if (env.SEEKBRAIN_SETUP === "1") await openSetup(context);
+  });
+  pi.on("agent_end", async () => {
+    if (activityStartedAt === undefined) return;
+    for (const task of tasks.values()) if (task.status === "running") task.status = "pending";
+    stopActivityTimer(); activity = "Interrupted or incomplete; completed files are retained."; update();
+  });
+  pi.on("session_shutdown", async () => { stopActivityTimer(); });
 }

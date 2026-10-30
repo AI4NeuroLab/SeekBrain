@@ -37,12 +37,12 @@ describe("ConfigLoader", () => {
       expect(config.workflow.seekbrain.image_refine).toBe(true);
       expect(config.paths.data_root).toBe("/env/data");
       expect(config.agents.seekbrain.model).toBe("runtime-model");
-      expect(config.workflow.seekbrain.deep_research).toBe(false);
+      expect(config.workflow.seekbrain.deep_research).toEqual({ max_rounds: 3 });
       expect(config.workflow.seekbrain.research_planning).toBe(true);
       expect(config.workflow.seekbrain.research_planning_strategy).toBe("standard");
       expect(config.workflow.seekbrain.research_survey).toBe(true);
-      expect(config.modules.targeted_skill).toMatchObject({ relevance_threshold: 0.5, top_k: 1 });
-      expect((config.modules.targeted_skill as any).compatibility).toMatchObject({ candidate_pool_size: 10, skill_top_k: 2, prefer_repository: true, paper_only_fallback: true });
+      expect(config.modules.targeted_skill).toMatchObject({ relevance_threshold: 0.6, top_k: 3, revision: { enabled: true, budget: 1, generated_only: true } });
+      expect((config.modules.targeted_skill as any).compatibility).toMatchObject({ candidate_pool_size: 10, recipe_candidate_pool_size: 8, skill_top_k: 2, prefer_repository: true, paper_only_fallback: true });
       expect(config.workflow.seekbrain.report.pdf).toMatchObject({ enabled: true, command: "seekbrain-pdf", timeout_seconds: 120 });
       expect(config.workflow.seekbrain.human_review).toEqual({
         enabled: true,
@@ -54,6 +54,11 @@ describe("ConfigLoader", () => {
     }
   });
 
+  it("enables web access by default and accepts a boolean override", async () => {
+    expect((await new ConfigLoader().load()).workflow.seekbrain.web_search).toBe(true);
+    expect((await new ConfigLoader({ overrides: { workflow: { seekbrain: { web_search: false } } } }).load()).workflow.seekbrain.web_search).toBe(false);
+    await expect(new ConfigLoader({ overrides: { workflow: { seekbrain: { web_search: "off" } } } }).load()).rejects.toBeInstanceOf(ConfigValidationError);
+  });
   it("rejects invalid values after merging", async () => {
     await expect(new ConfigLoader({
       overrides: { workflow: { seekbrain: { image_refine: "sometimes" } } },
@@ -64,6 +69,15 @@ describe("ConfigLoader", () => {
     await expect(new ConfigLoader({
       overrides: { workflow: { seekbrain: { research_planning_strategy: "experimental" } } },
     }).load()).rejects.toBeInstanceOf(ConfigValidationError);
+  });
+
+  it("ignores retired background switches without changing shared config files or Deep Research round settings", async () => {
+    const config = await new ConfigLoader({ overrides: { workflow: { seekbrain: { deep_research: false } }, agents: { seekbrain_deep_research: { rag: { base_url: "http://retired.example" } } } } }).load();
+    expect(config.workflow.seekbrain.deep_research).toEqual({ max_rounds: 3 });
+    expect(config.agents.seekbrain_deep_research).toBeUndefined();
+    for (const max_rounds of [0, -1, 1.5]) {
+      await expect(new ConfigLoader({ overrides: { workflow: { seekbrain: { deep_research: { max_rounds } } } } }).load()).rejects.toBeInstanceOf(ConfigValidationError);
+    }
   });
 
   it("allows Research Planning to be disabled explicitly", async () => {
@@ -84,7 +98,7 @@ describe("ConfigLoader", () => {
   it("configures Research Survey independently from Deep Research", async () => {
     const config = await new ConfigLoader({
       overrides: {
-        workflow: { seekbrain: { research_survey: false, deep_research: true } },
+        workflow: { seekbrain: { research_survey: false, deep_research: { max_rounds: 5 } } },
         agents: {
           seekbrain_survey: { rag: { base_url: "http://survey.example", top_k: 7 } },
           seekbrain_deep_research: { rag: { base_url: "http://deep.example", top_k: 2 } },
@@ -92,27 +106,27 @@ describe("ConfigLoader", () => {
       },
     }).load();
     expect(config.workflow.seekbrain.research_survey).toBe(false);
-    expect(config.workflow.seekbrain.deep_research).toBe(true);
+    expect(config.workflow.seekbrain.deep_research).toEqual({ max_rounds: 5 });
     expect(config.agents.seekbrain_survey.rag).toMatchObject({ base_url: "http://survey.example", top_k: 7 });
-    expect(config.agents.seekbrain_deep_research.rag).toMatchObject({ base_url: "http://deep.example", top_k: 2 });
+    expect(config.agents.seekbrain_deep_research).toBeUndefined();
   });
 
   it("gates literature capabilities without breaking legacy AILab URLs", () => {
     const none = {
       literature: { paper_source: "none" },
-      workflow: { seekbrain: { research_survey: true, deep_research: true, targeted_skill_match: true, targeted_skill_generate: true } },
+      workflow: { seekbrain: { research_survey: true, targeted_skill_match: true, targeted_skill_generate: true } },
       agents: { seekbrain_survey: { rag: { base_url: "http://legacy.example" } } },
     };
     expect(resolveLiteratureProvider(none)).toBe("none");
-    expect(literatureCapabilities(none)).toMatchObject({ available: false, research_survey: false, deep_research: false, targeted_skill_match: true, targeted_skill_generate: false });
+    expect(literatureCapabilities(none)).toMatchObject({ available: false, research_survey: false, targeted_skill_match: true, targeted_skill_generate: false });
 
     const legacy = {
       literature: { providers: {} },
-      workflow: { seekbrain: { research_survey: true, deep_research: true, targeted_skill_match: true, targeted_skill_generate: true } },
+      workflow: { seekbrain: { research_survey: true, targeted_skill_match: true, targeted_skill_generate: true } },
       agents: { seekbrain_survey: { rag: { base_url: "http://legacy.example" } } },
     };
     expect(resolveLiteratureProvider(legacy)).toBe("ailab_rag");
-    expect(literatureCapabilities(legacy)).toMatchObject({ available: true, research_survey: true, deep_research: true, targeted_skill_generate: true });
+    expect(literatureCapabilities(legacy)).toMatchObject({ available: true, research_survey: true, targeted_skill_generate: true });
   });
 
   it("passes only compatibility provider settings without rewriting the frozen AILab options", () => {

@@ -2,6 +2,12 @@
 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { configureBundledTools } from "./bundled-tools.mjs";
+import { ensureRelayCompatibility } from "./relay-compat.mjs";
+import { installAnthropicThinkingCompatibility } from "../compat/anthropic-thinking.mjs";
+
+configureBundledTools();
+ensureRelayCompatibility();
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const piEntry = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
@@ -24,10 +30,15 @@ if (process.env.PI_CODING_AGENT_SESSION_DIR && !process.env.SEEKBRAIN_CODING_AGE
   process.env.SEEKBRAIN_CODING_AGENT_SESSION_DIR = process.env.PI_CODING_AGENT_SESSION_DIR;
 }
 
-const [{ configureHttpDispatcher }, { SettingsManager }] = await Promise.all([
+const [{ configureHttpDispatcher }, { SettingsManager }, { ModelRuntime }] = await Promise.all([
   import(pathToFileURL(join(piRoot, "dist", "core", "http-dispatcher.js")).href),
   import(pathToFileURL(join(piRoot, "dist", "core", "settings-manager.js")).href),
+  import(pathToFileURL(join(piRoot, "dist", "core", "model-runtime.js")).href),
 ]);
+
+// Pi's CLI constructs its runtime internally. Keep this shim in SeekBrain's
+// process, so CLI sessions (including resume) use the same transport as the web.
+installAnthropicThinkingCompatibility(ModelRuntime.prototype, { agentDir: config.getAgentDir() });
 
 // SeekBrain owns the product shell, so Pi's generic onboarding and loaded
 // resource inventory stay hidden. Passing Pi's explicit --verbose flag still

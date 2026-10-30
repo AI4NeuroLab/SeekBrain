@@ -14,6 +14,7 @@ import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
 const SEMANTIC_FALLBACK_MAX_COLLECTIONS = 24;
 
 export interface DatasetToolDependencies {
+  loadEnv?(cwd: string): Promise<NodeJS.ProcessEnv>;
   loadConfig(cwd: string): Promise<Json>;
   readPrompt(name: string): Promise<string>;
   pickAgentConfig(config: Json, name: string): Json;
@@ -51,7 +52,7 @@ export function createDatasetTools(deps: DatasetToolDependencies): SeekBrainTool
       }
 
       try {
-        const profile = await profileDatasetDeterministically(identity.canonicalRoot);
+        const profile = await profileDatasetDeterministically(identity.canonicalRoot, await deps.loadEnv?.(ctx.cwd));
         let metadata = profile.metadata;
         let profiler = "deterministic";
         const ambiguousCollections = Array.isArray(metadata.quality?.unresolved_family_ids)

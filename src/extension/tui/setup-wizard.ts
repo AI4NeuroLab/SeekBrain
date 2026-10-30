@@ -1,3 +1,4 @@
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
 	Box,
 	CancellableLoader,
@@ -17,6 +18,20 @@ import {
 	literatureSourceOptions,
 	validateLiteratureProvider,
 } from "../../cli/setup.mjs";
+
+type PrimaryModelReference = { provider: string; model: string };
+type PrimaryModelChanged = (model: PrimaryModelReference) => Promise<void>;
+
+export async function activateSetupPrimaryModel(
+	pi: Pick<ExtensionAPI, "setModel">,
+	ctx: Pick<ExtensionContext, "modelRegistry">,
+	reference: PrimaryModelReference,
+): Promise<void> {
+	await ctx.modelRegistry.refresh({ allowNetwork: false, providers: [reference.provider] });
+	const model = ctx.modelRegistry.find(reference.provider, reference.model);
+	if (!model) throw new Error(`Model unavailable in this session: ${reference.provider}/${reference.model}`);
+	if (!await pi.setModel(model)) throw new Error(`Authentication is not configured for ${reference.provider}/${reference.model}`);
+}
 
 type SetupSnapshot = any;
 type SetupManager = any;
@@ -235,7 +250,7 @@ export class SeekBrainSetupCard {
 			description: !research.selected
 				? "Required once — choose a literature source or explicitly choose None"
 				: research.source === "none"
-					? "Literature retrieval is off; Research Planning remains available"
+					? "Literature retrieval is off; local data and reference exploration remain available"
 					: "Used by literature-grounded research stages",
 			tone: !research.selected || !research.configured ? "warning" : research.source === "none" ? "muted" : "text",
 		}];
@@ -817,7 +832,7 @@ async function handleProviderRow(ctx: any, manager: SetupManager, card: SeekBrai
 	else notifyOperationError(ctx, `Could not disconnect ${provider.name}`, result);
 }
 
-async function chooseModel(ctx: any, manager: SetupManager, card: SeekBrainSetupCard, role: "primary" | "fast") {
+async function chooseModel(ctx: any, manager: SetupManager, card: SeekBrainSetupCard, role: "primary" | "fast", onPrimaryChanged?: PrimaryModelChanged) {
 	const snapshot = card.getSnapshot();
 	const providers = snapshot.providers.filter((provider: any) => provider.connected);
 	if (!providers.length) {
@@ -839,7 +854,7 @@ async function chooseModel(ctx: any, manager: SetupManager, card: SeekBrainSetup
 			catch (error) { ctx.ui.notify(`Could not update Fast model: ${errorMessage(error)}`, "error"); }
 			return;
 		}
-		await chooseProviderModel(ctx, manager, card, role, providers.find((provider: any) => provider.id === choice));
+		await chooseProviderModel(ctx, manager, card, role, providers.find((provider: any) => provider.id === choice), onPrimaryChanged);
 		return;
 	}
 
@@ -854,10 +869,10 @@ async function chooseModel(ctx: any, manager: SetupManager, card: SeekBrainSetup
 		if (!choice) return;
 		provider = providers.find((candidate: any) => candidate.id === choice);
 	}
-	await chooseProviderModel(ctx, manager, card, role, provider);
+	await chooseProviderModel(ctx, manager, card, role, provider, onPrimaryChanged);
 }
 
-async function chooseProviderModel(ctx: any, manager: SetupManager, card: SeekBrainSetupCard, role: "primary" | "fast", provider: any) {
+async function chooseProviderModel(ctx: any, manager: SetupManager, card: SeekBrainSetupCard, role: "primary" | "fast", provider: any, onPrimaryChanged?: PrimaryModelChanged) {
 	const snapshot = card.getSnapshot();
 	const current = role === "primary" ? snapshot.primary : snapshot.fast;
 	const loaded = await runLoading(ctx, `Load ${provider.name} models`, "Checking available models…", async (_signal, setMessage) => {
@@ -892,6 +907,11 @@ async function chooseProviderModel(ctx: any, manager: SetupManager, card: SeekBr
 		card.updateSnapshot(next);
 	} catch (error) {
 		ctx.ui.notify(`Could not update ${role === "primary" ? "Primary" : "Fast"} model: ${errorMessage(error)}`, "error");
+		return;
+	}
+	if (role === "primary" && onPrimaryChanged) {
+		try { await onPrimaryChanged(reference); }
+		catch (error) { ctx.ui.notify(`Primary model saved, but the current session could not switch: ${errorMessage(error)}`, "warning"); }
 	}
 }
 
@@ -972,7 +992,7 @@ async function chooseResearch(ctx: any, manager: SetupManager, card: SeekBrainSe
 	catch (error) { ctx.ui.notify(`Could not update Research Source: ${errorMessage(error)}`, "error"); }
 }
 
-export async function runPiSetupWizard(ctx: any, options: { manager?: SetupManager } = {}) {
+export async function runPiSetupWizard(ctx: any, options: { manager?: SetupManager; onPrimaryChanged?: PrimaryModelChanged } = {}) {
 	if (!ctx.hasUI || ctx.mode !== "tui") {
 		throw new Error("SeekBrain setup requires the interactive Pi interface");
 	}
@@ -993,8 +1013,8 @@ export async function runPiSetupWizard(ctx: any, options: { manager?: SetupManag
 		let card: SeekBrainSetupCard;
 		const activate = async (row: SetupRow) => {
 			if (row.section === "providers") await handleProviderRow(ctx, manager, card, row);
-			else if (row.id === "model:primary") await chooseModel(ctx, manager, card, "primary");
-			else if (row.id === "model:fast") await chooseModel(ctx, manager, card, "fast");
+			else if (row.id === "model:primary") await chooseModel(ctx, manager, card, "primary", options.onPrimaryChanged);
+			else if (row.id === "model:fast") await chooseModel(ctx, manager, card, "fast", options.onPrimaryChanged);
 			else await chooseResearch(ctx, manager, card);
 		};
 		card = new SeekBrainSetupCard(tui, theme, initialSnapshot, activate, () => {

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-cross_day_correlation-identity_fingerprint_matrix",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Test whether individual zebrafish larvae can be re-identified across two imaging sessions 24 hours apart (6 dpf vs 7 dpf) by correlating the upper triangles of their functional connectivity matrices, building a symmetric larva×larva FC-similarity matrix, and scoring how often each larva's best match is itself.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "cross",
+    "day",
+    "correlation"
+  ],
+  "does": [
+    "association",
+    "group_comparison"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "identity_fingerprint",
+    "result_matrix"
+  ],
+  "use_when": [
+    "Run the Cross-day identification of individual larvae from FC fingerprints recipe",
+    "Test whether individual zebrafish larvae can be re-identified across two imaging sessions 24 hours apart (6 dpf vs 7 dpf) by correlating the upper triangles of their functional connectivity matrices, building a symmetric larva×larva FC-similarity matrix, and scoring how often each larva's best match is itself.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-cross_day_correlation-identity_fingerprint_matrix"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

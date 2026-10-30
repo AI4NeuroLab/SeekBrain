@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "recipe_id": "neural-decoding-analysis",
+  "version": "1.0",
+  "status": "provisional",
+  "kind": "analysis",
+  "summary": "Design and review neural population decoding, fMRI MVPA, representational similarity analysis, temporal generalization, searchlight analysis, and encoding models with leakage-safe cross-validation, permutation inference, and neuroscience-specific interpretation safeguards.",
+  "aliases": [
+    "neural-decoding",
+    "mvpa",
+    "rsa",
+    "encoding-models",
+    "cross-validation",
+    "neural-decoding-analysis"
+  ],
+  "does": [
+    "decoding",
+    "feature_extraction",
+    "spatial_mapping"
+  ],
+  "evidence_for": [
+    "stimulus_encoding",
+    "behavioral_encoding",
+    "regional_localization"
+  ],
+  "accepts": {
+    "species": [],
+    "modalities": [
+      "fmri"
+    ],
+    "observation_units": [
+      "trial",
+      "voxel",
+      "region",
+      "subject"
+    ],
+    "requires": [
+      "feature_matrix",
+      "target_labels",
+      "cross_validation_groups"
+    ]
+  },
+  "primary_modalities": [
+    "fmri"
+  ],
+  "context_modalities": [
+    "behavior",
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "decoding_scores",
+    "permutation_inference",
+    "searchlight_map",
+    "representational_similarity_matrix"
+  ],
+  "use_when": [
+    "perform fMRI MVPA or neural decoding",
+    "design leakage-safe cross-validation for neuroimaging",
+    "run representational similarity analysis",
+    "perform searchlight decoding or encoding modeling",
+    "test decoding accuracy with permutation inference"
+  ],
+  "avoid_when": [
+    "Cross-validation splits would leak subjects, runs, trials, or preprocessing information",
+    "The sample size or label balance cannot support the proposed model",
+    "Above-chance prediction would be interpreted as a unique neural mechanism without appropriate controls"
+  ],
+  "source": {
+    "type": "expert",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/decoding-methods.md",
+      "references/rsa-guide.md"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

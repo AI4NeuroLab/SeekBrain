@@ -1,6 +1,10 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import type { InterpretWorkflow } from "../../../workflows/index.ts";
+import {
+  ConclusionClaimsSchema,
+  InterpretationEvidenceSchema,
+  type InterpretWorkflow,
+} from "../../../workflows/index.ts";
 import { renderSeekBrainResult } from "../../tui/compact-tool-results.ts";
 import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
 
@@ -8,7 +12,7 @@ export interface InterpretationToolDependencies {
   workflow: InterpretWorkflow;
   loadConfig(cwd: string): Promise<Json>;
   readPrompt(name: string): Promise<string>;
-  pickAgentConfig(config: Json, name: string): Json;
+  literatureAgentConfig(config: Json, name: string): Json;
   content(details: Json): any;
 }
 
@@ -17,14 +21,14 @@ export function createInterpretationTools(deps: InterpretationToolDependencies):
     workflow: interpretWorkflow,
     loadConfig: loadConfigCached,
     readPrompt,
-    pickAgentConfig,
+    literatureAgentConfig,
     content,
   } = deps;
   return [
     defineTool({
     name: "seekbrain_interpretation_run",
     label: "Run Interpretation Agent",
-    description: "Inspect validated scientific figures and synthesize final conclusions from the images, validated observations, and statistics.",
+    description: "Inspect validated scientific figures and synthesize final conclusions from the images, validated observations, statistics, and selectively retrieved biological context.",
     parameters: Type.Object({
       run_id: Type.String(),
     }),
@@ -33,17 +37,11 @@ export function createInterpretationTools(deps: InterpretationToolDependencies):
       return content(await interpretWorkflow.execute({
         cwd: ctx.cwd,
         runId: params.run_id,
+        researchRolePrompt: await readPrompt("interpret_research"),
         rolePrompt: await readPrompt("interpret"),
-        agentConfig: pickAgentConfig(config, "seekbrain_interpret"),
-        finalizeSchema: Type.Object({
-          conclusions: Type.Array(Type.String()),
-          summary: Type.String(),
-          limitations: Type.Array(Type.String()),
-          next_research_directions: Type.Array(Type.Object({
-            title: Type.String(),
-            research_question: Type.String(),
-          })),
-        }),
+        agentConfig: literatureAgentConfig(config, "seekbrain_interpret"),
+        researchFinalizeSchema: InterpretationEvidenceSchema,
+        finalizeSchema: ConclusionClaimsSchema,
         signal,
       }));
     },

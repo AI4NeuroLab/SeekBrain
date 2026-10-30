@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-gene_anatomy-expression_count_mapping-spatial_density",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Map eomesa- and pvalb7-positive cells into a common zebrafish atlas from registered EASI-FISH volumes and cell-wise spot counts.",
+  "aliases": [
+    "easi-fish",
+    "mapzebrain",
+    "spatial-transcriptomics",
+    "zebrafish-brain-atlas",
+    "3d-visualization"
+  ],
+  "does": [
+    "spatial_mapping"
+  ],
+  "evidence_for": [
+    "regional_localization"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "omics",
+      "atlas"
+    ],
+    "observation_units": [
+      "gene",
+      "region"
+    ],
+    "requires": [
+      "gene_expression_matrix",
+      "atlas_annotations_or_coordinates"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "spatial_map"
+  ],
+  "use_when": [
+    "Analyze whole-brain spatial mapping of molecularly defined neuronal populations",
+    "Generate whole-brain spatial mapping of molecularly defined neuronal populations outputs",
+    "Apply the ns_multi-zebrafish-gene_anatomy-expression_count_mapping-spatial_density recipe"
+  ],
+  "avoid_when": [
+    "Atlas labels, coordinates, or registrations are missing or incompatible"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

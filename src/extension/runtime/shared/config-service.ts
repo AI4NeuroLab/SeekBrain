@@ -16,6 +16,7 @@ export interface ConfigServiceOptions {
   defaultConfigPath: string;
   configFile: string;
   cacheTtlMs?: number;
+  env?: NodeJS.ProcessEnv;
 }
 
 function parseEnv(text: string) {
@@ -35,6 +36,7 @@ function parseEnv(text: string) {
 }
 
 export function createConfigService(options: ConfigServiceOptions) {
+  const baseEnv = { ...(options.env ?? process.env) };
   const cacheTtlMs = options.cacheTtlMs ?? 30_000;
   let mergedConfig: Json = {};
   let configCache: Json | undefined;
@@ -51,13 +53,14 @@ export function createConfigService(options: ConfigServiceOptions) {
 
   async function loadConfig(cwd: string) {
     const workflowCwd = options.projectRoot || cwd;
-    const userConfigPath = process.env.SEEKBRAIN_USER_CONFIG
+    const env = await loadEnv(workflowCwd);
+    const userConfigPath = env.SEEKBRAIN_USER_CONFIG
       || join(homedir(), ".config", "seekbrain", "config.yaml");
     return await new ConfigLoader({
       defaultConfigPath: options.defaultConfigPath,
       userConfigPath,
-      projectConfigPath: process.env.SEEKBRAIN_CONFIG || resolve(workflowCwd, options.configFile),
-      env: process.env,
+      projectConfigPath: env.SEEKBRAIN_CONFIG || resolve(workflowCwd, options.configFile),
+      env,
     }).load() as Json;
   }
 
@@ -93,14 +96,14 @@ export function createConfigService(options: ConfigServiceOptions) {
 
   function seekbrainWorkflowConfig(config: Json) {
     const configured = config.workflow?.seekbrain || {};
-    const runMode = process.env.SEEKBRAIN_RUN_MODE;
+    const runMode = baseEnv.SEEKBRAIN_RUN_MODE;
     const researchPlanningStrategy: ResearchPlanningStrategy = configured.research_planning_strategy === "creative"
       ? "creative"
       : "standard";
     const boolValue = (key: string) => configured[key] !== false;
     const literature = literatureCapabilities(config);
     const humanReview = configured.human_review || {};
-    const humanReviewEnabled = humanReview.enabled === true && process.env.SEEKBRAIN_NON_INTERACTIVE !== "1";
+    const humanReviewEnabled = humanReview.enabled === true && baseEnv.SEEKBRAIN_NON_INTERACTIVE !== "1";
     const humanReviewGates = humanReview.gates || {};
     return {
       research_planning: runMode === "standard"
@@ -111,7 +114,6 @@ export function createConfigService(options: ConfigServiceOptions) {
       research_planning_strategy: researchPlanningStrategy,
       research_survey: literature.research_survey,
       research_planning_peer_review: configured.research_planning_peer_review === true,
-      deep_research: literature.deep_research,
       targeted_skill_match: literature.targeted_skill_match,
       targeted_skill_generate: literature.targeted_skill_generate,
       rag_recipe_crystallization: configured.rag_recipe_crystallization === true,
@@ -148,26 +150,22 @@ export function createConfigService(options: ConfigServiceOptions) {
   }
 
   async function loadEnv(cwd: string) {
-    const env = { ...process.env };
+    const env = { ...baseEnv };
     const candidates = [resolve(cwd, ".env"), resolve(options.projectRoot, ".env")];
     for (const path of candidates) {
       try {
         const parsed = parseEnv(await readFile(path, "utf8"));
         for (const [key, value] of Object.entries(parsed)) {
-          if (env[key] === undefined || env[key] === "") env[key] = value;
+          const existing = process.platform === "win32"
+            ? Object.keys(env).find(name => name.toLowerCase() === key.toLowerCase()) : key;
+          const target = existing || key;
+          if (env[target] === undefined || env[target] === "") env[target] = value;
         }
       } catch {
         // Missing .env files are normal.
       }
     }
     return env;
-  }
-
-  async function ensureProcessEnvFromDotenv(cwd: string) {
-    const env = await loadEnv(cwd);
-    for (const [key, value] of Object.entries(env)) {
-      if (process.env[key] === undefined || process.env[key] === "") process.env[key] = value;
-    }
   }
 
   return {
@@ -181,6 +179,5 @@ export function createConfigService(options: ConfigServiceOptions) {
     literatureAgentConfig,
     humanGateEnabled,
     loadEnv,
-    ensureProcessEnvFromDotenv,
   };
 }

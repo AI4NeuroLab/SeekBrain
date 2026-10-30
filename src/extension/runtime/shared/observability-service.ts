@@ -9,6 +9,8 @@ export interface ObservabilityServiceDependencies {
 }
 
 const LOG_TEXT_LIMIT = 4000;
+export const READABLE_EVENTS_FILE = "events.jsonl";
+export const RAW_COT_FILE = "cot.jsonl";
 
 function shortTimestamp() {
   const now = new Date();
@@ -182,7 +184,13 @@ export function createObservabilityService(deps: ObservabilityServiceDependencie
   async function appendReadableLog(runDir: string | undefined, entry: Json) {
     if (!deps.debugDiskWritesEnabled() || !runDir) return;
     const sink = new FileDiagnosticSink(runDir);
-    await sink.appendJsonl("events.jsonl", entry, []);
+    await sink.appendJsonl(READABLE_EVENTS_FILE, entry, []);
+  }
+
+  async function appendRawCotLog(runDir: string | undefined, entry: Json) {
+    if (!deps.debugDiskWritesEnabled() || !runDir) return;
+    const sink = new FileDiagnosticSink(runDir);
+    await sink.appendJsonl(RAW_COT_FILE, entry, []);
   }
 
   function usageEntry(component: string, stats: Json, extra: Json = {}) {
@@ -300,7 +308,7 @@ export function createObservabilityService(deps: ObservabilityServiceDependencie
 
   async function snapshotSubagentFiles(agentDir: string, sink: FileDiagnosticSink, warnings: Json[]) {
     if (!deps.debugDiskWritesEnabled()) return undefined;
-    const files = ["input.json", "output.json", "prompt.md", "events.jsonl"];
+    const files = ["input.json", "output.json", "prompt.md", READABLE_EVENTS_FILE, RAW_COT_FILE];
     const existing = files.filter((name) => existsSync(join(agentDir, name)));
     if (!existing.length) return undefined;
     const snapshotDir = join(agentDir, "_snapshots", `call_${shortTimestamp()}_${randomUUID().slice(0, 8)}`);
@@ -329,6 +337,7 @@ export function createObservabilityService(deps: ObservabilityServiceDependencie
     readableLogEntriesFromEvent,
     pushReadableLog,
     appendReadableLog,
+    appendRawCotLog,
     usageEntry,
     usageEntryFromMessage,
     tryAppendUsageEntry,
@@ -340,4 +349,3 @@ export function createObservabilityService(deps: ObservabilityServiceDependencie
     snapshotSubagentFiles,
   };
 }
-

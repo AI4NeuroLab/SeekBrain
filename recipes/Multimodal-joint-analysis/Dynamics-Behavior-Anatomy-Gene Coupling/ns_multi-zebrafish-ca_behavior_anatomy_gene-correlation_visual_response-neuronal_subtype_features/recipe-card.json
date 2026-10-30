@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior_anatomy_gene-correlation_visual_response-neuronal_subtype_features",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Integrate zebrafish calcium responses, swimming behavior, atlas coordinates, and molecular identity to characterize neuronal subtypes.",
+  "aliases": [
+    "zebrafish",
+    "calcium-imaging",
+    "neuroinformatics",
+    "visuomotor",
+    "spatial-transcriptomics"
+  ],
+  "does": [
+    "association"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "regional_localization",
+    "cell_type_specificity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior",
+      "omics",
+      "atlas"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "gene",
+      "region"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements",
+      "gene_expression_matrix",
+      "atlas_annotations_or_coordinates"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior",
+    "omics"
+  ],
+  "context_modalities": [
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "Analyze characterization of glyt2–gfra1a neuronal subtype dynamics and morphology",
+    "Generate characterization of glyt2–gfra1a neuronal subtype dynamics and morphology outputs",
+    "Apply the ns_multi-zebrafish-ca_behavior_anatomy_gene-correlation_visual_response-neuronal_subtype_features recipe"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Atlas labels, coordinates, or registrations are missing or incompatible"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

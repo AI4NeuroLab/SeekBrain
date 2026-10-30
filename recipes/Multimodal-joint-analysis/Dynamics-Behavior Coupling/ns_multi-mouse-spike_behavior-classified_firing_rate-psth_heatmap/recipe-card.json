@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-spike_behavior-classified_firing_rate-psth_heatmap",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Calculates and visualizes trial-averaged firing rate profiles for neuronal populations, segmented by stimulus difficulty and behavioral choice.",
+  "aliases": [
+    "electrophysiology",
+    "neuroscience",
+    "PSTH",
+    "spike-sorting",
+    "population-dynamics",
+    "data-analysis"
+  ],
+  "does": [
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "heatmap_figure",
+    "time_series_plot"
+  ],
+  "use_when": [
+    "How do I compute trial-averaged firing rates for my neural data?",
+    "Show me how to plot PSTHs grouped by task condition",
+    "Generate population firing rate profiles sorted by stimulus difficulty and choice",
+    "How can I visualize trial-aligned neural activity for decision-making tasks?",
+    "Help me construct PSTHs for simultaneously recorded neurons"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-macaque-spike_behavior-classified_firing_rate-psth_trace",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Generates trial-averaged firing rate curves for 14 PMd neurons, segmented by choice and difficulty, using a 75ms sliding window with SEM error shading.",
+  "aliases": [
+    "neuroscience",
+    "electrophysiology",
+    "PSTH",
+    "neural dynamics",
+    "data visualization"
+  ],
+  "does": [
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "macaque"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "Plot PSTHs for the first 14 PMd neurons",
+    "Generate firing rate curves for population.pkl",
+    "Compare PMd neuron responses across choice and difficulty",
+    "Calculate and visualize trial-averaged neural dynamics from the population dataset",
+    "Display temporal heterogeneity of PMd unit activity"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -1,0 +1,217 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createJiti } from "jiti";
+
+const jiti = createJiti(import.meta.url);
+const {
+  contextForCwd,
+  currentWorktreeOf,
+  describeProjectChoices,
+  mergeProjectChoices,
+  newSessionContextKey,
+  newSessionTargetForProject,
+  projectChoices,
+  projectForCwd,
+  withProjectAlias,
+} = await jiti.import("./new-session-context.ts");
+
+const main = { path: "/work/app", branch: "main", isMain: true };
+const feature = { path: "/work/app-worktrees/feature", branch: "feature", isMain: false };
+const context = {
+  cwd: "/work/app",
+  project: { key: "app-key", root: "/work/app" },
+  worktrees: [main, feature],
+  currentWorktreePath: "/work/app",
+  projects: [{ key: "app-key", root: "/work/app" }, { key: "other-key", root: "/work/other" }],
+};
+
+test("a project's new-session actions share the selected directory only for the current project", () => {
+  const project = { key: "app-key", root: "/work/app", current: true };
+  const at = (cwd) => ({ cwd, projectKey: project.key, projectRoot: project.root });
+  assert.deepEqual(newSessionTargetForProject(project, feature.path), at(feature.path));
+  assert.deepEqual(newSessionTargetForProject(project, "/work/app/subdir"), at("/work/app/subdir"));
+  assert.deepEqual(newSessionTargetForProject(project, main.path), at(main.path));
+  assert.deepEqual(newSessionTargetForProject(project, null), at(main.path));
+  assert.deepEqual(newSessionTargetForProject({ ...project, current: false }, feature.path), at(main.path));
+  assert.deepEqual(newSessionTargetForProject({ ...project, current: false }, null), at(main.path));
+});
+
+test("a pinned project with no sessions needs only its key and root to open a new composer", () => {
+  const project = { key: "empty-key", root: "C:\\Projects\\Empty & 项目", current: false };
+  assert.deepEqual(newSessionTargetForProject(project, "C:\\Projects\\Other"), {
+    cwd: project.root,
+    projectKey: project.key,
+    projectRoot: project.root,
+  });
+});
+
+test("the context follows the composer's cwd while the sidebar's report lags", () => {
+  assert.equal(contextForCwd(context, "/work/app"), context);
+  // A sibling worktree: same project and list, that checkout current.
+  assert.deepEqual(contextForCwd(context, feature.path), { ...context, cwd: feature.path, currentWorktreePath: feature.path });
+  // Another known project: its key, no worktree list until the sidebar fetched it.
+  assert.deepEqual(contextForCwd(context, "/work/other"), {
+    cwd: "/work/other",
+    project: { key: "other-key", root: "/work/other" },
+    worktrees: null,
+    currentWorktreePath: null,
+    projects: context.projects,
+  });
+  // A folder nobody listed, or no report at all: a project of its own.
+  assert.deepEqual(contextForCwd(context, "/tmp/new").project, { key: "/tmp/new", root: "/tmp/new" });
+  assert.deepEqual(contextForCwd(null, "/tmp/new"), {
+    cwd: "/tmp/new",
+    project: { key: "/tmp/new", root: "/tmp/new" },
+    worktrees: null,
+    currentWorktreePath: null,
+    projects: [],
+  });
+});
+
+test("the bar's own move is right from the first frame, before the sidebar reports it", () => {
+  const before = { ...context, worktrees: [main], currentWorktreePath: main.path };
+  // "New worktree…": no report lists it yet. It joins the project's list, current, with its branch.
+  const created = { cwd: "/work/app-worktrees/fix", project: { key: "app-key", root: "/work/app" }, branch: "fix/login" };
+  assert.deepEqual(contextForCwd(before, created.cwd, created), {
+    ...before,
+    cwd: created.cwd,
+    worktrees: [main, { path: created.cwd, branch: "fix/login", isMain: false }],
+    currentWorktreePath: created.cwd,
+  });
+  // "Open another project…" on a checkout of a project nobody listed: its project, not a folder of its own.
+  const opened = { cwd: "/elsewhere/lib-worktrees/next", project: { key: "lib-key", root: "/elsewhere/lib" }, branch: null };
+  assert.deepEqual(contextForCwd(before, opened.cwd, opened), {
+    cwd: opened.cwd,
+    project: opened.project,
+    worktrees: null,
+    currentWorktreePath: null,
+    projects: before.projects,
+  });
+  assert.deepEqual(contextForCwd(null, opened.cwd, opened).project, opened.project);
+  // A move to somewhere else, or a report that caught up, changes nothing.
+  assert.deepEqual(contextForCwd(before, "/tmp/new", created).project, { key: "/tmp/new", root: "/tmp/new" });
+  assert.equal(contextForCwd(context, context.cwd, created), context);
+  assert.deepEqual(contextForCwd(before, main.path, { ...created, cwd: main.path }), { ...before, cwd: main.path, currentWorktreePath: main.path });
+});
+
+test("a session click right after a subdirectory keeps the clicked session's project (#1289)", () => {
+  // The sidebar's cwd moved from /work/app/web to the repository root; the
+  // listing is still the subdirectory's, which names the root's checkouts.
+  const listing = {
+    forCwd: "/work/app/web",
+    projectRoot: "/work/app/web",
+    projectKey: "/work/app/web",
+    isTopLevel: false,
+    worktrees: [main, feature],
+  };
+  const sessions = [
+    { cwd: "/work/app/web", projectRoot: "/work/app/web", projectKey: "/work/app/web" },
+    { cwd: "/work/app", projectRoot: "/work/app", projectKey: "app-key" },
+    { cwd: feature.path, projectRoot: "/work/app", projectKey: "app-key" },
+  ];
+  const known = { validated: null, listing, sessions };
+  assert.deepEqual(projectForCwd("/work/app", known), { root: "/work/app", key: "app-key" });
+  assert.deepEqual(projectForCwd(feature.path, known), { root: "/work/app", key: "app-key" });
+  assert.deepEqual(projectForCwd("/work/app/web", known), { root: "/work/app/web", key: "/work/app/web" });
+});
+
+test("a checkout's listing keeps its worktrees in its project before they have sessions", () => {
+  const listing = { forCwd: main.path, projectRoot: "/work/app", projectKey: "app-key", isTopLevel: true, worktrees: [main, feature] };
+  assert.deepEqual(projectForCwd(feature.path, { validated: null, listing, sessions: [] }), { root: "/work/app", key: "app-key" });
+  // A folder just validated wins; one nobody knows is a project of its own.
+  const validated = { cwd: "/tmp/picked", root: "/tmp/picked", key: "picked-key" };
+  assert.deepEqual(projectForCwd("/tmp/picked", { validated, listing, sessions: [] }), { root: "/tmp/picked", key: "picked-key" });
+  assert.deepEqual(projectForCwd("/tmp/new", { validated, listing, sessions: [] }), { root: "/tmp/new", key: "/tmp/new" });
+});
+
+test("the project list has the current project once", () => {
+  assert.deepEqual(projectChoices(context), context.projects);
+  assert.notEqual(projectChoices(context), context.projects, "a copy, never the reported array");
+  const opened = { ...context, project: { key: "/tmp/new", root: "/tmp/new" } };
+  assert.deepEqual(projectChoices(opened), [{ key: "/tmp/new", root: "/tmp/new" }, ...context.projects]);
+  // A sidebar with no cwd yet still lists every project.
+  const none = { project: null, worktrees: null, currentWorktreePath: null, projects: context.projects };
+  assert.deepEqual(projectChoices(none), context.projects);
+  assert.equal(currentWorktreeOf(none), null);
+});
+
+test("the sidebar's groups come first, then projects only its sessions know", () => {
+  assert.deepEqual(
+    mergeProjectChoices(
+      [{ key: "b", root: "/b", name: "b", pinned: true }, { key: "a", root: "/a" }],
+      [{ key: "a", root: "/a" }, { key: "c", root: "/c" }],
+    ),
+    [{ key: "b", root: "/b" }, { key: "a", root: "/a" }, { key: "c", root: "/c" }],
+  );
+});
+
+test("project names get their parent folder only when two of them collide", () => {
+  assert.deepEqual(
+    describeProjectChoices([
+      { key: "1", root: "/work/client/app" },
+      { key: "2", root: "/work/server/app/" },
+      { key: "3", root: "C:\\code\\tools" },
+      { key: "4", root: "/app" },
+    ]).map(({ name, note }) => [name, note]),
+    [["app", "client"], ["app", "server"], ["tools", null], ["app", null]],
+  );
+});
+
+test("a project the user named shows that name, by key, with its folder as the note", () => {
+  // A key such as "constructor" never reads Object.prototype's member as a name.
+  const names = { a: "Thermal Models", c: "Thermal Models" };
+  const merged = mergeProjectChoices(
+    [{ key: "a", root: "/work/sim/thermal", name: "Thermal Models", customName: "Thermal Models", pinned: false }, { key: "b", root: "/work/b" }],
+    [{ key: "c", root: "/old/thermal" }, { key: "constructor", root: "/work/constructor" }],
+    names,
+  );
+  assert.deepEqual(merged, [
+    { key: "a", root: "/work/sim/thermal", alias: "Thermal Models" },
+    { key: "b", root: "/work/b" },
+    { key: "c", root: "/old/thermal", alias: "Thermal Models" },
+    { key: "constructor", root: "/work/constructor" },
+  ]);
+  assert.deepEqual(withProjectAlias({ key: "b", root: "/work/b", alias: "stale" }, names), { key: "b", root: "/work/b" }, "the names decide, not a stale alias");
+  assert.deepEqual(withProjectAlias({ key: "a", root: "/r" }, undefined), { key: "a", root: "/r" });
+  // Two projects may share a name: a named one has no note, the path tooltip tells it apart.
+  assert.deepEqual(
+    describeProjectChoices([...merged, { key: "d", root: "/x/b" }]).map(({ name, note }) => [name, note]),
+    [["Thermal Models", null], ["b", "work"], ["Thermal Models", null], ["constructor", null], ["b", "x"]],
+  );
+});
+
+test("a move to a named project shows its name before the sidebar reports it", () => {
+  const projects = [{ key: "app-key", root: "/work/app", alias: "App" }, { key: "lib-key", root: "/work/lib", alias: "Library" }];
+  const named = { ...context, projects };
+  assert.deepEqual(contextForCwd(named, "/work/lib").project, { key: "lib-key", root: "/work/lib", alias: "Library" });
+  // A move names its project by key and root only.
+  const move = { cwd: "/work/lib", project: { key: "lib-key", root: "/work/lib" }, branch: null };
+  assert.deepEqual(contextForCwd(named, "/work/lib", move).project, { key: "lib-key", root: "/work/lib", alias: "Library" });
+  assert.deepEqual(contextForCwd(named, "/tmp/new").project, { key: "/tmp/new", root: "/tmp/new" });
+  // A rename is something the bar shows: it hears of it.
+  assert.notEqual(newSessionContextKey({ ...context, project: { ...context.project, alias: "App" } }), newSessionContextKey(context));
+  assert.notEqual(newSessionContextKey(named), newSessionContextKey(context));
+});
+
+test("the current worktree is the reported one, else main", () => {
+  assert.equal(currentWorktreeOf({ ...context, currentWorktreePath: feature.path }), feature);
+  assert.equal(currentWorktreeOf({ ...context, currentWorktreePath: null }), main);
+  assert.equal(currentWorktreeOf({ ...context, currentWorktreePath: "/elsewhere" }), main);
+  assert.equal(currentWorktreeOf({ ...context, worktrees: [] }), null);
+  assert.equal(currentWorktreeOf({ ...context, worktrees: null }), null);
+});
+
+test("contexts that show the same have the same key", () => {
+  const rebuilt = {
+    ...context,
+    project: { ...context.project },
+    worktrees: context.worktrees.map((worktree) => ({ ...worktree })),
+    projects: context.projects.map((project) => ({ ...project })),
+  };
+  assert.equal(newSessionContextKey(rebuilt), newSessionContextKey(context));
+  assert.notEqual(newSessionContextKey({ ...context, currentWorktreePath: feature.path }), newSessionContextKey(context));
+  assert.notEqual(newSessionContextKey({ ...context, worktrees: [main] }), newSessionContextKey(context));
+  assert.notEqual(newSessionContextKey({ ...context, worktrees: null }), newSessionContextKey(context));
+  assert.notEqual(newSessionContextKey({ ...context, projects: context.projects.slice(1) }), newSessionContextKey(context));
+  assert.equal(newSessionContextKey(null), "");
+});

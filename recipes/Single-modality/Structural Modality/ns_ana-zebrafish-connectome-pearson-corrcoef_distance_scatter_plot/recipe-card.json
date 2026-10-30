@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-connectome-pearson-corrcoef_distance_scatter_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantifies how inter-regional connectivity varies with anatomical distance and visualizes the relationship with a correlation scatter plot.",
+  "aliases": [
+    "analysis",
+    "zebrafish",
+    "neuroscience",
+    "reproduction"
+  ],
+  "does": [
+    "association",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "scatter_plot"
+  ],
+  "use_when": [
+    "How to reproduce To_investigate_the_relationship_between_inter-regional_conne",
+    "Generate To_investigate_the_relationship_between_inter-regional_conne from zebrafish data",
+    "Analyze data for To_investigate_the_relationship_between_inter-regional_conne",
+    "Reproduce figure To_investigate_the_relationship_between_inter-regional_conne",
+    "Run analysis for To_investigate_the_relationship_between_inter-regional_conne"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

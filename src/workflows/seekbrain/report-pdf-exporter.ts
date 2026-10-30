@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { access } from "node:fs/promises";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stopProcessTree } from "../../platform/process-tree.mjs";
 
 export interface ReportPdfExportInput {
   markdownPath: string;
@@ -10,14 +11,19 @@ export interface ReportPdfExportInput {
   command?: string;
   timeoutSeconds?: number;
   signal?: AbortSignal;
+  style?: "brief_communication";
 }
 
 export async function exportReportPdf(input: ReportPdfExportInput) {
   const command = String(input.command || "seekbrain-pdf").trim();
   const builtInRenderer = resolve(dirname(fileURLToPath(import.meta.url)), "../../../bin/seekbrain-pdf.mjs");
   const useBuiltIn = command === "seekbrain-pdf" && existsSync(builtInRenderer);
-  const executable = useBuiltIn ? process.execPath : command;
-  const args = useBuiltIn ? [builtInRenderer, basename(input.markdownPath)] : [basename(input.markdownPath)];
+  const javascriptRenderer = /\.(?:mjs|cjs|js)$/i.test(extname(command)) && existsSync(command);
+  const executable = useBuiltIn || javascriptRenderer ? process.execPath : command;
+  const args = useBuiltIn ? [builtInRenderer, basename(input.markdownPath)]
+    : javascriptRenderer ? [resolve(command), basename(input.markdownPath)] : [basename(input.markdownPath)];
+  args.push("--output", resolve(input.pdfPath));
+  if (useBuiltIn && input.style === "brief_communication") args.push("--brief-communication");
   const timeoutMs = Math.max(1, Number(input.timeoutSeconds || 120)) * 1000;
   const startedAt = Date.now();
   return await new Promise<Record<string, unknown>>((done) => {
@@ -37,9 +43,9 @@ export async function exportReportPdf(input: ReportPdfExportInput) {
       done({ ...result, ok: result.ok === true && exists, pdf_path: input.pdfPath, command, stderr, duration_ms: Date.now() - startedAt,
         ...(result.ok === true && !exists ? { error: `PDF command completed without creating '${input.pdfPath}'.` } : {}) });
     };
-    const abort = () => child.kill("SIGTERM");
+    const abort = () => stopProcessTree(child);
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
+      stopProcessTree(child);
       void finish({ ok: false, timed_out: true, error: `PDF generation exceeded ${timeoutMs / 1000} seconds.` });
     }, timeoutMs);
     timer.unref?.();

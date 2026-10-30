@@ -1,94 +1,39 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createJiti } from "jiti";
 
-const root = new URL("../", import.meta.url);
-const extensionSource = await readFile(new URL("src/extension/runtime/index.ts", root), "utf8");
-const workflowSource = await readFile(new URL("src/workflows/seekbrain/run-lifecycle.ts", root), "utf8");
-assert.match(extensionSource, /new RunLifecycleWorkflow\(runRepository\)/);
-assert.doesNotMatch(extensionSource, /function startResearchProject|function continueResearch/);
-assert.doesNotMatch(workflowSource, /pi\.registerTool|ExtensionAPI|createAgentSession/);
-
-const tools = [];
-const pi = {
-  on() {},
-  registerCommand() {},
-  registerTool(tool) { tools.push(tool); },
-  async appendEntry() {},
-  sendMessage() {},
-};
-const previous = process.env.SEEKBRAIN_NON_INTERACTIVE;
-const previousUserConfig = process.env.SEEKBRAIN_USER_CONFIG;
-const previousProjectConfig = process.env.SEEKBRAIN_CONFIG;
-process.env.SEEKBRAIN_NON_INTERACTIVE = "1";
-const cwd = await mkdtemp(join(tmpdir(), "seekbrain-phase4-contract-"));
-process.env.SEEKBRAIN_USER_CONFIG = join(cwd, "missing-user-config.yaml");
-process.env.SEEKBRAIN_CONFIG = join(cwd, "project-config.yaml");
-await writeFile(process.env.SEEKBRAIN_CONFIG, "workflow:\n  seekbrain:\n    research_planning: false\n", "utf8");
+const cwd = await mkdtemp(join(tmpdir(), "seekbrain014-lifecycle-"));
+const prior = { user: process.env.SEEKBRAIN_USER_CONFIG, project: process.env.SEEKBRAIN_CONFIG };
+process.env.SEEKBRAIN_USER_CONFIG = join(cwd, "missing-user.yaml");
+process.env.SEEKBRAIN_CONFIG = join(cwd, "missing-project.yaml");
 try {
   const jiti = createJiti(import.meta.url);
-  const { default: registerSeekBrain } = await jiti.import("../src/extension/index.ts");
-  await registerSeekBrain(pi);
-  const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
-  assert.deepEqual(tools.filter((tool) => typeof tool.renderResult !== "function").map((tool) => tool.name), [], "every SeekBrain tool must have a compact result renderer");
-  const ctx = { cwd, hasUI: false };
-
-  const first = await byName.seekbrain_research_start.execute("start", {
-    project_dir: "project",
-    question: "first round",
-    background: "user-supplied scientific context",
-    data_info: "locked metadata",
-  }, undefined, undefined, ctx);
-  assert.equal(first.details.round_number, 1);
-  assert.equal(first.details.workflow_config.optional.deep_research, "disabled_no_literature_provider");
-  assert.equal(first.details.workflow_config.optional.research_planning, "disabled_by_user_config");
-  assert.deepEqual(first.details.research_route, {
-    enabled: false,
-    route: "standard",
-    needs_user_review: false,
-    needs_user_clarification: false,
-    next_tool: "seekbrain_recipe_retrieve",
-  });
-  const firstState = JSON.parse(await readFile(join(first.details.run_dir, "state.json"), "utf8"));
-  assert.equal(firstState.user_background, "user-supplied scientific context");
-  assert.equal(firstState.data_info, undefined);
-  assert.equal(firstState.metadata_json_path, join(cwd, "project", "metadata.json"));
-  assert.equal(JSON.parse(await readFile(firstState.metadata_json_path, "utf8")).description, "locked metadata");
-
-  const resumed = await byName.seekbrain_run_resume.execute("resume", {
-    work_dir: join(cwd, "project", "round1"),
-    question: "updated first round",
-  }, undefined, undefined, ctx);
-  assert.equal(resumed.details.run_id, first.details.run_id);
-  assert.equal(resumed.details.workflow_config.optional.targeted_skill, "enabled");
-
-  const second = await byName.seekbrain_research_continue.execute("continue", {
-    source_path: join(cwd, "project"),
-    direction: "second round",
-  }, undefined, undefined, ctx);
-  assert.equal(second.details.parent_run_id, first.details.run_id);
-  assert.equal(second.details.round_number, 2);
-  const secondState = JSON.parse(await readFile(join(second.details.run_dir, "state.json"), "utf8"));
-  assert.equal(secondState.user_background, "user-supplied scientific context");
-  assert.equal(secondState.data_info, undefined);
-  assert.equal(secondState.metadata_json_path, firstState.metadata_json_path);
-  assert.equal(typeof second.details.workflow_config.human_review.enabled, "boolean");
-
+  const { default: register } = await jiti.import("../src/extension/index.ts");
+  const tools = [];
+  await register({ on() {}, registerCommand() {}, registerTool(t) { tools.push(t); }, async appendEntry() {}, sendMessage() {} });
+  const byName = Object.fromEntries(tools.map(t => [t.name, t]));
+  assert.equal(byName.seekbrain_creative_search, undefined);
+  assert.equal(byName.seekbrain_planning_peer_review, undefined);
+  const ctx = { cwd, hasUI: false, sessionManager: { getBranch: () => [{ type: "message", id: "request", message: { role: "user", content: request } }] } };
+  const request = "Analyze all donors. Relevant materials: ./Notes. Main text contains no headings.";
+  const first = await byName.seekbrain_research_start.execute("start", { project_dir: "study", reference_paths: ["./Notes"] }, undefined, undefined, ctx);
+  assert.equal(first.details.next_tool, "seekbrain_plan_generate");
+  const state = JSON.parse(await readFile(first.details.state_path, "utf8"));
+  assert.equal(state.flow_version, "0.1.4"); assert.equal(state.original_request, request);
+  assert.deepEqual(state.reference_paths, [join(cwd, "Notes")]);
+  assert.equal(state.execution_contract, undefined); assert.equal(state.task_brief, undefined);
+  const resumed = await byName.seekbrain_run_resume.execute("resume", { project_path: "study" }, undefined, undefined, ctx);
+  assert.equal(resumed.details.run_id, first.details.run_id); assert.equal(resumed.details.next_tool, "seekbrain_plan_generate");
+  const duplicate = await byName.seekbrain_research_start.execute("duplicate", { project_dir: "study" }, undefined, undefined, ctx);
+  assert.equal(duplicate.details.run_id, first.details.run_id);
+  assert.equal(duplicate.details.reused, true);
   const ping = await byName.seekbrain_system_check.execute("ping", {}, undefined, undefined, ctx);
-  assert.equal(ping.details.run_count, 2);
-  const capabilities = await byName.seekbrain_system_capabilities.execute("capabilities", {}, undefined, undefined, ctx);
-  assert.equal(capabilities.details.ok, true);
-  assert.equal(capabilities.details.continuation_tool, "seekbrain_research_continue");
+  assert.equal(ping.details.run_count, 1);
 } finally {
-  if (previous === undefined) delete process.env.SEEKBRAIN_NON_INTERACTIVE;
-  else process.env.SEEKBRAIN_NON_INTERACTIVE = previous;
-  if (previousUserConfig === undefined) delete process.env.SEEKBRAIN_USER_CONFIG;
-  else process.env.SEEKBRAIN_USER_CONFIG = previousUserConfig;
-  if (previousProjectConfig === undefined) delete process.env.SEEKBRAIN_CONFIG;
-  else process.env.SEEKBRAIN_CONFIG = previousProjectConfig;
+  if (prior.user === undefined) delete process.env.SEEKBRAIN_USER_CONFIG; else process.env.SEEKBRAIN_USER_CONFIG = prior.user;
+  if (prior.project === undefined) delete process.env.SEEKBRAIN_CONFIG; else process.env.SEEKBRAIN_CONFIG = prior.project;
   await rm(cwd, { recursive: true, force: true });
 }
-
-console.log("Phase 4 system and lifecycle tools execute through the workflows boundary");
+console.log("Unified lifecycle preserves raw requests and resumes parent studies without routing or reviews");

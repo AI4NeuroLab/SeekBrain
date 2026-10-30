@@ -27,6 +27,31 @@ Each terminal task must:
 - state what result would support and what result would contradict the
   hypothesis.
 
+Before creating a terminal task, verify from the locked metadata that its
+required variables exist and vary at the observation and grouping level needed
+by the proposed comparison. A task must be executable from the locked dataset;
+sibling-task outputs may inform synthesis but must not be required inputs. If
+the selected hypothesis needs unavailable data, replace that branch with the
+closest question the dataset can actually test.
+
+The `analysis_question` is the canonical raw question for a standalone
+SeekBrain run. Write it as a self-contained research request that remains
+understandable without the parent research goal, subquestion, hypothesis,
+strategy, expected-evidence, or synthesis fields. Include the scientific
+quantity or relationship to estimate, the relevant observation unit, groups,
+conditions, and essential data scope, and any method choice that is intrinsic
+to the task or explicitly fixed by the researcher. When interpretation of the
+primary result depends on a basic calibration, identity, alignment, or negative
+control relationship, state that foundational invariant, how to check it, and
+what the task should report if it fails. Phrase the requested comparison
+outcome-neutrally; keep anticipated results and support/contradict thresholds
+in their dedicated Plan Tree fields.
+
+Treat `analysis_question` as the integrated handoff to the ordinary SeekBrain
+workflow: combine the verified objective, available data scope, essential
+method, foundational invariant, and failure response into one natural request.
+Do not refer to parent or sibling task IDs.
+
 Tasks are scientific analysis units, not detailed code plans. Do not split work
 by output file, plotting panel, processing batch, implementation step, or
 workflow stage. Do not invent unavailable modalities, variables, annotations,

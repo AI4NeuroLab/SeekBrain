@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-structure_connectivity-graph_predictor_pca-scree_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Run PCA on the 40-column structural-predictor matrix built from the zebrafish directed and undirected structural connectome plus inter-regional Euclidean distances, and report per-component and cumulative explained variance for the first 10 principal components.",
+  "aliases": [
+    "zebrafish",
+    "structure",
+    "connectivity",
+    "graph",
+    "predictor"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_metrics"
+  ],
+  "use_when": [
+    "Run the Dimensionality of the structural predictor space (PCA scree) recipe",
+    "Run PCA on the 40-column structural-predictor matrix built from the zebrafish directed and undirected structural connectome plus inter-regional Euclidean distances, and report per-component and cumulative explained variance for the first 10 principal components.",
+    "Generate the outputs described by ns_ana-zebrafish-structure_connectivity-graph_predictor_pca-scree_plot"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

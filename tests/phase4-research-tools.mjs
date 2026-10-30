@@ -9,7 +9,7 @@ const extensionSource = await readFile(new URL("src/extension/seekbrain-runtime.
 const recipeResearchSource = await readFile(new URL("src/extension/runtime/stages/recipe-research-tools.ts", root), "utf8");
 const workflowSource = await readFile(new URL("src/workflows/seekbrain/research-skill-workflow.ts", root), "utf8");
 assert.match(recipeResearchSource, /deps\.workflow\.resolveTargetedSkill/);
-assert.match(recipeResearchSource, /deps\.workflow\.deepResearch/);
+assert.doesNotMatch(recipeResearchSource, /deps\.workflow\.deepResearch/);
 assert.doesNotMatch(recipeResearchSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 assert.doesNotMatch(workflowSource, /ExtensionAPI|pi\.registerTool|createAgentSession|spawn\(/);
 
@@ -27,7 +27,8 @@ literature:
 workflow:
   seekbrain:
     research_planning_strategy: creative
-    deep_research: false
+    deep_research:
+      max_rounds: 3
     targeted_skill_match: false
     targeted_skill_generate: false
 `);
@@ -42,102 +43,32 @@ try {
   const { default: registerSeekBrain } = await jiti.import("../src/extension/index.ts");
   await registerSeekBrain(pi);
   const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
-  const ctx = { cwd, hasUI: false };
-  const recommended = await byName.seekbrain_research_start.execute("recommended", {
-    project_dir: "recommended-project",
-    question: "Integrate structural, functional, and molecular evidence.",
-    planning_assessment: {
-      route: "research_planning",
-      reason: "The conclusion requires multiple evidence workstreams.",
-      evidence_dimensions: ["structure", "function", "molecular evidence"],
-    },
-  }, undefined, undefined, ctx);
-  assert.equal(recommended.details.research_route.assessment_source, "orchestrator");
-  assert.equal(recommended.details.research_route.needs_user_review, true);
-  assert.equal(recommended.details.research_route.next_tool, "seekbrain_planning_decision_review");
-  const textFallback = await byName.seekbrain_planning_decision_review.execute(
-    "review-unavailable",
-    { run_id: recommended.details.run_id },
-    undefined,
-    undefined,
-    ctx,
-  );
-  assert.equal(textFallback.details.needs_text_review, true);
-  const recorded = await byName.seekbrain_planning_decision_record.execute(
-    "record-text-decision",
-    { run_id: recommended.details.run_id, decision: "yes", response_quote: "Yes" },
-    undefined,
-    undefined,
-    ctx,
-  );
-  assert.equal(recorded.details.decision_source, "chat_response");
-  assert.equal(recorded.details.next_tool, "seekbrain_planning_generate");
-
-  const explicitQuestion = "Use Research Planning for this study.";
-  const explicitlyRequested = await byName.seekbrain_research_start.execute("explicit", {
-    project_dir: "explicit-project",
-    question: explicitQuestion,
-    planning_assessment: {
-      route: "research_planning",
-      reason: "The user explicitly selected Research Planning.",
-      explicit_request_quote: explicitQuestion,
-    },
-  }, undefined, undefined, ctx);
-  assert.equal(explicitlyRequested.details.research_route.planning_consent, "explicit_request");
-  assert.equal(explicitlyRequested.details.research_route.needs_user_review, false);
-  assert.equal(explicitlyRequested.details.research_route.next_tool, "seekbrain_planning_generate");
-
-  process.env.SEEKBRAIN_RUN_MODE = "research_planning_auto";
-  const automaticPlanning = await byName.seekbrain_research_start.execute("automatic-planning", {
-    project_dir: "automatic-planning-project",
-    question: "Investigate linked hypotheses across the dataset.",
-    planning_assessment: {
-      route: "standard",
-      reason: "The supplied assessment selected a standard run.",
-    },
-  }, undefined, undefined, ctx);
-  assert.equal(automaticPlanning.details.research_route.route, "research_planning");
-  assert.equal(automaticPlanning.details.research_route.decision, "agent_full_auto");
-  assert.equal(automaticPlanning.details.research_route.agent_full_auto, true);
-  assert.equal(automaticPlanning.details.research_route.needs_user_review, false);
-  assert.equal(automaticPlanning.details.research_route.next_tool, "seekbrain_planning_generate");
-
-  const creativeReserved = await byName.seekbrain_planning_generate.execute(
-    "creative-reserved",
-    { run_id: automaticPlanning.details.run_id },
-    undefined,
-    undefined,
-    ctx,
-  );
-  assert.equal(creativeReserved.details.ok, false);
-  assert.equal(creativeReserved.details.reserved, true);
-  assert.equal(creativeReserved.details.error_code, "research_planning_strategy_not_implemented");
-  assert.equal(creativeReserved.details.research_planning_strategy, "creative");
-  assert.match(creativeReserved.details.error, /No Standard research plan was generated/);
-
+  const startParameters = JSON.stringify(byName.seekbrain_research_start.parameters);
+  assert.doesNotMatch(startParameters, /planning_assessment|task_brief|execution_topology/);
+  assert.doesNotMatch(startParameters, /evidence_workstreams|requires_cross_workstream_synthesis/);
+  const ctx = { cwd, hasUI: false, sessionManager: { getBranch: () => [{ type: "message", id: "request", message: { role: "user", content: "Classify RNA barcodes in fish neurons." } }] } };
   process.env.SEEKBRAIN_RUN_MODE = "standard";
-  const forcedStandard = await byName.seekbrain_research_start.execute("forced-standard", {
-    project_dir: "forced-standard-project",
-    question: "Use Research Planning for this study.",
-    planning_assessment: {
-      route: "research_planning",
-      reason: "The question requested hierarchical planning.",
-      explicit_request_quote: "Use Research Planning for this study.",
-    },
+  const directStart = await byName.seekbrain_research_start.execute("direct-start", {
+    project_dir: "direct-project",
   }, undefined, undefined, ctx);
-  assert.equal(forcedStandard.details.research_route.route, "standard");
-  assert.equal(forcedStandard.details.research_route.enabled, false);
-  assert.equal(forcedStandard.details.workflow_config.optional.research_planning, "disabled_by_run_mode");
+  assert.equal(directStart.details.next_tool, "seekbrain_plan_generate");
+  assert.equal(directStart.details.research_route, undefined);
+  const state = JSON.parse(await readFile(directStart.details.state_path, "utf8"));
+  assert.equal(state.flow_version, "0.1.4");
+  assert.equal(state.research_planning, undefined);
+  assert.equal(state.task_brief, undefined);
+  assert.equal(byName.seekbrain_recipe_retrieve, undefined);
+  assert.equal(byName.seekbrain_deep_research, undefined);
+  assert.equal(byName.seekbrain_creative_search, undefined);
+  assert.ok(byName.seekbrain_plan_generate);
+  assert.ok(byName.seekbrain_research_decide);
+  await assert.rejects(byName.seekbrain_research_decide.execute("blocked", { round: 1, action: "finish", reason: "No work" }, undefined, undefined, ctx), /unavailable in Research/);
+  const { getModeController } = await jiti.import("../src/extension/runtime/mode-controller.ts");
+  getModeController(pi).mode = "deep-research";
+  const deepStatus = await byName.seekbrain_run_resume.execute("deep-resume", { project_path: directStart.details.project_dir }, undefined, undefined, ctx);
+  assert.equal(deepStatus.details.deep_research.phase, "plan");
+  assert.equal(deepStatus.details.next_tool, "seekbrain_plan_generate");
 
-  delete process.env.SEEKBRAIN_RUN_MODE;
-
-  const started = await byName.seekbrain_run_start.execute("start", { work_dir: "run", question: "question" }, undefined, undefined, ctx);
-  const skill = await byName.seekbrain_recipe_retrieve.execute("skill", { run_id: started.details.run_id }, undefined, undefined, ctx);
-  const research = await byName.seekbrain_deep_research.execute("research", { run_id: started.details.run_id }, undefined, undefined, ctx);
-  assert.equal(skill.details.skipped_by_config, true);
-  assert.equal(skill.details.config_key, "workflow.seekbrain.targeted_skill_match/targeted_skill_generate");
-  assert.equal(research.details.skipped_by_config, true);
-  assert.equal(research.details.config_key, "workflow.seekbrain.deep_research");
 } finally {
   if (previousRoot === undefined) delete process.env.SEEKBRAIN_ROOT; else process.env.SEEKBRAIN_ROOT = previousRoot;
   if (previousUser === undefined) delete process.env.SEEKBRAIN_USER_CONFIG; else process.env.SEEKBRAIN_USER_CONFIG = previousUser;

@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml, parseDocument } from "yaml";
 import { hasUsableModelConfiguration } from "./setup.mjs";
+import { mergeEnvironment } from "../platform/environment.mjs";
 
 export const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const manifest = JSON.parse(readFileSync(join(PACKAGE_ROOT, "package.json"), "utf8"));
@@ -41,7 +42,6 @@ workflow:
     # Creative is reserved for a future multi-round planning implementation.
     research_planning_strategy: standard
     # Global literature grounding before Research Planning generates its tree.
-    # Independent from task/ordinary-run deep_research below.
     research_survey: false
     # Automatic Reviewer Agent pass over the generated plan tree.
     research_planning_peer_review: true
@@ -49,7 +49,9 @@ workflow:
     research_execution:
       planning_concurrency: 3
       execution_concurrency: 2
-    deep_research: false
+    # Deep Research mode: maximum rounds, including the first.
+    deep_research:
+      max_rounds: 3
     targeted_skill_match: true
     targeted_skill_generate: false
     image_refine: false
@@ -73,8 +75,12 @@ agents:
   seekbrain_data_resolve:
     thinking: off
 
-  seekbrain_research_route:
+  # Direct ordinary runs only. Research Planning leaves are adapted without a model call.
+  seekbrain_task_brief:
     thinking: off
+
+  seekbrain_research_route:
+    thinking: low
 
   seekbrain_research_planning:
     thinking: high
@@ -113,15 +119,6 @@ agents:
   seekbrain_save_skill:
     thinking: off
 
-  seekbrain_deep_research:
-    thinking: low
-    timeout_seconds: 600
-    rag:
-      base_url: ""
-      top_k: 4
-      timeout: 600
-      source_char_limit: 5000
-
   seekbrain_survey:
     thinking: low
     timeout_seconds: 600
@@ -144,21 +141,11 @@ agents: {}
 `;
 
 export const INTERACTIVE_TOOLS = [
-  "read", "bash", "edit", "write",
-  "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
-  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_decision_review", "seekbrain_planning_decision_record", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_planning_researcher_review", "seekbrain_planning_researcher_decision_record", "seekbrain_analysis_tasks_prepare", "seekbrain_research_extend", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_schema_review", "seekbrain_execution_tasks_run", "seekbrain_analysis_task_control", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
-  "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
-  "seekbrain_review_approve", "seekbrain_review_feedback", "seekbrain_formulation_researcher_review",
-  "seekbrain_formulation_update", "seekbrain_code_edit_review", "seekbrain_code_update_propose",
-  "seekbrain_code_update_review",
+  "read", "bash", "edit", "write", "ls", "grep", "find", "web_search", "fetch_content", "get_search_content", "seekbrain_literature_search", "seekbrain_paper_read", "seekbrain_system_check", "seekbrain_data_resolve",
+  "seekbrain_research_start", "seekbrain_plan_generate", "seekbrain_formulation_generate",
+  "seekbrain_execution_run", "seekbrain_research_decide", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_run_resume",
 ].join(",");
-
-export const AUTOMATION_TOOLS = [
-  "read", "bash", "edit", "write",
-  "seekbrain_system_check", "seekbrain_system_capabilities", "seekbrain_data_resolve", "seekbrain_research_start", "seekbrain_research_continue",
-  "seekbrain_run_start", "seekbrain_run_resume", "seekbrain_planning_assess", "seekbrain_planning_generate", "seekbrain_planning_peer_review", "seekbrain_analysis_tasks_prepare", "seekbrain_research_extend", "seekbrain_execution_initialize", "seekbrain_execution_run", "seekbrain_execution_tasks_run", "seekbrain_report_evidence_compile", "seekbrain_report_generate", "seekbrain_recipe_retrieve", "seekbrain_deep_research",
-  "seekbrain_formulation_generate", "seekbrain_code_execute", "seekbrain_validation_run", "seekbrain_figure_refine", "seekbrain_interpretation_run",
-].join(",");
+export const AUTOMATION_TOOLS = INTERACTIVE_TOOLS;
 
 export function helpText(version = VERSION) {
   return `SeekBrain ${version}
@@ -167,15 +154,16 @@ Usage:
   seekbrain [options] [-- <pi-args...>]
   seekbrain resume <session-id|path>
   seekbrain run [options] [-- <pi-args...>]
-  seekbrain report <research-planning-project-path>
+  seekbrain report <project-path>
   seekbrain setup
+  seekbrain web [--cwd <path>] [--port <port>]
   seekbrain doctor
   seekbrain config <show|list|get|set|unset|init> [options]
 
 Commands:
   resume <session>      Resume a SeekBrain conversation session
   run                  Run a non-interactive analysis task
-  report <project>     Generate a Research Planning report from eligible task rounds
+  report <project>     Generate a report from validated study results
   setup                Configure providers, models, and research source
   doctor               Check Node, Pi, Python, and package dependencies
   config show          Show configuration paths; add --effective for merged values
@@ -194,10 +182,13 @@ Options:
   --user               Use user scope for config init/set/unset (set/unset default)
   --project            Use project scope for config init/set/unset
   --effective          Show the fully merged configuration (config show only)
+  --mode <name>        ask, plan, research (default), or deep-research
+  --pdf                Force PDF output for this invocation
+  --no-pdf             Finish with Markdown; skip PDF for this invocation
   --query <text>       Research question
   --dataset <path>     Dataset directory, metadata JSON file, or JSON content
   --work-dir <path>    Output directory
-  --research-planning  Use Research Planning in Agent-Full-Auto mode (run only)
+  --research-planning  Compatibility alias for the unified workflow (run only)
   --path <text>        Extra path or access notes
   --goal <text>        Optional report synthesis goal (report only)
   --session <id|path>  Resume a SeekBrain conversation session
@@ -289,6 +280,13 @@ export function parseArgs(input) {
       options.scope = scope;
       continue;
     }
+    if (arg === "--pdf" || arg === "--no-pdf") {
+      if (command === "config") return { action: "error", message: `${arg} is only valid for a SeekBrain session, run, or report`, code: 2 };
+      const enabled = arg === "--pdf";
+      if (options.pdf !== undefined && options.pdf !== enabled) return { action: "error", message: "Choose only one of --pdf or --no-pdf", code: 2 };
+      options.pdf = enabled;
+      continue;
+    }
     if (arg === "--effective") {
       if (command !== "config" || configCommand !== "show") {
         return { action: "error", message: "--effective is only valid with 'config show'", code: 2 };
@@ -307,6 +305,7 @@ export function parseArgs(input) {
       "--cwd": "cwd",
       "--config": "config",
       "--query": "query",
+      "--mode": "interactionMode",
       "--dataset": "dataset",
       "--work-dir": "workDir",
       "--work_dir": "workDir",
@@ -328,6 +327,8 @@ export function parseArgs(input) {
     else options[key] = parsed.value;
   }
 
+  if (options.interactionMode && !["ask", "plan", "research", "deep-research"].includes(options.interactionMode)) return { action: "error", message: "--mode must be ask, plan, research or deep-research", code: 2 };
+  if (command === "report" && options.interactionMode && options.interactionMode !== "research") return { action: "error", message: "report requires Research mode", code: 2 };
   if (command === "run" && !options.query) {
     return { action: "error", message: "run requires --query", code: 2 };
   }
@@ -338,18 +339,15 @@ export function parseArgs(input) {
     options.piArgs.push("--session", resumeTarget);
     return { action: "launch", nonInteractive: false, options };
   }
-  if (command === "run" && !options.dataset) {
-    return { action: "error", message: "run requires --dataset", code: 2 };
-  }
   if (command === "report") {
     if (!reportProject) return { action: "error", message: "report requires a project path", code: 2 };
     options.reportMode = true;
     options.reportProject = reportProject;
     options.query = [
-      "Generate the final SeekBrain Research Planning academic report now.",
-      `Research Planning project path: ${reportProject}`,
+      "Generate the SeekBrain scientific report from currently validated results, following the configured PDF output setting.",
+      `Study project path: ${reportProject}`,
       options.reportGoal ? `Report goal: ${options.reportGoal}` : "",
-      "Call seekbrain_report_generate exactly once with this parent project path. Do not start or resume research, select individual rounds, or generate a report for a standard project.",
+      "Call seekbrain_report_generate exactly once with this project_path. Do not start or execute research.",
     ].filter(Boolean).join("\n");
     return { action: "launch", nonInteractive: true, options };
   }
@@ -383,7 +381,6 @@ export function resolveRuntimePaths(packageRoot = PACKAGE_ROOT, env = process.en
     piCli: env.SEEKBRAIN_PI_CLI || join(packageRoot, "src", "cli", "pi-launcher.mjs"),
     seekbrainExtension: join(packageRoot, "src", "extension", "index.ts"),
     usageExtension: join(packageRoot, "src", "extension", "tui", "usage-footer.ts"),
-    entryPrompt: join(packageRoot, "prompts", "entry.md"),
   };
 }
 
@@ -446,19 +443,12 @@ function mainAgentPiArgs(packageConfig, userConfig, projectConfig, projectConfig
   return args;
 }
 
-export function buildTaskPrompt(options, projectRoot, nonInteractive = false) {
+export function buildTaskPrompt(options, projectRoot) {
   const sections = [options.query || ""];
   const dataset = datasetText(options.dataset, projectRoot);
   if (dataset) sections.push(`## Dataset / Metadata\n${dataset}`);
   if (options.workDir) sections.push(`## Output work directory\nUse work_dir: ${projectPath(options.workDir, projectRoot)}`);
   if (options.extraPath) sections.push(`## Extra path / access notes\n${options.extraPath}`);
-  if (nonInteractive) {
-    sections.push(options.reportMode
-      ? "## Non-interactive report policy\nGenerate only the explicitly requested report. Do not start, continue, or resume research and do not request dataset metadata."
-      : options.researchPlanning
-        ? "## Non-interactive execution policy\nUse Research Planning in Agent-Full-Auto mode. Continue through hierarchical planning, all analysis tasks, and all workflow gates without requesting approval. Continue until the Research Planning execution is complete. If blocked by missing information or an external failure, report the blocking condition and limitations."
-        : "## Non-interactive execution policy\nUse the standard direct analysis workflow; do not route this run into Research Planning. Continue until seekbrain_interpretation_run succeeds and writes the final interpretation and conclusion artifacts. Do not ask follow-up questions. If blocked, report the blocking condition, missing information, and limitations.");
-  }
   return sections.filter(Boolean).join("\n\n");
 }
 
@@ -471,12 +461,15 @@ export function buildPiLaunchSpec(parsed, runtime = {}) {
   }
 
   const env = {
-    ...process.env,
-    ...(runtime.env || {}),
+    ...mergeEnvironment(process.env, runtime.env || {}),
     SEEKBRAIN_ROOT: projectRoot,
     SEEKBRAIN_PROJECT_ROOT: projectRoot,
     PI_SKIP_VERSION_CHECK: "1",
   };
+  if (parsed.options.pdf !== undefined) env.SEEKBRAIN_REPORT_PDF_OVERRIDE = String(parsed.options.pdf);
+  else delete env.SEEKBRAIN_REPORT_PDF_OVERRIDE;
+  if (parsed.options.interactionMode) env.SEEKBRAIN_INTERACTION_MODE = parsed.options.interactionMode;
+  else delete env.SEEKBRAIN_INTERACTION_MODE;
   const configs = configPaths(parsed, runtime, projectRoot, env);
   const configuredMainAgentArgs = mainAgentPiArgs(
     join(runtime.packageRoot || PACKAGE_ROOT, "config", "default.yaml"),
@@ -491,22 +484,26 @@ export function buildPiLaunchSpec(parsed, runtime = {}) {
     "--extension", paths.seekbrainExtension,
     "--extension", paths.usageExtension,
     "--no-prompt-templates",
-    "--prompt-template", paths.entryPrompt,
     "--tools", parsed.nonInteractive ? AUTOMATION_TOOLS : INTERACTIVE_TOOLS,
     ...configuredMainAgentArgs,
     ...parsed.options.piArgs,
   ];
   const hasTask = parsed.options.query || parsed.options.dataset || parsed.options.workDir || parsed.options.extraPath;
   if (parsed.nonInteractive) args.push("--mode", "json");
-  if (hasTask) args.push(`/entry ${buildTaskPrompt(parsed.options, projectRoot, parsed.nonInteractive)}`);
+  if (hasTask) {
+    const request = buildTaskPrompt(parsed.options, projectRoot);
+    // A query is literal text, including leading dashes or an @ reference.
+    args.push("--", request.startsWith("@") ? `\n${request}` : request);
+  }
 
   if (parsed.nonInteractive) env.SEEKBRAIN_NON_INTERACTIVE = "1";
   if (parsed.nonInteractive && !parsed.options.reportMode) {
-    env.SEEKBRAIN_RUN_MODE = parsed.options.researchPlanning ? "research_planning_auto" : "standard";
+    env.SEEKBRAIN_RUN_MODE = "unified_auto";
   } else {
     delete env.SEEKBRAIN_RUN_MODE;
   }
   if (parsed.options.workDir) env.SEEKBRAIN_RUN_ROOT = projectPath(parsed.options.workDir, projectRoot);
+  else delete env.SEEKBRAIN_RUN_ROOT;
   env.SEEKBRAIN_USER_CONFIG = configs.userConfig;
   if (configs.projectConfigActive) env.SEEKBRAIN_CONFIG = configs.projectConfig;
   return { command: process.execPath, args, cwd: projectRoot, env, paths };
@@ -515,6 +512,7 @@ export function buildPiLaunchSpec(parsed, runtime = {}) {
 function lastOption(args, name) {
   let result;
   for (let index = 0; index < args.length - 1; index += 1) {
+    if (args[index] === "--") break;
     if (args[index] === name) result = args[index + 1];
   }
   return result;

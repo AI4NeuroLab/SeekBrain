@@ -1,5 +1,7 @@
 import { open, readdir, realpath, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { pythonProcessEnvironment, resolvePythonCommand } from "../platform/python.mjs";
+import { stopProcessTree } from "../platform/process-tree.mjs";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
 type Json = Record<string, any>;
@@ -258,7 +260,7 @@ async function inspectNonHdf5(path: string): Promise<Json> {
   return {};
 }
 
-async function probeStructuredFiles(paths: string[]): Promise<{ schemas: Map<string, Json>; error?: string }> {
+async function probeStructuredFiles(paths: string[], env: NodeJS.ProcessEnv): Promise<{ schemas: Map<string, Json>; error?: string }> {
   const schemas = new Map<string, Json>();
   if (!paths.length) return { schemas };
   const script = [
@@ -278,10 +280,10 @@ async function probeStructuredFiles(paths: string[]): Promise<{ schemas: Map<str
     " except Exception as e:", "  print(json.dumps({'path': path, 'error': str(e)}))",
   ].join("\n");
   return await new Promise((done) => {
-    const child = spawn("python3", ["-c", script], { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(resolvePythonCommand(env), ["-c", script], { env: pythonProcessEnvironment(env), stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
-    const timer = setTimeout(() => child.kill("SIGTERM"), 30_000);
+    const timer = setTimeout(() => stopProcessTree(child), 30_000);
     child.stdout.on("data", (chunk) => { stdout += String(chunk); });
     child.stderr.on("data", (chunk) => { stderr = (stderr + String(chunk)).slice(-2_000); });
     child.on("error", (error) => { clearTimeout(timer); done({ schemas, error: String(error) }); });
@@ -807,7 +809,7 @@ export function applySemanticEnrichment(metadata: Json, enrichment: Json): Json 
   return metadata;
 }
 
-export async function profileDatasetDeterministically(dataDir: string): Promise<DeterministicDatasetProfile> {
+export async function profileDatasetDeterministically(dataDir: string, env: NodeJS.ProcessEnv = process.env): Promise<DeterministicDatasetProfile> {
   const started = performance.now();
   const root = await realpath(resolve(dataDir)).catch(() => resolve(dataDir));
   const rootStat = await stat(root);
@@ -817,7 +819,7 @@ export async function profileDatasetDeterministically(dataDir: string): Promise<
   const initialAssetFamilies = buildFileFamilies(entries);
   const selectedByFamily = new Map(initialAssetFamilies.map((family) => [family.id, samplePaths(family)]));
   const structuredPaths = initialAssetFamilies.flatMap((family) => PYTHON_PROBE_FORMATS.has(family.format) ? selectedByFamily.get(family.id) || [] : []).map((path) => join(root, path));
-  const structured = await probeStructuredFiles(structuredPaths);
+  const structured = await probeStructuredFiles(structuredPaths, env);
   await Promise.all(initialAssetFamilies.map(async (family) => {
     const paths = selectedByFamily.get(family.id) || [];
     const samples = await Promise.all(paths.map(async (path) => {

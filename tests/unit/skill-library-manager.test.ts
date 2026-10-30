@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -30,6 +30,7 @@ describe("versioned user skill library", () => {
     await expect(readFile(join(first, "Single-modality", "Dynamics Modality", "example", "SKILL.md"), "utf8")).rejects.toThrow();
   });
 
+
   it("replaces a stale managed cache without preserving obsolete recipes", async () => {
     const root = await mkdtemp(join(tmpdir(), "seekbrain-library-manager-stale-"));
     const packageRoot = join(root, "package");
@@ -49,5 +50,23 @@ describe("versioned user skill library", () => {
     expect(await manager.ensureTrajectory()).toBe(target);
     expect(await readFile(join(target, "new-recipe", "SKILL.md"), "utf8")).toContain("New recipe");
     await expect(readFile(join(target, "obsolete-recipe", "SKILL.md"), "utf8")).rejects.toThrow();
+  });
+
+  it("preserves direct user deletions inside an already materialized trajectory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-library-manager-user-edit-"));
+    const packageRoot = join(root, "package");
+    const source = join(packageRoot, "recipes", "Single-modality", "Dynamics Modality", "example");
+    const userRoot = join(root, "home", ".seekbrain", "skills");
+    await mkdir(source, { recursive: true });
+    await writeFile(join(packageRoot, "package.json"), JSON.stringify({ version: "1.2.3" }));
+    await writeFile(join(packageRoot, "recipes", "INDEX.md"), "# Index\n");
+    await writeFile(join(source, "SKILL.md"), "# Example\n");
+
+    const manager = new SkillLibraryManager({ packageRoot, userSkillsRoot: userRoot });
+    const target = await manager.ensureTrajectory();
+    await rm(join(target, "example"), { recursive: true });
+
+    expect(await manager.ensureTrajectory()).toBe(target);
+    await expect(readFile(join(target, "example", "SKILL.md"), "utf8")).rejects.toThrow();
   });
 });

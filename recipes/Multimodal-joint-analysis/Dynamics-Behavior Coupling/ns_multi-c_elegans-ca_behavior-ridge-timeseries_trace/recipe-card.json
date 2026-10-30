@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-c_elegans-ca_behavior-ridge-timeseries_trace",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Performs time-offset ridge regression to evaluate if neural activity encodes past behavioral velocity, quantifying performance against shuffled control decoders.",
+  "aliases": [
+    "neural-decoding",
+    "ridge-regression",
+    "time-lagged-analysis",
+    "behavioral-neuroscience",
+    "predictive-modeling"
+  ],
+  "does": [
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "c_elegans"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "Does current neural activity contain information about past behavior?",
+    "How to implement time-lagged ridge regression for neural decoding?",
+    "Calculate decoding performance difference between actual and scrambled behavior",
+    "Predict velocity from neural activity at various time offsets",
+    "Generate performance plots for neural behavioral predictive modeling"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

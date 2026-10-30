@@ -1,7 +1,14 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import type { ResearchPlanningStrategy } from "../../../core/index.ts";
+import {
+  ExecutionTopologySchema,
+  TaskBriefDraftSchema,
+  type ResearchPlanningStrategy,
+} from "../../../core/index.ts";
 import type {
+  CreativeResearchPlanningWorkflow,
+  CreativeScientificSearchWorkflow,
+  TaskBriefWorkflow,
   ResearchPlanningWorkflow,
   ResearchSurveyWorkflow,
   ResearchTaskScheduler,
@@ -19,7 +26,10 @@ import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
 export interface ResearchPlanningToolDependencies {
   projectRoot: string;
   lifecycle: RunLifecycleWorkflow;
+  taskBriefWorkflow: TaskBriefWorkflow;
   planningWorkflow: ResearchPlanningWorkflow;
+  creativeWorkflow: CreativeResearchPlanningWorkflow;
+  creativeSearchWorkflow: CreativeScientificSearchWorkflow;
   scheduler: ResearchTaskScheduler;
   surveyWorkflow: ResearchSurveyWorkflow;
   loadConfig(cwd: string): Promise<Json>;
@@ -71,6 +81,94 @@ function researchTreeSchema() {
   });
 }
 
+function automaticCreativeTreeSchema() {
+  return Type.Object({
+    research_goal: Type.String(),
+    subquestions: Type.Array(Type.Object({
+      question: Type.String(),
+      tasks: Type.Array(Type.Object({
+        analysis_question: Type.String(),
+        required_data: Type.Array(Type.String(), { minItems: 1 }),
+        analysis_strategy: Type.String(),
+        expected_evidence: Type.String(),
+      }), { minItems: 1 }),
+    }), { minItems: 1 }),
+    synthesis_strategy: Type.String(),
+  });
+}
+
+function creativeAutomatic(planning: Json): boolean {
+  return planning.creative_auto === true || planning.agent_full_auto === true
+    || process.env.SEEKBRAIN_RUN_MODE === "research_planning_auto";
+}
+
+function creativeIdeasSchema() {
+  return Type.Object({
+    session_summary: Type.String(),
+    target_abstraction: Type.Object({
+      observed_pattern: Type.String(),
+      entities: Type.String(),
+      relation: Type.String(),
+      candidate_dynamics: Type.Array(Type.String()),
+      observable_signature: Type.String(),
+    }),
+    frozen_constraints: Type.Array(Type.String()),
+    ideas: Type.Array(Type.Object({
+      idea_id: Type.String(),
+      temperature: Type.Union([Type.Literal("low"), Type.Literal("medium"), Type.Literal("high")]),
+      parent_ids: Type.Array(Type.String()),
+      title: Type.String(),
+      research_question: Type.String(),
+      core_anomaly: Type.String(),
+      hypothesis: Type.String(),
+      mechanism: Type.String(),
+      remote_transfer: Type.Object({
+        source_domain: Type.String(),
+        transferred_mechanism: Type.String(),
+      }),
+      why_data_can_test: Type.String(),
+      discriminating_prediction: Type.String(),
+      nearest_prior_boundary: Type.String(),
+      strongest_counterevidence: Type.String(),
+      minimal_decisive_analysis: Type.String(),
+      evidence_ids: Type.Array(Type.String()),
+      method_ids: Type.Array(Type.String()),
+      lineage: Type.Object({
+        user: Type.Array(Type.String()),
+        retrieval: Type.Array(Type.String()),
+        seekbrain: Type.Array(Type.String()),
+      }),
+    }), { minItems: 3, maxItems: 3 }),
+  });
+}
+
+function creativeSearchSchema() {
+  return Type.Object({
+    request_summary: Type.String(),
+    status: Type.Union([Type.Literal("sufficient"), Type.Literal("partial"), Type.Literal("exhausted")]),
+    unresolved_gap: Type.String(),
+    attempt_assessments: Type.Array(Type.Object({
+      evidence_id: Type.String(),
+      assessment: Type.String(),
+      next_gap: Type.String(),
+    }), { maxItems: 3 }),
+    methods: Type.Array(Type.Object({
+      component_type: Type.Union([
+        Type.Literal("mechanism"),
+        Type.Literal("analysis"),
+        Type.Literal("validation"),
+        Type.Literal("counterevidence"),
+        Type.Literal("prior_boundary"),
+      ]),
+      label: Type.String(),
+      reusable_component: Type.String(),
+      application_to_current_problem: Type.String(),
+      limitation: Type.String(),
+      evidence_ids: Type.Array(Type.String(), { minItems: 1 }),
+    })),
+  });
+}
+
 function researchPlanReviewSchema() {
   const issue = Type.Object({
     target_id: Type.String(),
@@ -115,6 +213,8 @@ export function researchRouteSchema(literatureProvider?: string) {
     evidence_dimensions: Type.Array(Type.String()),
     inferred_background: Type.String(),
     inferred_scientific_goal: Type.String(),
+    task_brief: TaskBriefDraftSchema,
+    execution_topology: ExecutionTopologySchema,
   };
   if (literatureProvider === "semantic_scholar" || literatureProvider === "pubmed") {
     fields.literature_queries = Type.Array(Type.String(), { minItems: 2, maxItems: 3 });
@@ -125,6 +225,38 @@ export function researchRouteSchema(literatureProvider?: string) {
 export function createResearchPlanningTools(
   deps: ResearchPlanningToolDependencies,
 ): SeekBrainToolDefinition[] {
+  async function resolveDirectTaskBrief(cwd: string, runId: string, signal?: AbortSignal): Promise<Json> {
+    const config = await deps.loadConfig(deps.projectRoot);
+    return await deps.taskBriefWorkflow.resolveDirect({
+      cwd,
+      runId,
+      rolePrompt: await deps.readPrompt("task_brief"),
+      agentConfig: deps.pickAgentConfig(config, "seekbrain_task_brief"),
+      signal,
+    });
+  }
+
+  async function resolveStandardTaskBriefFromPlanning(
+    cwd: string,
+    planningRunId: string,
+    standardRunId: string,
+    signal?: AbortSignal,
+  ): Promise<Json> {
+    const planningRun = await deps.lifecycle.resolveRun(cwd, planningRunId);
+    const assessment = planningRun.state.research_planning?.assessment || {};
+    const routedBrief = assessment.task_brief;
+    const hasRoutedBrief = Boolean(routedBrief && typeof routedBrief === "object");
+    if (hasRoutedBrief) {
+      return await deps.taskBriefWorkflow.resolveRoute({
+        cwd,
+        runId: standardRunId,
+        taskBrief: routedBrief,
+        originalQuestion: String(planningRun.state.original_question || planningRun.state.question || ""),
+      });
+    }
+    return await resolveDirectTaskBrief(cwd, standardRunId, signal);
+  }
+
   async function applyResearchTreeDecision(
     runId: string,
     decision: "approve" | "revise" | "restore_previous" | "cancel",
@@ -154,6 +286,10 @@ export function createResearchPlanningTools(
   async function presentResearchTreeReview(runId: string, signal: AbortSignal | undefined, ctx: Json) {
     const run = await deps.resolveRun(ctx.cwd, runId);
     const planning = run.state.research_planning || {};
+    if (planning.creative_auto === true) {
+      return { ok: true, run_id: runId, skipped: true, skip_reason: "creative_automatic",
+        needs_user_review: false, next_tool: "seekbrain_analysis_tasks_prepare" };
+    }
     if (planning.status === "cancelled_by_user") {
       return {
         ok: true,
@@ -217,7 +353,7 @@ export function createResearchPlanningTools(
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(deps.projectRoot);
         const workflowFlags = deps.workflowConfig(config);
-        return deps.content(await deps.planningWorkflow.assess({
+        const assessed = await deps.planningWorkflow.assess({
           cwd: ctx.cwd,
           runId: params.run_id,
           literatureProvider: workflowFlags.literature_provider,
@@ -227,7 +363,22 @@ export function createResearchPlanningTools(
           agentConfig: deps.pickAgentConfig(config, "seekbrain_research_route"),
           finalizeSchema: researchRouteSchema(workflowFlags.literature_provider),
           signal,
-        }));
+        });
+        const taskBrief = assessed.task_brief && typeof assessed.task_brief === "object"
+          ? await deps.taskBriefWorkflow.resolveRoute({
+            cwd: ctx.cwd,
+            runId: params.run_id,
+            taskBrief: assessed.task_brief,
+          })
+          : undefined;
+        return deps.content({
+          ...assessed,
+          ...(taskBrief ? {
+            question: taskBrief.question,
+            task_brief: taskBrief.task_brief,
+            task_brief_path: taskBrief.task_brief_path,
+          } : {}),
+        });
       },
       renderResult: renderSeekBrainResult("seekbrain_planning_assess"),
     }),
@@ -239,7 +390,7 @@ export function createResearchPlanningTools(
         run_id: Type.String(),
         summary: Type.Optional(Type.String({ description: "Short explanation of why Research Planning was recommended." })),
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const run = await deps.resolveRun(ctx.cwd, params.run_id);
         const assessment = run.state.research_planning?.assessment || {};
         const yesLabel = "Yes — initiate structured research decomposition";
@@ -279,6 +430,7 @@ export function createResearchPlanningTools(
         );
         if (reviewed.ok && decision === "no") {
           const standard = await deps.lifecycle.materializeInitialRound(ctx.cwd, params.run_id);
+          const taskBrief = await resolveStandardTaskBriefFromPlanning(ctx.cwd, params.run_id, standard.run.runId, signal);
           deps.setActiveRunDir(standard.run.runDir);
           return deps.content({
             ...reviewed,
@@ -289,7 +441,9 @@ export function createResearchPlanningTools(
             round_number: standard.roundNumber,
             round_name: standard.roundName,
             deliverables: standard.run.state.deliverables,
-            question: standard.run.state.question,
+            question: taskBrief.question || standard.run.state.question,
+            task_brief: taskBrief.task_brief,
+            task_brief_path: taskBrief.task_brief_path,
           });
         }
         return deps.content(reviewed);
@@ -305,7 +459,7 @@ export function createResearchPlanningTools(
         decision: Type.Union([Type.Literal("yes"), Type.Literal("agent_full_auto"), Type.Literal("no")]),
         response_quote: Type.String({ description: "Exact short quote of the user's latest chat response." }),
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const run = await deps.resolveRun(ctx.cwd, params.run_id);
         if (run.state.research_planning?.status !== "awaiting_text_review") {
           return deps.content({
@@ -324,6 +478,7 @@ export function createResearchPlanningTools(
         );
         if (reviewed.ok && decision === "no") {
           const standard = await deps.lifecycle.materializeInitialRound(ctx.cwd, params.run_id);
+          const taskBrief = await resolveStandardTaskBriefFromPlanning(ctx.cwd, params.run_id, standard.run.runId, signal);
           deps.setActiveRunDir(standard.run.runDir);
           return deps.content({
             ...reviewed,
@@ -334,7 +489,9 @@ export function createResearchPlanningTools(
             round_number: standard.roundNumber,
             round_name: standard.roundName,
             deliverables: standard.run.state.deliverables,
-            question: standard.run.state.question,
+            question: taskBrief.question || standard.run.state.question,
+            task_brief: taskBrief.task_brief,
+            task_brief_path: taskBrief.task_brief_path,
           });
         }
         return deps.content(reviewed);
@@ -344,7 +501,7 @@ export function createResearchPlanningTools(
     defineTool({
       name: "seekbrain_planning_generate",
       label: "Generate Hierarchical Research Plan",
-      description: "Create a dataset-grounded hierarchical research plan with 2–3 scientific subquestions and 1–2 hypothesis-linked analysis tasks per subquestion after the user approves Research Planning.",
+      description: "Creative automatic mode generates three idea sections as text, then an executable research tree without selection or review. Interactive Creative mode starts with three Idea Cards. Standard mode creates the hierarchy after approval.",
       parameters: Type.Object({
         run_id: Type.String(),
         subquestion_count: Type.Optional(Type.Integer({ minimum: 2, maximum: 3 })),
@@ -353,13 +510,98 @@ export function createResearchPlanningTools(
         const config = await deps.loadConfig(deps.projectRoot);
         const workflow = deps.workflowConfig(config);
         if (workflow.research_planning_strategy === "creative") {
-          return deps.content({
-            ok: false,
-            reserved: true,
-            error_code: "research_planning_strategy_not_implemented",
-            research_planning_strategy: "creative",
-            error: "Creative Research Planning is reserved but not implemented yet. No Standard research plan was generated.",
+          const run = await deps.resolveRun(ctx.cwd, params.run_id);
+          const planning = run.state.research_planning || {};
+          if (creativeAutomatic(planning)) {
+            if (["approved_for_execution", "tasks_ready", "tasks_running", "tasks_complete"].includes(planning.status)) {
+              const canonical = await deps.planningWorkflow.getResearchPlan(ctx.cwd, params.run_id);
+              return deps.content({ ok: true, run_id: params.run_id, reused: true,
+                research_plan: canonical.plan, research_plan_path: canonical.path,
+                needs_user_review: false, needs_reviewer_review: false,
+                next_tool: planning.status === "approved_for_execution" ? "seekbrain_analysis_tasks_prepare" : "seekbrain_execution_run" });
+            }
+            if (planning.status !== "approved" && planning.agent_full_auto !== true) {
+              const accepted = await deps.planningWorkflow.recordDecision(ctx.cwd, params.run_id,
+                "agent_full_auto", "cli_research_planning", "--research-planning");
+              if (!accepted.ok) return deps.content(accepted);
+            }
+            onUpdate?.(deps.content({ progress: true, stage: "creative_ideas",
+              message: "Generating low-, medium-, and high-creativity ideas as text." }));
+            const creative = await deps.creativeWorkflow.generateText({
+              cwd: ctx.cwd, runId: params.run_id,
+              rolePrompt: await deps.readPrompt("creative_research_auto"),
+              agentConfig: pickResearchPlanningConfig(deps, config),
+              finalizeSchema: Type.Object({ text: Type.String() }), signal,
+            });
+            if (!creative.ok) return deps.content(creative);
+            onUpdate?.(deps.content({ progress: true, stage: "research_tree",
+              message: "Turning the three ideas into a research tree of independent analysis tasks." }));
+            const prepared = await deps.planningWorkflow.prepareSubquestions({
+              cwd: ctx.cwd, runId: params.run_id,
+              rolePrompt: await deps.readPrompt("research_subquestions_auto"),
+              agentConfig: pickResearchPlanningConfig(deps, config),
+              finalizeSchema: automaticCreativeTreeSchema(),
+              creativeIdeasText: creative.text, automaticCreative: true,
+              peerReviewRequired: false, signal,
+            });
+            return deps.content({ ...prepared, ideas_text: creative.text, ideas_path: creative.ideas_path });
+          }
+          if (planning.creative_status === "idea_selected") {
+            if (planning.status !== "approved") {
+              return deps.content({
+                ok: false,
+                run_id: params.run_id,
+                needs_user_review: true,
+                next_tool: "seekbrain_planning_decision_review",
+                message: "An Idea Card has been selected. Ask the researcher whether to continue with Research Planning before generating the hierarchy.",
+              });
+            }
+            const certificate = planning.research_question_certificate;
+            if (!certificate || typeof certificate !== "object") {
+              return deps.content({ ok: false, run_id: params.run_id, error: "The selected Creative Research Question Certificate is missing." });
+            }
+            onUpdate?.(deps.content({
+              progress: true,
+              stage: "research_tree",
+              message: "Research Planning approved; converting the selected Idea Card into the formal hierarchical Research Plan.",
+            }));
+            const prepared = await deps.planningWorkflow.prepareSubquestions({
+              cwd: ctx.cwd,
+              runId: params.run_id,
+              subquestionCount: params.subquestion_count,
+              rolePrompt: await deps.readPrompt("research_subquestions"),
+              agentConfig: pickResearchPlanningConfig(deps, config),
+              finalizeSchema: researchTreeSchema(),
+              peerReviewRequired: workflow.research_planning_peer_review,
+              creativeCertificate: certificate,
+              signal,
+            });
+            return deps.content(prepared);
+          }
+          onUpdate?.(deps.content({
+            progress: true,
+            stage: "creative_ideas",
+            message: "Building three dataset-grounded hypotheses and searching only the evidence gaps that distinguish them.",
+          }));
+          const initialSearch = await deps.creativeSearchWorkflow.search({
+            cwd: ctx.cwd,
+            runId: params.run_id,
+            instruction: "Find useful scientific mechanisms, analysis or validation methods, nearby precedents, and serious counterevidence that could improve hypotheses for the current question.",
+            trigger: "initial",
+            rolePrompt: await deps.readPrompt("creative_search"),
+            agentConfig: pickResearchPlanningConfig(deps, config),
+            finalizeSchema: creativeSearchSchema(),
+            signal,
           });
+          const creative = await deps.creativeWorkflow.start({
+            cwd: ctx.cwd,
+            runId: params.run_id,
+            rolePrompt: await deps.readPrompt("creative_research"),
+            agentConfig: pickResearchPlanningConfig(deps, config),
+            finalizeSchema: creativeIdeasSchema(),
+            signal,
+          });
+          return deps.content({ ...creative, initial_search: initialSearch });
         }
         onUpdate?.(deps.content({
           progress: true,
@@ -434,6 +676,116 @@ export function createResearchPlanningTools(
       renderResult: renderSeekBrainResult("seekbrain_planning_generate"),
     }),
     defineTool({
+      name: "seekbrain_creative_search",
+      label: "Search Creative Research Literature",
+      description: "Search, read, and iteratively refine up to three literature queries, append useful methods to the persistent Creative paper pool, and present method briefs without changing any Idea Card.",
+      parameters: Type.Object({
+        run_id: Type.String(),
+        instruction: Type.String({ description: "The researcher's natural-language request for additional literature, mechanisms, methods, precedents, or counterevidence." }),
+      }),
+      async execute(_toolCallId, params, signal, onUpdate, ctx) {
+        const config = await deps.loadConfig(deps.projectRoot);
+        const workflow = deps.workflowConfig(config);
+        if (workflow.research_planning_strategy !== "creative") {
+          return deps.content({ ok: false, run_id: params.run_id, error: "Creative literature search is available only in Creative Research Planning." });
+        }
+        onUpdate?.(deps.content({
+          progress: true,
+          stage: "creative_search",
+          message: "Searching, reading results, and revising the query when the first attempt is not useful.",
+        }));
+        return deps.content(await deps.creativeSearchWorkflow.search({
+          cwd: ctx.cwd,
+          runId: params.run_id,
+          instruction: params.instruction,
+          trigger: "user",
+          rolePrompt: await deps.readPrompt("creative_search"),
+          agentConfig: pickResearchPlanningConfig(deps, config),
+          finalizeSchema: creativeSearchSchema(),
+          signal,
+        }));
+      },
+      renderResult: renderSeekBrainResult("seekbrain_creative_search"),
+    }),
+    defineTool({
+      name: "seekbrain_creative_update",
+      label: "Update Creative Research Ideas",
+      description: "Apply one researcher-directed operation to the three active Creative Research Idea Cards while preserving their lineage, evidence ledger, and frozen constraints.",
+      parameters: Type.Object({
+        run_id: Type.String(),
+        operation: Type.Union([
+          Type.Literal("increase_temperature"),
+          Type.Literal("replace_validation"),
+          Type.Literal("freeze_constraint"),
+          Type.Literal("crossover"),
+          Type.Literal("challenge"),
+          Type.Literal("apply_method"),
+          Type.Literal("continue"),
+        ]),
+        instruction: Type.String({ description: "The researcher's natural-language instruction, preserved without reinterpretation." }),
+        source_idea_ids: Type.Optional(Type.Array(Type.String(), { maxItems: 3 })),
+        source_method_ids: Type.Optional(Type.Array(Type.String(), { maxItems: 5 })),
+      }),
+      async execute(_toolCallId, params, signal, onUpdate, ctx) {
+        const config = await deps.loadConfig(deps.projectRoot);
+        const workflow = deps.workflowConfig(config);
+        if (workflow.research_planning_strategy !== "creative") {
+          return deps.content({
+            ok: false,
+            run_id: params.run_id,
+            error: "Creative Idea operations are available only when research_planning_strategy is creative.",
+          });
+        }
+        onUpdate?.(deps.content({
+          progress: true,
+          stage: "creative_update",
+          message: `Applying the researcher-directed Creative operation: ${params.operation}.`,
+        }));
+        return deps.content(await deps.creativeWorkflow.update({
+          cwd: ctx.cwd,
+          runId: params.run_id,
+          operation: params.operation,
+          instruction: params.instruction,
+          sourceIdeaIds: params.source_idea_ids,
+          sourceMethodIds: params.source_method_ids,
+          rolePrompt: await deps.readPrompt("creative_research"),
+          agentConfig: pickResearchPlanningConfig(deps, config),
+          finalizeSchema: creativeIdeasSchema(),
+          signal,
+        }));
+      },
+      renderResult: renderSeekBrainResult("seekbrain_creative_update"),
+    }),
+    defineTool({
+      name: "seekbrain_creative_select",
+      label: "Select Creative Research Idea",
+      description: "Freeze one researcher-selected Idea Card into a Research Question Certificate, then hand off to the Yes / Agent-Full-Auto / No Research Planning decision.",
+      parameters: Type.Object({
+        run_id: Type.String(),
+        idea_id: Type.String(),
+        subquestion_count: Type.Optional(Type.Integer({ minimum: 2, maximum: 3 })),
+      }),
+      async execute(_toolCallId, params, signal, onUpdate, ctx) {
+        const config = await deps.loadConfig(deps.projectRoot);
+        const workflow = deps.workflowConfig(config);
+        if (workflow.research_planning_strategy !== "creative") {
+          return deps.content({
+            ok: false,
+            run_id: params.run_id,
+            error: "Creative Idea selection is available only when research_planning_strategy is creative.",
+          });
+        }
+        const selected = await deps.creativeWorkflow.select({
+          cwd: ctx.cwd,
+          runId: params.run_id,
+          ideaId: params.idea_id,
+        });
+        if (!selected.ok) return deps.content(selected);
+        return deps.content(selected);
+      },
+      renderResult: renderSeekBrainResult("seekbrain_creative_select"),
+    }),
+    defineTool({
       name: "seekbrain_planning_peer_review",
       label: "Run Reviewer Agent",
       description: "Run the single automatic Reviewer Agent critique over the complete hierarchical research plan and, only when required, one Orchestrator Agent refinement.",
@@ -444,6 +796,12 @@ export function createResearchPlanningTools(
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(deps.projectRoot);
         const workflow = deps.workflowConfig(config);
+        const run = await deps.resolveRun(ctx.cwd, params.run_id);
+        if (run.state.research_planning?.creative_auto === true) {
+          return deps.content({ ok: true, run_id: params.run_id, skipped: true,
+            skip_reason: "creative_automatic", needs_user_review: false,
+            next_tool: "seekbrain_analysis_tasks_prepare" });
+        }
         if (!workflow.research_planning_peer_review && params.explicit_user_request !== true) {
           const canonical = await deps.planningWorkflow.getResearchPlan(ctx.cwd, params.run_id);
           return deps.content({
@@ -547,10 +905,29 @@ export function createResearchPlanningTools(
     defineTool({
       name: "seekbrain_analysis_tasks_prepare",
       label: "Prepare Analysis Tasks",
-      description: "Create independently traceable child runs for every approved terminal analysis task, inheriting locked metadata and parent scientific context.",
+      description: "Create independently traceable child runs for every approved terminal analysis task, using each self-contained analysis question with the locked metadata.",
       parameters: Type.Object({ run_id: Type.String() }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-        return deps.content(await deps.planningWorkflow.materializeResearchTasks({ cwd: ctx.cwd, runId: params.run_id }));
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        const prepared = await deps.planningWorkflow.materializeResearchTasks({ cwd: ctx.cwd, runId: params.run_id });
+        if (!prepared.ok || !Array.isArray(prepared.task_runs)) return deps.content(prepared);
+        const briefs = await Promise.all(prepared.task_runs.map((task: Json) => (
+          resolveDirectTaskBrief(ctx.cwd, String(task.run_id), signal)
+        )));
+        const briefByRun = new Map(briefs.map((brief) => [String(brief.run_id), brief]));
+        const taskRuns = prepared.task_runs.map((task: Json) => {
+          const brief = briefByRun.get(String(task.run_id));
+          return {
+            ...task,
+            question: brief?.question || task.question,
+            task_brief_path: brief?.task_brief_path,
+          };
+        });
+        const nextTaskRunId = String(prepared.next_task?.run_id || "");
+        return deps.content({
+          ...prepared,
+          task_runs: taskRuns,
+          next_task: taskRuns.find((task: Json) => String(task.run_id) === nextTaskRunId) || taskRuns[0],
+        });
       },
       renderResult: renderSeekBrainResult("seekbrain_analysis_tasks_prepare"),
     }),
@@ -564,7 +941,7 @@ export function createResearchPlanningTools(
         question: Type.Optional(Type.String()),
         task_id: Type.Optional(Type.String()),
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const extended = await deps.planningWorkflow.extendResearch({
           cwd: ctx.cwd,
           projectPath: params.project_path,
@@ -572,8 +949,18 @@ export function createResearchPlanningTools(
           question: params.question,
           taskId: params.task_id,
         });
-        await deps.scheduler.upsertExtensionTask(ctx.cwd, String(extended.parent_run_id), extended.task_run || {});
-        return deps.content(extended);
+        const taskBrief = extended.task_run?.run_id
+          ? await resolveDirectTaskBrief(ctx.cwd, String(extended.task_run.run_id), signal)
+          : undefined;
+        const taskRun = {
+          ...(extended.task_run || {}),
+          ...(taskBrief ? {
+            question: taskBrief.question,
+            task_brief_path: taskBrief.task_brief_path,
+          } : {}),
+        };
+        await deps.scheduler.upsertExtensionTask(ctx.cwd, String(extended.parent_run_id), taskRun);
+        return deps.content({ ...extended, task_run: taskRun });
       },
       renderResult: renderSeekBrainResult("seekbrain_research_extend"),
     }),

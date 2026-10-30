@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-sc_matrix-eigen_spectrum-sc_scree_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Draw the scree plot of the structural connectivity (SC) diffusion-map eigenvalue spectrum for the larval zebrafish brain — a black line of eigenvalue against gradient index, read from Figure6_SC_eigenvalues.npy — and summarise the spectrum (first, mean, median, min, max eigenvalue).",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "matrix",
+    "eigen",
+    "spectrum"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_metrics"
+  ],
+  "use_when": [
+    "Run the Scree plot of the SC gradient eigenvalue spectrum recipe",
+    "Draw the scree plot of the structural connectivity (SC) diffusion-map eigenvalue spectrum for the larval zebrafish brain — a black line of eigenvalue against gradient index, read from Figure6_SC_eigenvalues.",
+    "Generate the outputs described by ns_ana-zebrafish-sc_matrix-eigen_spectrum-sc_scree_plot"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_stats_patch_xps.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py",
+      "scripts/zebrafish_Ca_visualization_patch_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -22,8 +22,9 @@ Model credentials remain in Pi auth storage. Semantic Scholar and PubMed keys
 are written atomically to
 `~/.config/seekbrain/literature-credentials.json` with mode `0600`; SeekBrain
 YAML stores only a credential reference. Selecting None disables Research
-Survey, Deep Research, and Recipe Crystallization while preserving trajectory
-recipe matching.
+Survey and Recipe Crystallization while preserving trajectory recipe matching.
+Deep Research mode remains available with supplied materials and data; its round
+limit is controlled independently by workflow.seekbrain.deep_research.max_rounds.
 
 Setup validates the chosen research source before selecting it. It retries a
 Semantic Scholar `429` once according to `Retry-After`; a continued `429` is a
@@ -67,25 +68,53 @@ literature:
 
 modules:
   targeted_skill:
-    relevance_threshold: 0.5
-    top_k: 1
+    resolution_mode: recipe_scout_v2
+    relevance_threshold: 0.6
+    top_k: 3
     compatibility:
       candidate_pool_size: 10
+      recipe_candidate_pool_size: 8
       skill_top_k: 2
       prefer_repository: true
       paper_only_fallback: true
+      scout:
+        rag_rounds: 2
+        initial_rag_top_k: 8
+        retry_rag_top_k: 4
+        local_top_k: 8
+        repository_inspections: 4
+        initial_inspection_limit: 3
+        inspection_concurrency: 2
+        selected_methods: 2
+    revision:
+      enabled: true
+      budget: 1
+      generated_only: true
 
 workflow:
   seekbrain:
     research_survey: true
-    deep_research: false
+    # Deep Research mode only; includes the first round.
+    deep_research:
+      max_rounds: 3
     targeted_skill_match: true
     targeted_skill_generate: true
     rag_recipe_crystallization: false
 ```
 
-`candidate_pool_size` controls retrieval breadth independently from
-`skill_top_k`. For Semantic Scholar and PubMed, valid associated repositories
+`recipe_scout_v2` is the default resolver. It recalls up to eight local candidates
+and runs two parallel Top-8 Paper queries (domain-oriented and method-oriented),
+deduplicates Papers before repository expansion, then inspects at most four
+repositories with concurrency two. One Paper's multiple links cannot crowd out
+other Papers. It returns at most one backbone plus one supporting method. If no
+backbone passes, it may issue one failure-directed Top-4 RAG retry. The legacy
+`recipe_2_2` value is accepted as a compatibility
+alias for V2; use `legacy_resolver` only when explicitly testing the old set-cover
+implementation. Legacy `rag_top_k` does not reduce V2's initial Top-8 recall.
+
+`recipe_candidate_pool_size`, `top_k`, and `candidate_pool_size` remain available
+to `legacy_resolver` and external literature providers.
+For Semantic Scholar and PubMed, valid associated repositories
 are preferred; remaining slots may use real paper-only analysis recipes without a
 `scripts/` directory. Dependencies and cited repositories are not treated as
 paper code. Shanghai AI Lab continues to use its existing `/queryfull` contract.
@@ -106,7 +135,7 @@ seekbrain config show
 seekbrain config show --effective
 seekbrain config list modules.targeted_skill
 seekbrain config get modules.targeted_skill.relevance_threshold
-seekbrain config set modules.targeted_skill.relevance_threshold 0.5
+seekbrain config set modules.targeted_skill.relevance_threshold 0.6
 seekbrain config unset modules.targeted_skill.relevance_threshold
 ```
 
@@ -136,11 +165,11 @@ agents:
 ```
 
 SeekBrain reserves `high` for stages that make consequential scientific
-judgments: Research Planning and review, Formulation, Code, Validation,
-Interpretation, and Report generation. The main Orchestrator, literature Survey,
-Deep Research, and Recipe generation use `medium`. Lightweight semantic
-classification and figure repair use `low`; pure routing and unused fallback
-roles remain `off`.
+judgments: Research Planning and review, Formulation, Interpretation, and Report
+generation. Code, Validation, the main Orchestrator, literature Survey and Recipe
+generation use `medium`. Deep Research decisions use the main Orchestrator. Dataset classification and
+figure repair use `low`; pure routing, lightweight TaskBrief extraction,
+and unused fallback roles remain `off`.
 
 Explicit Pi arguments passed after `--` have the highest priority. Provider
 credentials remain in Pi auth storage or environment variables.
@@ -164,13 +193,27 @@ the 68 Recipe directories are copied atomically into the flat versioned
 the unified user recipe root. A project may additionally keep expert recipes in
 `<project>/.seekbrain/skills/from_expert`.
 
-The default resolution flow remains trajectory matching first, followed by Paper
-RAG repository guidance only when no trajectory Recipe matches. Optional immediate
-repository-backed Recipe Crystallization can be enabled with
-`workflow.seekbrain.rag_recipe_crystallization: true`. It writes one Recipe per
-GitHub `owner/repository` identity under `from_rag`; when RAG later finds the same
-repository, that Recipe is reused regardless of question wording. The option is
-disabled by default so existing Plan, Code, Validation, and post-validation
-distillation behavior is unchanged. `modules.targeted_skill.resource_filter` controls which trajectory
+The default resolution flow builds one concise method-class query from the
+objective, biological scope, data abstraction, and dataset-grounded scientific
+background. Local RecipeCards and RAG
+repositories are recalled in parallel. When RAG returns a repository already
+represented by a local RecipeCard, exact positive or boundary memory is applied
+before repository materialization. The bounded inspector reads the repository
+tree, README, and a few selected source files. A candidate enters the temporary
+MethodPack only after executable-capability acceptance; full R1…Rn coverage is
+not required. Existing Recipes without a `recipe-card.json` remain compatible
+through deterministic metadata inference. See the
+[RecipeScoutV2 implementation plan](../docs/recipe-scout-v2-implementation-plan.md).
+
+Under RecipeScoutV2, retrieval-time Recipe Crystallization is deliberately
+deferred even if an older user configuration still enables
+`workflow.seekbrain.rag_recipe_crystallization`. The retrieval artifact is a
+temporary MethodPack. Positive reusable Recipes are promoted only after successful
+execution and validation or an explicit save; scoped negative repository boundary
+memory may be retained immediately. When Validation explicitly attributes
+a retryable failure to a generated Recipe, `modules.targeted_skill.revision`
+allows one run-local repair by default; packaged/expert Recipes are never modified
+in place. Existing Plan, Code, Interpretation, and post-validation distillation
+contracts remain unchanged. `modules.targeted_skill.resource_filter` controls which trajectory
 resources are loaded; the public default matches the historical loader by
 including `.md` and `.py` files with a maximum of five resources.

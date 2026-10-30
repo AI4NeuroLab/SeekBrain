@@ -4,7 +4,7 @@ export const AgentConfigSchema = Type.Object({
   provider: Type.Optional(Type.String()),
   model: Type.Optional(Type.String()),
   thinking: Type.Optional(Type.String()),
-  timeout_seconds: Type.Optional(Type.Number({ minimum: 1 })),
+  timeout_seconds: Type.Optional(Type.Number({ minimum: 0 })),
   vision: Type.Optional(Type.Boolean()),
   rag: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 }, { additionalProperties: true });
@@ -37,6 +37,7 @@ export const ResearchPlanningStrategySchema = Type.Union([
 ]);
 
 export const SeekBrainWorkflowConfigSchema = Type.Object({
+  web_search: Type.Optional(Type.Boolean()),
   research_planning: Type.Boolean(),
   research_planning_strategy: ResearchPlanningStrategySchema,
   research_survey: Type.Boolean(),
@@ -52,7 +53,7 @@ export const SeekBrainWorkflowConfigSchema = Type.Object({
       timeout_seconds: Type.Number({ minimum: 1 }),
     }, { additionalProperties: false }),
   }, { additionalProperties: false }),
-  deep_research: Type.Boolean(),
+  deep_research: Type.Object({ max_rounds: Type.Integer({ minimum: 1 }) }, { additionalProperties: false }),
   targeted_skill_match: Type.Boolean(),
   targeted_skill_generate: Type.Boolean(),
   rag_recipe_crystallization: Type.Boolean(),
@@ -63,9 +64,19 @@ export const SeekBrainWorkflowConfigSchema = Type.Object({
 }, { additionalProperties: true });
 
 export const TargetedSkillConfigSchema = Type.Object({
+  resolution_mode: Type.Optional(Type.Union([
+    Type.Literal("recipe_scout_v2"),
+    Type.Literal("legacy_resolver"),
+    Type.Literal("recipe_2_2"),
+  ])),
   relevance_threshold: Type.Number({ minimum: 0, maximum: 1 }),
-  top_k: Type.Integer({ minimum: 1 }),
+  top_k: Type.Integer({ minimum: 1, maximum: 3 }),
   compatibility: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  revision: Type.Optional(Type.Object({
+    enabled: Type.Boolean(),
+    budget: Type.Integer({ minimum: 0, maximum: 1 }),
+    generated_only: Type.Boolean(),
+  }, { additionalProperties: false })),
   resource_filter: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 }, { additionalProperties: true });
 

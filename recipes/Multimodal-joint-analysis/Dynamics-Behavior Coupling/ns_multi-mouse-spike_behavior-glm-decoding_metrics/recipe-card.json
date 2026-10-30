@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-spike_behavior-glm-decoding_metrics",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes orbitofrontal cortex (ORBvl) neural activity during the inter-trial interval to decode the subject's internal prior probability of stimulus presentation, benchmarking against a Bayes-optimal observer model.",
+  "aliases": [
+    "neuroscience",
+    "orbitofrontal-cortex",
+    "bayesian-inference",
+    "population-decoding",
+    "neural-coding"
+  ],
+  "does": [
+    "regression",
+    "decoding"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "decode task prior from ORBvl population activity",
+    "calculate correlation between decoded prior and Bayes-optimal prior",
+    "estimate trial-by-trial prior probability from ORBvl spiking data",
+    "quantify ORBvl representation of task statistics using corrected R-squared",
+    "generate plot of decoded versus Bayes-optimal prior in ORBvl"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Leakage-safe cross-validation groups or labels are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type { RepositoryCandidate } from "../contracts.ts";
 import { literatureResponseCache, type MemoryCache } from "../cache.ts";
+import { nonInteractiveGitEnv } from "../../core/non-interactive-git.ts";
 
 const ALLOWED_HOSTS = new Set(["github.com", "gitlab.com", "bitbucket.org", "codeberg.org"]);
 
@@ -45,7 +46,7 @@ function gitLsRemote(url: string, timeoutMs: number, signal?: AbortSignal): Prom
     const child = spawn("git", ["ls-remote", url, "HEAD"], {
       stdio: ["ignore", "ignore", "ignore"],
       signal: controller.signal,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      env: nonInteractiveGitEnv(),
     });
     child.on("error", (error) => {
       clearTimeout(timer);

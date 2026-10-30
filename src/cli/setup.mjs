@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
+import { ANTHROPIC_RELAY_COMPAT, ensureRelayCompatibility, relayModel } from "./relay-compat.mjs";
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEFAULT_USER_CONFIG_TEMPLATE = readFileSync(join(PACKAGE_ROOT, "config", "default.yaml"), "utf8");
@@ -14,7 +15,6 @@ async function defaultRuntimeFactory(runtimeOptions) {
 
 const CORE_AGENTS = [
   "seekbrain",
-  "seekbrain_deep_research",
   "seekbrain_survey",
   "seekbrain_research_planning",
   "seekbrain_research_reviewer",
@@ -22,6 +22,8 @@ const CORE_AGENTS = [
   "seekbrain_skill_context",
   "seekbrain_skill_generate",
   "seekbrain_plan",
+  "seekbrain_formulation",
+  "seekbrain_report",
   "seekbrain_code",
   "seekbrain_validate",
   "seekbrain_interpret",
@@ -63,6 +65,7 @@ const MAINSTREAM_MODELS = {
     "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5",
   ],
   openai: [
+    "gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna",
     "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.5-pro",
     "gpt-5.5", "gpt-5.4-pro", "gpt-5.4", "gpt-5.4-mini",
   ],
@@ -146,10 +149,11 @@ export function relayProviderConfig({ name, baseUrl, api, models, modelIds = [],
     ...(api === "openai-completions" ? {
       authHeader: true,
       compat: { supportsDeveloperRole: false, supportsReasoningEffort: false },
-    } : {
-      compat: { forceAdaptiveThinking: true, supportsEagerToolInputStreaming: false },
+    } : api === "openai-responses" ? { authHeader: true } : {
+      compat: { forceAdaptiveThinking: true, supportsEagerToolInputStreaming: false, ...ANTHROPIC_RELAY_COMPAT },
     }),
-    models: models?.map(catalogModel) || modelIds.map((id) => customModel(id, visionModelIds.has(id))),
+    models: (models?.map(catalogModel) || modelIds.map((id) => customModel(id, visionModelIds.has(id))))
+      .map(model => relayModel({ ...model, api: model.api || api })),
   };
 }
 
@@ -169,11 +173,13 @@ export function mainstreamModels(models, family) {
   const visionModels = models.filter((model) => (model.input || []).includes("image"));
   const byId = new Map(visionModels.map((model) => [model.id, model]));
   const preferred = (MAINSTREAM_MODELS[family] || []).map((id) => byId.get(id)).filter(Boolean);
-  return preferred.length ? preferred : visionModels.filter((model) => model.reasoning).slice(0, 8);
+  const preferredIds = new Set(preferred.map((model) => model.id));
+  return [...preferred, ...visionModels.filter((model) => !preferredIds.has(model.id))];
 }
 
 async function collectRelay(prompter, family, provider, models) {
-  const api = family === "anthropic" ? "anthropic-messages" : "openai-completions";
+  const api = family === "anthropic" ? "anthropic-messages"
+    : family === "openai" ? "openai-responses" : "openai-completions";
   const id = provider.relayId || `${family}-relay`;
   const baseUrl = normalizeUrl(await prompter.text("API base URL"));
   const selectedModels = mainstreamModels(models, family);
@@ -406,7 +412,7 @@ export function writePrimarySettings(settingsPath, core) {
   atomicWrite(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
-export function applyLiteratureConfiguration(document, literature, deepResearchEnabled = false, credentialStorePath) {
+export function applyLiteratureConfiguration(document, literature, credentialStorePath) {
   const enabled = literature.source !== "none";
   document.setIn(["literature", "paper_source"], literature.source);
   if (credentialStorePath) document.setIn(["literature", "credential_store"], credentialStorePath);
@@ -418,21 +424,11 @@ export function applyLiteratureConfiguration(document, literature, deepResearchE
   }
   document.setIn(["workflow", "seekbrain", "research_survey"], enabled);
   document.setIn(["workflow", "seekbrain", "targeted_skill_generate"], enabled);
-  if (!enabled) {
-    document.setIn(["workflow", "seekbrain", "deep_research"], false);
-  } else if (deepResearchEnabled === true) {
-    document.setIn(["workflow", "seekbrain", "deep_research"], true);
-  } else if (document.getIn(["workflow", "seekbrain", "deep_research"]) === undefined) {
-    document.setIn(["workflow", "seekbrain", "deep_research"], false);
-  }
-
   // Preserve the current AILab consumers exactly until the compatibility router
   // is introduced. New providers use the global literature block later.
   if (literature.source === "ailab_rag") {
     document.setIn(["agents", "seekbrain_survey", "rag", "paper_source"], "ailab_rag");
     document.setIn(["agents", "seekbrain_survey", "rag", "base_url"], literature.baseUrl);
-    document.setIn(["agents", "seekbrain_deep_research", "rag", "paper_source"], "ailab_rag");
-    document.setIn(["agents", "seekbrain_deep_research", "rag", "base_url"], literature.baseUrl);
     document.setIn(["modules", "targeted_skill", "rag_base_url"], literature.baseUrl);
   }
   return document;
@@ -455,7 +451,7 @@ function writeSeekBrainConfig(userConfigPath, userTemplate, core, fast, literatu
   const document = parseDocument(source);
   if (document.errors.length) throw new Error(`Invalid SeekBrain user config: ${document.errors[0].message}`);
   applyModelRouting(document, core, fast);
-  applyLiteratureConfiguration(document, literature, false, credentialStorePath);
+  applyLiteratureConfiguration(document, literature, credentialStorePath);
   atomicWrite(userConfigPath, document.toString());
 }
 
@@ -551,18 +547,9 @@ function providerRank(provider) {
   return preferred === -1 ? PREFERRED_PROVIDER_IDS.length : preferred;
 }
 
-function customCatalogModel(model, providerId) {
-  const copied = catalogModel(model);
-  if (providerId === "openai") {
-    copied.api = "openai-completions";
-    delete copied.compat;
-  }
-  return copied;
-}
-
 export function customProviderConfig(provider, baseUrl, models) {
   if (!models.length) throw new Error(provider.name + " has no models available for a custom endpoint");
-  const copied = models.map((model) => customCatalogModel(model, provider.id));
+  const copied = models.map(catalogModel).map(relayModel);
   const apis = new Set(copied.map((model) => model.api).filter(Boolean));
   const openAICompatible = [...apis].every((api) => api === "openai-completions" || api === "openai-responses");
   return {
@@ -651,7 +638,7 @@ class SetupManager {
   }
 
   async reload() {
-    await this.runtime.reloadConfig();
+    await this.runtime.refresh({ allowNetwork: false });
   }
 
   providerEntries() {
@@ -892,7 +879,6 @@ class SetupManager {
     writeAgentModels(loaded.document, FAST_AGENTS, fast || model);
     if (!loaded.existed && !loaded.config.literature?.paper_source) {
       loaded.document.setIn(["workflow", "seekbrain", "research_survey"], false);
-      loaded.document.setIn(["workflow", "seekbrain", "deep_research"], false);
       loaded.document.setIn(["workflow", "seekbrain", "targeted_skill_generate"], false);
     }
     atomicWrite(this.paths.userConfigPath, loaded.document.toString());
@@ -919,7 +905,6 @@ class SetupManager {
     applyLiteratureConfiguration(
       loaded.document,
       literature,
-      false,
       this.paths.literatureCredentialsPath,
     );
     atomicWrite(this.paths.userConfigPath, loaded.document.toString());
@@ -929,12 +914,30 @@ class SetupManager {
 
 export async function createSetupManager(options = {}) {
   const paths = setupPaths(options);
+  ensureRelayCompatibility(paths);
   const runtimeFactory = options.runtimeFactory || defaultRuntimeFactory;
   const runtime = await runtimeFactory({
     authPath: paths.authPath,
     modelsPath: paths.modelsPath,
-    allowModelNetwork: false,
+    allowModelNetwork: options.allowModelNetwork ?? true,
+    modelRefreshTimeoutMs: 4000,
   });
+  // Setup-created relays contain a snapshot of the upstream catalog. Keep
+  // existing model definitions intact, but include newly published models
+  // with their own API metadata (GPT-6 tool calls require Responses).
+  const modelsConfig = readJson(paths.modelsPath, { providers: {} });
+  const relay = modelsConfig.providers?.["openai-relay"];
+  if (relay && ["OpenAI Custom", "OpenAI custom endpoint"].includes(relay.name)) {
+    const existing = new Set((relay.models || []).map((model) => model.id));
+    const additions = runtime.getModels("openai")
+      .filter((model) => !existing.has(model.id))
+      .map(catalogModel);
+    if (additions.length) {
+      relay.models = [...(relay.models || []), ...additions];
+      atomicWrite(paths.modelsPath, JSON.stringify(modelsConfig, null, 2) + "\n", 0o600);
+      await runtime.refresh({ allowNetwork: false });
+    }
+  }
   return new SetupManager(paths, runtime, options);
 }
 
@@ -965,13 +968,13 @@ export async function runSetup(options = {}) {
     )) {
       ({ core, fast } = existingModels);
     } else {
-      const initialRuntime = await runtimeFactory({ authPath, modelsPath, allowModelNetwork: false });
+      const initialRuntime = await runtimeFactory({ authPath, modelsPath, allowModelNetwork: true, modelRefreshTimeoutMs: 4000 });
       const selectedProvider = await collectProvider(prompter, initialRuntime);
       const additions = [selectedProvider];
       mergeProviderConfigs(modelsPath, additions);
       const runtime = await runtimeFactory({ authPath, modelsPath, allowModelNetwork: false });
       await persistCredentials(runtime, additions);
-      await runtime.reloadConfig();
+      await runtime.refresh({ allowNetwork: false });
       const available = [...await runtime.getAvailable(selectedProvider.runtimeProvider)];
       const visionModels = mainstreamModels(available, selectedProvider.family);
       if (!visionModels.length) throw new Error("No authenticated vision-capable model is available; SeekBrain validation requires image input support");

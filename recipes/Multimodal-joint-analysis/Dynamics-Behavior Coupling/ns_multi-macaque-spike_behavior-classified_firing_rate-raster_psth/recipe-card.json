@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-macaque-spike_behavior-classified_firing_rate-raster_psth",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes and visualizes single-neuron spiking activity in the macaque dorsal premotor cortex by decomposing trial-binned firing rate tensors across task-specific variables.",
+  "aliases": [
+    "neuroscience",
+    "dorsal-premotor-cortex",
+    "tensor-decomposition",
+    "electrophysiology",
+    "spike-train-analysis"
+  ],
+  "does": [
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "macaque"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "How does PMd neural activity change with stimulus difficulty?",
+    "Visualize trial-averaged firing rates for macaque premotor neurons",
+    "Perform tensor decomposition on single-neuron spike trains",
+    "Analyze PMd spiking activity sorted by choice and coherence",
+    "Generate PSTHs for perceptual decision-making neurons"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

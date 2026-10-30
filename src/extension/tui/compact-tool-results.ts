@@ -132,7 +132,11 @@ function reviewResult(details: Json, theme: Json) {
 
 function targetedSkillResult(details: Json, theme: Json) {
   const paths = Array.isArray(details.recipe_paths) ? details.recipe_paths : Array.isArray(details.skill_paths) ? details.skill_paths : [];
-  const names = paths.map((path: unknown) => basename(String(path))).filter(Boolean);
+  const selectedRecipes = Array.isArray(details.recipe_set?.selected) ? details.recipe_set.selected : [];
+  const names = [...new Set([
+    ...paths.map((path: unknown) => basename(String(path))).filter(Boolean),
+    ...selectedRecipes.map((selection: Json) => String(selection.recipe_id || "")).filter(Boolean),
+  ])];
   const repository = details.repository_reference || {};
   const repositoryUrl = String(repository.repository_url || "");
   const repositoryName = repositoryUrl.replace(/\/$/, "").replace(/^https?:\/\/(?:www\.)?github\.com\//i, "")
@@ -140,6 +144,8 @@ function targetedSkillResult(details: Json, theme: Json) {
   const repositorySource = details.source === "repository_reference" || details.source === "validated_repository_recipe";
   const state = details.source === "repository_reference" ? "found in an external repository"
     : details.source === "validated_repository_recipe" ? "reused from validated repository scripts"
+      : details.source === "method_pack" ? "assembled from bounded local and RAG scouting"
+      : details.source === "composed_recipe_set" ? "composed from first-class local and RAG candidates"
       : details.source === "crystallized" || details.source === "generated_from_rag" || details.generated === true
         ? "crystallized from literature and code"
         : details.source === "repertoire" || details.source === "existing_skill"
@@ -151,18 +157,8 @@ function targetedSkillResult(details: Json, theme: Json) {
     `${details.matched === true ? "✓" : "○"} Analysis recipe ${state}`,
     repositorySource
       ? `Repository: ${repositoryName || "repository"}${referenceNames.length ? ` · Reference: ${referenceNames.slice(0, 2).join(", ")}` : ""}`
-      : names.length > 0 ? `Recipes: ${names.join(", ")}` : "No matching analysis recipe found",
+      : names.length > 0 ? `${details.source === "method_pack" ? "Methods" : "Recipes"}: ${names.join(", ")}` : "No matching analysis recipe found",
     `${count(details.reference_paths)} references${warningSuffix(details)} · Ctrl+O for details`,
-  ], theme);
-}
-
-function deepResearchResult(details: Json, theme: Json) {
-  const sources = Number(details.source_count ?? details.rag?.source_count ?? 0);
-  const ragOk = details.rag_ok ?? details.rag?.ok;
-  return textComponent([
-    `${ragOk === false ? "○" : "✓"} Deep research complete · ${sources} source${sources === 1 ? "" : "s"}`,
-    summary(details.result?.summary || (ragOk === false ? details.rag_error || "No usable Paper RAG evidence" : "")),
-    details.context_path ? `Context: ${compactPath(details.context_path)}${warningSuffix(details)} · Ctrl+O for details` : `Ctrl+O for details`,
   ], theme);
 }
 
@@ -178,8 +174,49 @@ function dataResolveResult(details: Json, theme: Json) {
 function researchPlanningResult(toolName: string, details: Json, theme: Json) {
   if (toolName === "seekbrain_planning_generate" && details.progress === true) {
     return textComponent([
-      details.stage === "research_survey" ? "○ Research Survey · building global background" : "○ Research Planning · generating hierarchical research plan",
+      details.stage === "creative_ideas"
+        ? "○ Creative Research · evolving three hypothesis temperatures"
+        : details.stage === "research_survey" ? "○ Research Survey · building global background" : "○ Research Planning · generating hierarchical research plan",
       summary(details.message),
+    ], theme);
+  }
+  if (toolName === "seekbrain_planning_generate" && details.research_planning_strategy === "creative") {
+    return textComponent([
+      `✓ Creative Research ready · ${Number(details.idea_count || 0)} active Idea Cards`,
+      summary(details.session_summary),
+      "Discuss, cross, challenge, or select an Idea Card · Ctrl+O for details",
+    ], theme);
+  }
+  if (toolName === "seekbrain_creative_update") {
+    if (details.progress === true) {
+      return textComponent(["○ Creative Research · updating Idea Cards", summary(details.message)], theme);
+    }
+    return textComponent([
+      `✓ Creative Research updated · ${Number(details.idea_count || 0)} active Idea Cards`,
+      summary(details.session_summary),
+      `Next: select an Idea Card or continue discussion · Ctrl+O for details`,
+    ], theme);
+  }
+  if (toolName === "seekbrain_creative_search") {
+    if (details.progress === true) {
+      return textComponent(["○ Creative Research · searching and refining queries", summary(details.message)], theme);
+    }
+    const methods = (Array.isArray(details.method_briefs) ? details.method_briefs : []).slice(0, 4).map((method: Json) =>
+      `${String(method.method_id)} · ${summary(method.reusable_component)} → ${summary(method.application_to_current_problem)}`);
+    return textComponent([
+      `✓ Creative literature search · ${Number(details.method_count || 0)} useful methods`,
+      ...methods,
+      details.unresolved_gap ? `Remaining gap: ${summary(details.unresolved_gap)} · Ctrl+O for details` : "Results added to the paper pool · Ctrl+O for details",
+    ], theme);
+  }
+  if (toolName === "seekbrain_creative_select") {
+    if (details.progress === true) {
+      return textComponent(["○ Creative Research · converting selected idea into a formal plan", summary(details.message)], theme);
+    }
+    return textComponent([
+      `✓ Creative Idea selected · ${String(details.selected_idea?.idea_id || "")}`,
+      `${Number(details.subquestion_count || 0)} subquestions · ${Number(details.task_count || 0)} analysis tasks`,
+      details.research_question_certificate_path ? `Certificate: ${compactPath(details.research_question_certificate_path)} · Ctrl+O for details` : "Ctrl+O for details",
     ], theme);
   }
   if (toolName === "seekbrain_planning_assess") {
@@ -188,7 +225,7 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     return textComponent([
       `${planning || clarification ? "○" : "✓"} Planning assessment · ${clarification ? "input clarification required" : planning ? "Research Planning recommended" : "direct analysis workflow"}`,
       summary(details.reason),
-      clarification ? "Correct the question or metadata before continuing · Ctrl+O for details" : planning ? "User decision required · Ctrl+O for details" : "Continue to Recipe · Ctrl+O for details",
+      clarification ? "Correct the question or metadata before continuing · Ctrl+O for details" : planning ? "User decision required · Ctrl+O for details" : "Continue to Analytical Formulation · Ctrl+O for details",
     ], theme);
   }
   if (toolName === "seekbrain_planning_decision_review" || toolName === "seekbrain_planning_decision_record") {
@@ -202,7 +239,7 @@ function researchPlanningResult(toolName: string, details: Json, theme: Json) {
     return textComponent([
       `✓ Research Planning · ${details.decision === "yes" ? "approved" : "direct analysis workflow selected"}`,
       summary(details.message),
-      `Next: ${details.next_tool || "seekbrain_recipe_retrieve"} · Ctrl+O for details`,
+      `Next: ${details.next_tool || "seekbrain_formulation_generate"} · Ctrl+O for details`,
     ], theme);
   }
   if (toolName === "seekbrain_planning_peer_review") {
@@ -363,6 +400,30 @@ export function renderSeekBrainResult(toolName: string) {
       if (toolName === "seekbrain_research_start") return expandedStartResearchResult(details, theme);
       return expandedComponent(result, theme);
     }
+    if (details.flow_version === "0.1.4") {
+      const labels: Record<string, string> = {
+        seekbrain_research_start: "Study started", seekbrain_run_resume: "Study resumed",
+        seekbrain_plan_generate: "Scientific plan", seekbrain_formulation_generate: "Task formulation",
+        seekbrain_execution_run: "Task execution", seekbrain_report_evidence_compile: "Validated evidence",
+        seekbrain_report_generate: "Scientific report", seekbrain_research_decide: "Research decision",
+      };
+      const tasks = details.graph?.tasks || [];
+      return textComponent([
+        `${details.progress ? "○" : "✓"} ${labels[toolName] || toolName}${details.partial ? " · partial coverage" : ""}`,
+        details.deep_research ? `Round ${details.deep_research.round} · ${details.deep_research.phase}` : "",
+        details.decision ? summary(details.decision.stop_reason === "round_limit" ? "Round limit reached; unresolved questions remain." : details.decision.reason) : "",
+        details.task_id ? `${details.task_id} · ${details.stage}` : "",
+        tasks.length ? `${tasks.length} tasks · ${String(details.graph.status)}` : "",
+        ...tasks.map((task: Json) => `${task.id} · ${task.status}${task.reason ? ` · ${summary(task.reason)}` : ""}`),
+        Array.isArray(details.evidence) ? `${details.evidence.length} validated results` : "",
+        details.report_path ? `Report: ${compactPath(details.report_path)}` : "",
+        details.pdf_path ? `PDF: ${compactPath(details.pdf_path)}` : "",
+        details.pdf_export?.ok === false ? `PDF export failed: ${summary(details.pdf_export.error || details.pdf_export.stderr)}` : "",
+        details.report_status === "draft" ? "Draft · format issues recorded in report_checks.json" : "",
+        details.plan_path ? `Plan: ${compactPath(details.plan_path)}` : "",
+        "Ctrl+O for details",
+      ], theme);
+    }
     if (details.skipped === true || details.skipped_by_config === true) return skippedResult(toolName, details, theme);
     if (
       details.needs_text_review === true
@@ -398,14 +459,15 @@ export function renderSeekBrainResult(toolName: string) {
         return proposedCodeResult(details, theme);
       case "seekbrain_recipe_retrieve":
         return targetedSkillResult(details, theme);
-      case "seekbrain_deep_research":
-        return deepResearchResult(details, theme);
       case "seekbrain_data_resolve":
         return dataResolveResult(details, theme);
       case "seekbrain_planning_assess":
       case "seekbrain_planning_decision_review":
       case "seekbrain_planning_decision_record":
       case "seekbrain_planning_generate":
+      case "seekbrain_creative_search":
+      case "seekbrain_creative_update":
+      case "seekbrain_creative_select":
       case "seekbrain_planning_peer_review":
       case "seekbrain_planning_researcher_review":
       case "seekbrain_planning_researcher_decision_record":
@@ -453,6 +515,13 @@ export function renderSeekBrainResult(toolName: string) {
           details.report_path ? `Report: ${compactPath(details.report_path)} · Ctrl+O for details` : "Ctrl+O for details",
         ], theme);
       case "seekbrain_formulation_generate":
+        if (details.progress === true) {
+          return textComponent([
+            "○ Analytical Formulation",
+            summary(details.message || "Formulating the analysis"),
+            details.active_tool ? `Tool: ${String(details.active_tool)}` : "",
+          ], theme);
+        }
         return stageResult("Analytical Formulation", details, theme);
       case "seekbrain_code_execute":
         return stageResult("Code Generation & Execution", details, theme);

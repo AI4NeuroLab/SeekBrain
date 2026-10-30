@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-behavior-glm-performance",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Fits Bayes-optimal, stimulus, and action kernel models to behavioral choice data and performs group-level Bayesian model selection to calculate model frequencies and exceedance probabilities.",
+  "aliases": [
+    "computational-neuroscience",
+    "behavioral-modeling",
+    "bayesian-model-selection",
+    "rfx-bms",
+    "parameter-estimation"
+  ],
+  "does": [
+    "regression"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "behavior"
+    ],
+    "observation_units": [
+      "trial"
+    ],
+    "requires": [
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "model_performance_metrics"
+  ],
+  "use_when": [
+    "how to perform bayesian model comparison on behavioral data",
+    "fit stimulus and action kernels to choice data",
+    "calculate exceedance probability for competing cognitive models",
+    "implement rfx-bms for behavioral modeling sessions",
+    "compare bayes-optimal model against heuristic kernels"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

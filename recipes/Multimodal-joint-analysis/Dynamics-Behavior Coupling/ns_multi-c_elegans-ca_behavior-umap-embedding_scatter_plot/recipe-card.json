@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-c_elegans-ca_behavior-umap-embedding_scatter_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "This recipe analyzes neural population dynamics by mapping CePNEM-derived feeding tuning indices onto continuous UMAP manifold embeddings to reveal graded encoding patterns.",
+  "aliases": [
+    "UMAP",
+    "CePNEM",
+    "Neural Encoding",
+    "Latent Space Analysis",
+    "Computational Neuroscience"
+  ],
+  "does": [
+    "dimensionality_reduction"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "c_elegans"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "scatter_plot"
+  ],
+  "use_when": [
+    "How is feeding encoding organized in the UMAP space?",
+    "Visualize neural feeding tuning on UMAP manifolds",
+    "Identify graded transitions in feeding-activated and feeding-inhibited neurons",
+    "Perform dimensionality reduction on neural data to study feeding behavior",
+    "Calculate and project feeding tuning coefficients into a continuous latent space"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

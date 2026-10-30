@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_vis-zebrafish-sc-module_sorted-sc_block_heatmap",
+  "version": "1.0",
+  "status": "active",
+  "kind": "visualization",
+  "summary": "Render the undirected zebrafish structural connectome as a module-sorted block-diagonal heatmap — reorder the 65×65 SC matrix by the four consensus-Louvain module labels, square it element-wise to boost contrast, and draw thick black boxes around each module along the diagonal.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "module",
+    "sorted",
+    "block"
+  ],
+  "does": [
+    "visualization"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "heatmap_figure"
+  ],
+  "use_when": [
+    "Analyze module-sorted structural connectivity block heatmap",
+    "Generate module-sorted structural connectivity block heatmap outputs",
+    "Apply the ns_vis-zebrafish-sc-module_sorted-sc_block_heatmap recipe"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

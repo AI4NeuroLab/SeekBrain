@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-behavior-anova-task_performance",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes the impact of bilateral HDB-OB cholinergic inactivation on olfactory discrimination learning and evaluates signal reversibility post-CNO washout.",
+  "aliases": [
+    "chemogenetics",
+    "olfactory-bulb",
+    "cholinergic-modulation",
+    "neuroscience-behavior",
+    "hM4Di"
+  ],
+  "does": [
+    "group_comparison"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "behavior"
+    ],
+    "observation_units": [
+      "trial"
+    ],
+    "requires": [
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "model_performance_metrics"
+  ],
+  "use_when": [
+    "Does chemogenetic inactivation of HDB-OB neurons impair olfactory learning?",
+    "Assess reversibility of CNO inhibition on olfactory discrimination task performance",
+    "Analyze behavioral learning curves for HDB-OB chemogenetic studies",
+    "How does CNO-induced inactivation of OB-projecting neurons affect task performance?",
+    "Evaluate experimental evidence for recovery after cholinergic inhibition in the olfactory bulb"
+  ],
+  "avoid_when": [
+    "Independent biological replicates or an appropriate null model are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

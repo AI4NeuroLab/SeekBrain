@@ -14,6 +14,7 @@ describe("Research Task runtime executor", () => {
     const imageWorkflow = { refine: vi.fn() };
     const interpretWorkflow = { execute: vi.fn() };
     const execute = createResearchTaskExecutor({
+      runLifecycle: new RunLifecycleWorkflow(new FileRunRepository()),
       projectRoot: "/project",
       loadConfig: vi.fn(async () => ({})),
       workflowConfig: vi.fn(() => ({ image_refine: true })),
@@ -26,6 +27,7 @@ describe("Research Task runtime executor", () => {
         },
       })) as any,
       pickAgentConfig: vi.fn(() => ({})),
+      literatureAgentConfig: vi.fn(() => ({})),
       humanGateEnabled: vi.fn(() => true),
       defaultMaxCodeAttempts: 3,
       codeWorkflow: codeWorkflow as any,

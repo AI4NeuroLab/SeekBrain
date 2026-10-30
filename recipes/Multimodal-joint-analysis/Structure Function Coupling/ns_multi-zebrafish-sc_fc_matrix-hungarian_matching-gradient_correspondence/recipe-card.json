@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-sc_fc_matrix-hungarian_matching-gradient_correspondence",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Establish an optimal one-to-one correspondence between structural connectivity (SC) and functional connectivity (FC) diffusion-map gradients in zebrafish, by computing an all-pairs Pearson similarity matrix between the first 50 SC modes and the first 50 FC modes and then solving the assignment problem with the Hungarian algorithm on cost 1 - |r|.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "fc",
+    "matrix",
+    "hungarian"
+  ],
+  "does": [
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_gradient"
+  ],
+  "use_when": [
+    "Analyze optimal sc–fc gradient correspondence by hungarian matching",
+    "Generate optimal sc–fc gradient correspondence by hungarian matching outputs",
+    "Apply the ns_multi-zebrafish-sc_fc_matrix-hungarian_matching-gradient_correspondence recipe"
+  ],
+  "avoid_when": [
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

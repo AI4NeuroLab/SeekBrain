@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-behavior-markov-epoch_interval",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Decomposes trial-based behavioral data into latent states like engagement and side-bias using GLM-HMM architecture and Viterbi state sequence decoding.",
+  "aliases": [
+    "GLM-HMM",
+    "Behavioral Modeling",
+    "Latent State Inference",
+    "Expectation-Maximization",
+    "Viterbi Decoding"
+  ],
+  "does": [
+    "latent_state",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics",
+    "latent_state"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "behavior"
+    ],
+    "observation_units": [
+      "trial"
+    ],
+    "requires": [
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How do I decompose behavioral session data into discrete states?",
+    "Identify hidden behavioral strategies using GLM-HMM",
+    "Visualize state probability traces for individual experimental sessions",
+    "How to model bias and engagement states in behavioral choice data?",
+    "Determine the optimal number of hidden states for animal behavior"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

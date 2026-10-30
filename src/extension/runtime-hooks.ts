@@ -1,4 +1,5 @@
-import { RESEARCH_CARD_ENTRY, SKILL_CARD_ENTRY } from "./tui/transparency-card.ts";
+import { SKILL_CARD_ENTRY } from "./tui/transparency-card.ts";
+import { saveConversationHistory } from "./conversation-history.ts";
 
 type Json = Record<string, any>;
 
@@ -8,6 +9,7 @@ export interface RuntimeHookAPI {
 }
 
 export interface RuntimeHookDependencies {
+  restoreSessionRun(): void;
   getActiveRunDir(): string | undefined;
   setActiveRunDir(path: string): void;
   startConfigWatcher(cwd: string, notify?: (message: string, level?: "info" | "warning" | "error") => void): void;
@@ -18,6 +20,7 @@ export interface RuntimeHookDependencies {
   appendUsage(runDir: string, component: string, entry: Json): Promise<void>;
   readableLogEntries(event: Json, component: string, extension: string): Json[];
   appendReadableLog(runDir: string, entry: Json): Promise<void>;
+  appendRawCotLog(runDir: string, entry: Json): Promise<void>;
   transparencyEnabled(): Promise<boolean>;
   readRunState(runDir: string): Promise<Json>;
   researchCard(state: Json): string;
@@ -28,7 +31,11 @@ export interface RuntimeHookDependencies {
 const RUN_TOOLS = new Set(["seekbrain_research_start", "seekbrain_research_continue", "seekbrain_run_start", "seekbrain_run_resume"]);
 
 export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: RuntimeHookDependencies): void {
+  let sessionContext: any;
+
   pi.on("session_start", (_event, context) => {
+    sessionContext = context;
+    dependencies.restoreSessionRun();
     const notify = (message: string, level: "info" | "warning" | "error" = "info") => {
       try { context?.ui?.notify?.(message, level); } catch { /* optional UI sugar */ }
     };
@@ -37,6 +44,15 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
 
   pi.on("session_shutdown", async () => {
     dependencies.stopConfigWatcher();
+    try {
+      const path = await saveConversationHistory(sessionContext);
+      if (path) {
+        try { sessionContext?.ui?.notify?.(`Conversation saved: ${path}`, "info"); } catch { /* best effort */ }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      try { sessionContext?.ui?.notify?.(`Could not save conversation: ${message}`, "warning"); } catch { /* best effort */ }
+    }
     await dependencies.flushUsageSummaries();
   });
 
@@ -56,6 +72,7 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
   pi.on("message_end", async (event: Json) => {
     const runDir = dependencies.getActiveRunDir();
     if (!runDir) return;
+    await dependencies.appendRawCotLog(runDir, event);
     for (const entry of dependencies.readableLogEntries(event, "main", "seekbrain")) {
       await dependencies.appendReadableLog(runDir, entry);
     }
@@ -66,16 +83,17 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
     if (typeof resultRunDir === "string" && RUN_TOOLS.has(event.toolName)) dependencies.setActiveRunDir(resultRunDir);
     const runDir = dependencies.getActiveRunDir();
     if (!runDir) return;
+    await dependencies.appendRawCotLog(runDir, event);
     for (const entry of dependencies.readableLogEntries(event, "main", "seekbrain")) {
       await dependencies.appendReadableLog(runDir, entry);
     }
-    if (event.toolName !== "seekbrain_deep_research" && event.toolName !== "seekbrain_recipe_retrieve") return;
+    if (event.toolName !== "seekbrain_recipe_retrieve") return;
     try {
       if (!await dependencies.transparencyEnabled()) return;
       const state = await dependencies.readRunState(runDir);
-      const content = event.toolName === "seekbrain_deep_research" ? dependencies.researchCard(state) : dependencies.skillCard(state);
+      const content = dependencies.skillCard(state);
       if (!content) return;
-      pi.appendEntry(event.toolName === "seekbrain_deep_research" ? RESEARCH_CARD_ENTRY : SKILL_CARD_ENTRY, {
+      pi.appendEntry(SKILL_CARD_ENTRY, {
         content,
         run_id: state.run_id,
         tool: event.toolName,
@@ -88,7 +106,9 @@ export function registerSeekBrainRuntimeHooks(pi: RuntimeHookAPI, dependencies: 
 
   pi.on("after_provider_response", async (event: Json) => {
     const runDir = dependencies.getActiveRunDir();
-    if (!runDir || dependencies.numberValue(event.status) < 400) return;
+    if (!runDir) return;
+    await dependencies.appendRawCotLog(runDir, event);
+    if (dependencies.numberValue(event.status) < 400) return;
     for (const entry of dependencies.readableLogEntries({ ...event, type: "after_provider_response" }, "main", "seekbrain")) {
       await dependencies.appendReadableLog(runDir, entry);
     }

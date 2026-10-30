@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior-vonmises_shuffling-distribution_bar_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Compare empirical bump-to-scene von Mises concentration with circular-shift controls and plot the observed and null distributions.",
+  "aliases": [
+    "circular-statistics",
+    "von-mises-distribution",
+    "neural-field-theory",
+    "phase-locking",
+    "stochastic-modeling"
+  ],
+  "does": [
+    "association",
+    "group_comparison"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "distribution_plot"
+  ],
+  "use_when": [
+    "Analyze statistical validation of neural bump phase-locking to visual scenes",
+    "Generate statistical validation of neural bump phase-locking to visual scenes outputs",
+    "Apply the ns_multi-zebrafish-ca_behavior-vonmises_shuffling-distribution_bar_plot recipe"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Independent biological replicates or an appropriate null model are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

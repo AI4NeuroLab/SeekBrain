@@ -57,6 +57,33 @@ evaluate/score/
 .pi/agent/sessions/
 .pi/seekbrain/
 
-# Local CI draft. Publishing files under .github/workflows requires a GitHub
-# credential with the workflow scope.
-.github/workflows/
+# SeekBrain 014 local runtime, validation and release output
+node_modules
+.web-validation/
+.installer-validation/
+.aws/
+.codex/
+.agents/
+.env
+.env.*
+*.tgz
+*.log
+__pycache__/
+*.pyc
+results/
+study-*/
+seekbrain-history/
+.web-build-*/
+releases/
+.web-runtime/
+benchmarks/brainarena/
+/CREATIVE_AUTO_NOTES.txt
+/REFERENCE_PATHS_NOTES.txt
+/UPGRADE_NOTES.txt
+/UPGRADE-014.patch
+/VERIFICATION-014.md
+/WebUI访问命令.md
+/sage-a1.5_neuro_case.md
+/*upgrade-verification.json
+/*.tgz.sha256
+!/DEVELOPMENT-014.md

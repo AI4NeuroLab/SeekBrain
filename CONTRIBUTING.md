@@ -2,8 +2,8 @@
 
 ## Development setup
 
-Use Node.js 24 when possible. Install dependencies with `npm install`, copy
-`.env.example` to `.env` only when live-provider testing is required, and run
+Use Node.js 24 when possible. Install dependencies with `npm ci`. Configure live-provider credentials locally only when needed;
+do not commit them. Run
 `npm run doctor` to verify the local runtime.
 
 ## Change boundaries
@@ -31,8 +31,11 @@ Before proposing a change, run:
 npm run typecheck
 npm run test
 npm run audit:opensource
-npm run pack:check
 ```
+
+For changes to distribution files, first install Web dependencies with
+`npm --prefix web ci`, then run `npm run web:build` and `npm run pack:check`.
+The release build uses a separate directory and does not reuse dev caches.
 
 Behavior changes should include a unit or contract test. Architecture boundary
 changes should also update the relevant document under `docs/architecture/`.

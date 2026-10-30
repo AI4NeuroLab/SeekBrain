@@ -3,6 +3,8 @@ import type { PaperRagInput } from "../targeted-skill/rag-client.ts";
 export type LiteratureProviderId = "ailab_rag" | "semantic_scholar" | "pubmed" | "none";
 
 export interface LiteratureQueryInput extends PaperRagInput {
+  /** Include original selected records for the shared search/read tool cache. */
+  include_papers?: boolean;
   paper_source?: LiteratureProviderId;
   literature_provider?: LiteratureProviderId;
   credential_ref?: string;

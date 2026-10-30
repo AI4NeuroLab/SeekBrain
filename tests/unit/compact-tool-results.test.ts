@@ -24,13 +24,13 @@ describe("compact Neuro tool results", () => {
   it("summarizes capabilities and preserves full details when expanded", () => {
     const value = result({
       ok: true,
-      optional: { deep_research: "enabled", targeted_skill: "enabled" },
+      optional: { targeted_skill: "enabled" },
       human_review: { enabled: true, gates: { plan: true, code: false } },
       required_spine: ["seekbrain_formulation_generate", "seekbrain_code_execute"],
     });
 
     const compact = rendered(renderCapabilitiesResult(value, { expanded: false }, theme));
-    expect(compact).toContain("SeekBrain ready · Optional 2/2 · Review: plan");
+    expect(compact).toContain("SeekBrain ready · Optional 1/1 · Review: plan");
     expect(compact).not.toContain("required_spine");
 
     const expanded = rendered(renderCapabilitiesResult(value, { expanded: true }, theme));
@@ -150,7 +150,7 @@ describe("compact Neuro tool results", () => {
     ["seekbrain_data_resolve", { ok: true, source: "cache", data_dir: "/data/fish", metadata_path: "/tmp/seekbrain/datasets/fish/metadata.json", warnings: [] }, "Dataset profile reused"],
     ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "existing_skill", skill_paths: ["/skills/fc_matrix"], reference_paths: ["/ref/a.md"] }, "Analysis recipe retrieved from the Neuroscience Analysis Repertoire"],
     ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "repository_reference", reference_paths: ["/cache/AttentionTopology.py"], repository_reference: { repository_url: "https://github.com/TCR23/TopologyForAttention", reference_files: ["/cache/AttentionTopology.py"] } }, "Analysis recipe found in an external repository"],
-    ["seekbrain_deep_research", { ok: true, rag_ok: false, source_count: 0, rag_error: "Paper RAG base URL is not configured", context_path: "/run/deep_research_context.md" }, "Deep research complete · 0 sources"],
+    ["seekbrain_recipe_retrieve", { ok: true, matched: true, source: "composed_recipe_set", recipe_set: { selected: [{ recipe_id: "rna-classifier" }, { recipe_id: "annotated-heatmap" }] }, reference_paths: [] }, "Analysis recipe composed from first-class local and RAG candidates"],
     ["seekbrain_planning_generate", { ok: true, subquestion_count: 2, task_count: 3, research_plan: { planning_rationale: "Complementary branches" }, research_plan_path: "/run/research_plan/research_plan.json" }, "Hierarchical research plan drafted · 2 subquestions · 3 analysis tasks"],
     ["seekbrain_planning_peer_review", { ok: true, verdict: "revise", refined: true, decision: "approve", subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, research_plan_path: "/run/research_plan/research_plan.json", next_tool: "seekbrain_analysis_tasks_prepare" }, "Hierarchical research plan reviewed and approved"],
     ["seekbrain_planning_peer_review", { ok: true, verdict: "accept", needs_text_review: true, subquestion_count: 2, task_count: 3, unresolved_issue_count: 0, next_tool: "seekbrain_planning_researcher_decision_record" }, "researcher decision required"],
@@ -187,6 +187,19 @@ describe("compact Neuro tool results", () => {
     expect(blocked).toContain("Plan approval is required");
   });
 
+  it("shows the active Formulation subagent tool while work is in progress", () => {
+    const output = rendered(renderSeekBrainResult("seekbrain_formulation_generate")(result({
+      ok: true,
+      progress: true,
+      active_tool: "seekbrain_recipe_search_rag",
+      message: "Searching repository-backed analysis methods",
+    }), { expanded: false }, theme));
+    expect(output).toContain("Analytical Formulation");
+    expect(output).toContain("Searching repository-backed analysis methods");
+    expect(output).toContain("Tool: seekbrain_recipe_search_rag");
+    expect(output).not.toContain("complete");
+  });
+
   it("shows repository-backed recipe details instead of no match", () => {
     const card = skillCardMarkdown({
       targeted_skill_result: {
@@ -205,6 +218,26 @@ describe("compact Neuro tool results", () => {
     expect(card).toContain("AttentionTopology.py");
     expect(card).not.toContain("no match");
     expect(card).not.toContain("SKILL.md");
+  });
+
+  it("shows the selected Recipes and repositories for a composed Recipe set", () => {
+    const card = skillCardMarkdown({
+      targeted_skill_result: {
+        matched: true,
+        source: "composed_recipe_set",
+        summary: "Composed method guidance",
+        recipe_set: { selected: [
+          { recipe_id: "rna-classifier", role: "primary" },
+          { recipe_id: "annotated-heatmap", role: "visualization" },
+        ] },
+        repository_references: [{ repository_url: "https://github.com/example/rna-classifier" }],
+      },
+    });
+    expect(card).toContain("Analysis Recipe — composed from local and RAG candidates");
+    expect(card).toContain("rna-classifier");
+    expect(card).toContain("annotated-heatmap");
+    expect(card).toContain("example/rna-classifier");
+    expect(card).not.toContain("no match");
   });
 
   it("renders partial progress as running instead of failed", () => {

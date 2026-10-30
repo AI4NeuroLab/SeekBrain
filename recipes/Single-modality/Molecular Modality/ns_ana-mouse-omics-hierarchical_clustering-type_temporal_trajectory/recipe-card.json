@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-omics-hierarchical_clustering-type_temporal_trajectory",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantifies and visualizes the temporal dynamics of cell-type and subcluster counts across developmental stages in integrated scRNA-seq datasets to assess diversification trends.",
+  "aliases": [
+    "scRNA-seq",
+    "developmental-biology",
+    "cell-type-clustering",
+    "temporal-dynamics",
+    "visual-cortex",
+    "bioinformatics"
+  ],
+  "does": [
+    "clustering",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "omics"
+    ],
+    "observation_units": [
+      "gene",
+      "timepoint"
+    ],
+    "requires": [
+      "gene_expression_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "cluster_assignments",
+    "temporal_trajectory"
+  ],
+  "use_when": [
+    "How does cell-type diversity evolve across postnatal mouse development?",
+    "Identify emerging cell-type clusters in visual cortex developmental data",
+    "Calculate the number of subclusters per developmental time point",
+    "Assess if cell-type count plateaus during visual cortex maturation",
+    "Generate temporal trajectory plots for cell-type differentiation"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

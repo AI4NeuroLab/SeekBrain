@@ -1,0 +1,26 @@
+{
+  "tag": "fmri-glm-analysis-guide",
+  "yaml_metadata": {
+    "name": "fmri-glm-analysis-guide",
+    "description": "Domain-validated guidance for fMRI General Linear Model specification: HRF modeling, design matrix construction, contrast definition, confound regression, and statistical inference",
+    "triggers": [
+      "build an fMRI first-level GLM",
+      "choose an HRF model high-pass filter or autocorrelation correction",
+      "construct and inspect an fMRI design matrix",
+      "define t contrasts or F contrasts",
+      "run group-level fMRI inference and multiple-comparison correction"
+    ],
+    "tags": [
+      "fmri",
+      "glm",
+      "design-matrix",
+      "contrasts",
+      "statistical-inference"
+    ]
+  },
+  "scripts": [],
+  "references": [
+    "references/design-matrix-guide.md",
+    "references/statistical-inference.md"
+  ]
+}

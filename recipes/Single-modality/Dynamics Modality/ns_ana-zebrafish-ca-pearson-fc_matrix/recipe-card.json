@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-pearson-fc_matrix",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Build per-larva and group-average functional connectivity (FC) matrices from zebrafish whole-brain calcium imaging, by Gaussian-smoothing region-averaged ΔF/F₀ traces and computing Pearson correlations between brain regions.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "pearson",
+    "fc",
+    "matrix"
+  ],
+  "does": [
+    "association",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_matrix"
+  ],
+  "use_when": [
+    "Run the Group-average functional connectivity from regional calcium traces recipe",
+    "Build per-larva and group-average functional connectivity (FC) matrices from zebrafish whole-brain calcium imaging, by Gaussian-smoothing region-averaged ΔF/F₀ traces and computing Pearson correlations between brain regions.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-pearson-fc_matrix"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

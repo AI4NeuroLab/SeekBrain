@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { ExecutionContractSchema } from "../../../core/index.ts";
 import type { ReviewWorkflow, WorkflowRunContext } from "../../../workflows/index.ts";
 import { renderSeekBrainResult } from "../../tui/compact-tool-results.ts";
 import { selectBinaryReview } from "../../tui/review-selectors.ts";
@@ -126,10 +127,11 @@ export function createReviewTools(deps: ReviewToolDependencies): SeekBrainToolDe
     defineTool({
       name: "seekbrain_formulation_update",
       label: "Update Methodological Schema",
-      description: "Persist a researcher-feedback revision to the current methodological schema without rerunning the Formulation Agent.",
+      description: "Persist a researcher-feedback revision to the current methodological schema without rerunning the Formulation Agent. Supply execution_contract whenever the edit changes scientifically material requirements or validation checks; otherwise the prior contract is preserved.",
       parameters: Type.Object({
         run_id: Type.String(),
         plan_markdown: Type.String({ description: "Complete updated Markdown methodological schema to write to plan.md." }),
+        execution_contract: Type.Optional(ExecutionContractSchema),
         review_summary: Type.Optional(Type.String({ description: "Concise researcher-facing summary of the updated schema." })),
         warnings: Type.Optional(Type.Array(Type.String({ description: "Optional updated warning list. Defaults to the prior warnings if omitted." }))),
         revision_note: Type.Optional(Type.String({ description: "Optional short note describing the user-requested edit." })),
@@ -139,6 +141,7 @@ export function createReviewTools(deps: ReviewToolDependencies): SeekBrainToolDe
           cwd: ctx.cwd,
           runId: params.run_id,
           planMarkdown: params.plan_markdown,
+          executionContract: params.execution_contract,
           reviewSummary: params.review_summary,
           warnings: params.warnings,
           revisionNote: params.revision_note,

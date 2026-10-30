@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-sc_fc_matrix-graph_predictors-fc_variance_explained",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Compute ~40 structural graph-theoretic predictors from the zebrafish connectome (shortest path, communicability, search information, mean first passage time, matching index, cosine similarity, adjacency, Euclidean distance and their in/out/all directed variants) via the Predictors class, correlate each one edgewise against the functional connectivity matrix, and rank them by how much FC variance they explain relative…",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "fc",
+    "matrix",
+    "graph"
+  ],
+  "does": [
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "model_performance_metrics"
+  ],
+  "use_when": [
+    "Analyze which structural graph predictor explains functional connectivity best?",
+    "Generate which structural graph predictor explains functional connectivity best? outputs",
+    "Apply the ns_multi-zebrafish-sc_fc_matrix-graph_predictors-fc_variance_explained recipe"
+  ],
+  "avoid_when": [
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-sc_matrix_anatomy-hierarchical_consensus_clustering-module_topography",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Project structural-connectome module membership onto zebrafish brain anatomy — plot the bilateral Mapzebrain region centroids as coloured nodes over the atlas top (XY) and side projections, one colour per consensus-Louvain module, to show where each module sits along the anterior-posterior axis.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "matrix",
+    "anatomy",
+    "hierarchical"
+  ],
+  "does": [
+    "clustering",
+    "connectivity",
+    "spatial_mapping"
+  ],
+  "evidence_for": [
+    "connectivity",
+    "regional_localization"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome",
+      "atlas"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix",
+      "atlas_annotations_or_coordinates"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "spatial_map",
+    "cluster_assignments"
+  ],
+  "use_when": [
+    "Run the Module topography on atlas projections recipe",
+    "Project structural-connectome module membership onto zebrafish brain anatomy — plot the bilateral Mapzebrain region centroids as coloured nodes over the atlas top (XY) and side projections, one colour per consensus-Louvain module, to show where each module sits along the anterior-posterior axis.",
+    "Generate the outputs described by ns_ana-zebrafish-sc_matrix_anatomy-hierarchical_consensus_clustering-module_topography"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate",
+    "Atlas labels, coordinates, or registrations are missing or incompatible"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

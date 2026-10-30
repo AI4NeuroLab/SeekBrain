@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-spike_anatomy-significant_neuron_fraction-atlas_contour_map",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Computes regional neural modulation to visual stimuli from Neuropixels data and renders a Swanson flatmap projection using the IBL atlas framework.",
+  "aliases": [
+    "neuroscience",
+    "iblatlas",
+    "electrophysiology",
+    "data-visualization",
+    "swanson-projection"
+  ],
+  "does": [
+    "spatial_mapping"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "regional_localization"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "spike",
+      "atlas"
+    ],
+    "observation_units": [
+      "neuron",
+      "region"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "atlas_annotations_or_coordinates"
+    ]
+  },
+  "primary_modalities": [
+    "spike"
+  ],
+  "context_modalities": [
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "spatial_map"
+  ],
+  "use_when": [
+    "generate a Swanson projection flatmap for IBL decision-making data",
+    "visualize fraction of modulated neurons per brain region",
+    "create brain-wide flatmap of stimulus-side firing rate differences",
+    "plot significant brain regions on a Swanson map from IBL recordings",
+    "map neural modulation significance to Allen CCFv3 flatmap"
+  ],
+  "avoid_when": [
+    "Atlas labels, coordinates, or registrations are missing or incompatible"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

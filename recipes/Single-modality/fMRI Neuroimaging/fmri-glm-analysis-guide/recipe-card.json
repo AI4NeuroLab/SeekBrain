@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "recipe_id": "fmri-glm-analysis-guide",
+  "version": "1.0",
+  "status": "provisional",
+  "kind": "analysis",
+  "summary": "Domain-validated guidance for specifying and reviewing fMRI general linear models, including HRF modeling, design matrices, high-pass filtering, confound regression, autocorrelation correction, contrasts, group inference, and multiple-comparison correction.",
+  "aliases": [
+    "fmri",
+    "glm",
+    "design-matrix",
+    "contrasts",
+    "statistical-inference",
+    "fmri-glm-analysis-guide"
+  ],
+  "does": [
+    "regression",
+    "group_comparison"
+  ],
+  "evidence_for": [
+    "stimulus_encoding",
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [],
+    "modalities": [
+      "fmri"
+    ],
+    "observation_units": [
+      "voxel",
+      "region",
+      "subject",
+      "run"
+    ],
+    "requires": [
+      "preprocessed_bold",
+      "design_matrix",
+      "contrast_definition"
+    ]
+  },
+  "primary_modalities": [
+    "fmri"
+  ],
+  "context_modalities": [
+    "behavior"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "parameter_estimates",
+    "contrast_map",
+    "statistical_map",
+    "group_inference"
+  ],
+  "use_when": [
+    "build an fMRI first-level GLM",
+    "choose an HRF model high-pass filter or autocorrelation correction",
+    "construct and inspect an fMRI design matrix",
+    "define t contrasts or F contrasts",
+    "run group-level fMRI inference and multiple-comparison correction"
+  ],
+  "avoid_when": [
+    "The design matrix is rank-deficient or incompatible with the acquisition timing",
+    "Temporal autocorrelation and nuisance structure cannot be modeled adequately",
+    "The question requires multivariate decoding rather than a general linear model"
+  ],
+  "source": {
+    "type": "expert",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/design-matrix-guide.md",
+      "references/statistical-inference.md"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

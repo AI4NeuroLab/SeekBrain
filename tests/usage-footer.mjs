@@ -31,13 +31,19 @@ await sessionStart({}, {
 });
 
 assert.equal(typeof footerFactory, "function");
+const statuses = new Map([["seekbrain-mode", "Plan"]]);
 const component = footerFactory(
   { requestRender() {} },
   { fg(_style, value) { return value; } },
-  { onBranchChange() { return () => {}; } },
+  { onBranchChange() { return () => {}; }, getExtensionStatuses() { return statuses; } },
 );
 const lines = component.render(120);
 assert.equal(lines.length, 1);
+assert.match(lines[0], /^ Plan \|/);
+statuses.set("seekbrain-mode", "Ask");
+assert.match(component.render(120)[0], /^ Ask \|/);
+statuses.set("seekbrain-mode", "Deep Research");
+assert.match(component.render(120)[0], /^ Deep Research \|/);
 assert.match(lines[0], /test-model/);
 assert.match(lines[0], /ctx 25%/);
 assert.match(lines[0], /1\.5k in \/ 250 out/);

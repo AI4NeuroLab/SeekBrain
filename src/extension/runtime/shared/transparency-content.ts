@@ -3,43 +3,11 @@ import type { Json } from "../runtime-types.ts";
 // --- transparency cards ---------------------------------------------------
 // Pure markdown builders for the compact research/recipe panels. `pi.sendMessage`
 // renders the returned string as themed markdown.
-function _firstMeaningfulLine(text: string): string {
-  for (const raw of String(text || "").split("\n")) {
-    const line = raw.trim();
-    if (!line || line === "[Deep Research Background]") continue;
-    if (/^#{1,6}\s/.test(line)) return line.replace(/^#{1,6}\s*/, "").trim();
-    return line;
-  }
-  return "";
-}
-
-function _year(pubTime: any): string {
-  const m = String(pubTime || "").match(/\d{4}/);
-  return m ? m[0] : "";
-}
-
 function researchCardMarkdown(state: Json): string {
-  const ctxText = String(state.deep_research_context || "");
-  const sources: Json[] = Array.isArray(state.deep_research_sources) ? state.deep_research_sources : [];
-  const summary = String(state.deep_research?.summary || "").trim() || _firstMeaningfulLine(ctxText);
-  const lines = ["## 🔬 Deep Research"];
-  if (summary) lines.push(summary.slice(0, 300));
-  if (sources.length) {
-    lines.push("", `**Sources (${sources.length}):**`);
-    for (const s of sources.slice(0, 3)) {
-      const title = String(s.title || "(untitled paper)").trim();
-      const meta = [String(s.magazine || "").trim(), _year(s.pub_time)].filter(Boolean).join(" ");
-      const gh = Array.isArray(s.github_links) && s.github_links[0] ? ` · [repo](${s.github_links[0]})` : "";
-      lines.push(`- **${title}**${meta ? ` — ${meta}` : ""}${gh}`);
-    }
-    if (sources.length > 3) lines.push(`- …and ${sources.length - 3} more`);
-  } else if (ctxText.trim()) {
-    lines.push("", "_Background synthesized without external sources._");
-  } else {
-    lines.push("", "_Research ran but produced no usable background._");
-  }
-  lines.push("", "→ `/seekbrain-show research` for the full Deep Research background");
-  return lines.join("\n");
+  const research = state.deep_research;
+  if (!research?.rounds) return "";
+  const round = research.rounds.find((item: Json) => item.number === research.round);
+  return [`## Deep Research · Round ${research.round}`, round?.decision?.reason || research.phase].filter(Boolean).join("\n");
 }
 
 function _parseSkillHeaders(targeted: string): { name: string; relevance?: string }[] {
@@ -75,6 +43,8 @@ function skillCardMarkdown(state: Json): string {
   const source = String(result.source || (state.targeted_skill_path || targeted ? "existing_skill" : "none"));
   const label = source === "repository_reference" ? "repository method found"
     : source === "validated_repository_recipe" ? "validated repository recipe reused"
+      : source === "method_pack" ? "scientific method pack assembled"
+      : source === "composed_recipe_set" ? "composed from local and RAG candidates"
       : source === "generated_from_rag" || source === "crystallized" ? "crystallized from literature and code"
         : source === "existing_skill" || source === "repertoire" ? "retrieved from the Neuroscience Analysis Repertoire"
           : "no match";
@@ -84,6 +54,16 @@ function skillCardMarkdown(state: Json): string {
     return lines.join("\n");
   }
   const repository = result.repository_reference || {};
+  if (source === "method_pack") {
+    const pack = result.method_pack || state.method_pack || {};
+    if (pack.primary) lines.push(`- **Backbone:** ${String(pack.primary.title || "method")} (${String(pack.primary.transfer_level || "transferable")})`);
+    if (pack.supporting) lines.push(`- **Supporting:** ${String(pack.supporting.title || "method")} (${String(pack.supporting.transfer_level || "transferable")})`);
+    const constraints = Array.isArray(pack.downstream_constraints) ? pack.downstream_constraints : [];
+    if (constraints.length) lines.push(`- **Preserved downstream constraints:** ${constraints.length}`);
+    lines.push("", "_Repositories were inspected as temporary method evidence. Reusable Recipes crystallize only after successful execution and validation._");
+    lines.push("", "→ `/seekbrain-show recipe` for the full MethodPack guidance");
+    return lines.join("\n");
+  }
   if (source === "repository_reference" || source === "validated_repository_recipe") {
     const name = _repositoryName(repository);
     const url = String(repository.repository_url || "");
@@ -93,6 +73,16 @@ function skillCardMarkdown(state: Json): string {
     if (source === "repository_reference") lines.push("", "_Repository code is ready as implementation evidence; validated reusable scripts will be created only after successful execution and validation._");
     else lines.push("", "_Previously validated repository scripts are being reused directly._");
     lines.push("", "→ `/seekbrain-show recipe` for the full repository-backed method guidance");
+    return lines.join("\n");
+  }
+  if (source === "composed_recipe_set") {
+    const selected = Array.isArray(result.recipe_set?.selected) ? result.recipe_set.selected : [];
+    for (const recipe of selected.slice(0, 4)) {
+      lines.push(`- **${String(recipe.recipe_id || "Recipe")}** (${String(recipe.role || "supporting")})`);
+    }
+    const repositories = Array.isArray(result.repository_references) ? result.repository_references : [];
+    if (repositories.length) lines.push("", `**Repository evidence:** ${repositories.slice(0, 3).map(_repositoryName).join(", ")}`);
+    lines.push("", "→ `/seekbrain-show recipe` for the full composed Recipe set");
     return lines.join("\n");
   }
   for (const s of _parseSkillHeaders(targeted).slice(0, 4)) {

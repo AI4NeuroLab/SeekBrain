@@ -16,7 +16,6 @@ export function workflowConfigResult(config: Readonly<SeekBrainConfig>): JsonObj
       research_planning: status(workflow.research_planning),
       research_planning_peer_review: status(workflow.research_planning_peer_review),
       research_survey: literatureStatus(literature.research_survey),
-      deep_research: literatureStatus(literature.deep_research),
       targeted_skill: status(workflow.targeted_skill_match || workflow.targeted_skill_generate),
       image_refine: status(workflow.image_refine),
       save_skill: status(workflow.save_skill),

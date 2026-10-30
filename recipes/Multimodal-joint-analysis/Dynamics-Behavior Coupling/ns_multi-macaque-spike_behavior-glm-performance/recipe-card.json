@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-macaque-spike_behavior-glm-performance",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantifies whether post-stimulus superior colliculus activity reflects prior-dependent shifts in perceptual choice using trial-aligned firing rates and logistic regression.",
+  "aliases": [
+    "neuroscience",
+    "superior-colliculus",
+    "logistic-regression",
+    "choice-bias"
+  ],
+  "does": [
+    "regression"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "macaque"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "model_performance_metrics"
+  ],
+  "use_when": [
+    "test prior-dependent modulation in superior colliculus activity",
+    "fit a choice model with contrast, prior, and neural activity",
+    "compare neurometric curves across prior conditions",
+    "quantify post-stimulus firing-rate effects on perceptual choice",
+    "estimate prior-dependent shifts in point of subjective equality"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

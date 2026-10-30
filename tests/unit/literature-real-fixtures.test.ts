@@ -119,4 +119,18 @@ describe("real MINT and Wilson literature fixtures", () => {
     expect(wilson).toMatchObject({ ok: true, sources: [{ provider_id: "40702322", doi: "10.1038/s41593-024-01823-z", pmcid: "PMC12321575" }] });
     expect(wilson.papers[0].repositoryCandidates.some((item: any) => item.relation === "paper_analysis_code")).toBe(false);
   });
+  it.each(["pubmed", "semantic_scholar"] as const)("exposes original papers to the shared cache without requiring repositories (%s)", async provider => {
+    const fetchImpl = await fixtureTransport();
+    const retriever = provider === "pubmed" ? pubmedRetriever(fetchImpl) : semanticRetriever(fetchImpl);
+    const result = await retriever.query({ paper_source: provider,
+      question: "Drosophila head direction encoding accuracy visual cues",
+      base_url: provider === "pubmed" ? "https://eutils.ncbi.test/entrez/eutils" : "https://api.semanticscholar.test/graph/v1",
+      top_k: 1, require_github: false, include_papers: true, source_char_limit: 500 });
+    expect(result.ok).toBe(true);
+    expect(result.papers[0]).toMatchObject({ doi: "10.1038/s41593-024-01823-z", pmcid: "PMC12321575" });
+    expect(result.papers[0].abstract.length).toBeGreaterThan(10);
+    expect(result.papers[0].fullText.length).toBeGreaterThan(result.sources[0].text.length);
+    expect(result.sources[0].text.length).toBeLessThanOrEqual(500);
+  });
+
 });

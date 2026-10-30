@@ -111,12 +111,11 @@ try {
     "start-with-resolved-data",
     {
       project_dir: join(root, "research"),
-      question: "test",
       metadata_json_path: resolved.details.metadata_path,
     },
     new AbortController().signal,
     () => {},
-    { cwd: root, hasUI: false },
+    { cwd: root, hasUI: false, sessionManager: { getBranch: () => [{ type: "message", id: "request", message: { role: "user", content: "test" } }] } },
   );
   assert.equal(started.details.metadata_json_path, identity.metadataPath);
   assert.equal(started.details.dataset_meta_snapshot_path, undefined);

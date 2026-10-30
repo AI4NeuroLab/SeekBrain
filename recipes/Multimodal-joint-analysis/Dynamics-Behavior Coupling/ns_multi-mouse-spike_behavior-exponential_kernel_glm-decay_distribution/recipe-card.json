@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-spike_behavior-exponential_kernel_glm-decay_distribution",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Calculates session-specific exponential decay constants from neural GLMs and behavioral action kernels, then quantifies their alignment using Pearson correlation.",
+  "aliases": [
+    "Neuroscience",
+    "GLM-Analysis",
+    "Trial-History",
+    "Computational-Modeling",
+    "IBL-Brain-Wide-Map"
+  ],
+  "does": [
+    "regression",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "distribution_plot"
+  ],
+  "use_when": [
+    "calculate neural versus behavioral decay constant correlation",
+    "estimate tau parameters from neural activity and behavior",
+    "how does neural history integration compare to behavioral action kernels?",
+    "compute pearson correlation of inverse decay constants across recording sessions",
+    "analyze trial-history dependence timescales in neural and behavioral data"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

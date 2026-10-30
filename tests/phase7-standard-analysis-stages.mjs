@@ -23,6 +23,8 @@ assert.match(stageSources[1], /maxAttempts: DEFAULT_MAX_CODE_ATTEMPTS/);
 assert.match(stageSources[1], /createDependencyInstallToolResultHandler/);
 assert.match(stageSources[2], /maxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS/);
 assert.match(stageSources[3], /enabled: workflow\.image_refine/);
-assert.match(stageSources[4], /next_research_directions/);
+assert.match(stageSources[4], /finalizeSchema: ConclusionClaimsSchema/);
+const interpretationWorkflow = await readFile(new URL("src/workflows/seekbrain/interpret-workflow.ts", root), "utf8");
+assert.match(interpretationWorkflow, /next_research_directions/);
 
 console.log("Phase 7 standard analysis tools live in isolated stage factories");

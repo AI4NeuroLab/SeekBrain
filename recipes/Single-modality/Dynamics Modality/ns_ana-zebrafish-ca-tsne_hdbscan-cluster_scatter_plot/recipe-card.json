@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-tsne_hdbscan-cluster_scatter_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Produce the 2-D t-SNE scatter plot of high-amplitude whole-brain coactivation events coloured by brain state, by embedding the event × region matrix with t-SNE, clustering the embedding with HDBSCAN, reassigning noise points to their best-correlating cluster centroid in the original region space, relabelling clusters by descending size, and drawing them as red/blue/black point clouds with colour-matched legend text.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "tsne",
+    "hdbscan",
+    "cluster"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "clustering"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "scatter_plot",
+    "cluster_assignments"
+  ],
+  "use_when": [
+    "Run the t-SNE state-space scatter of coactivation events recipe",
+    "Produce the 2-D t-SNE scatter plot of high-amplitude whole-brain coactivation events coloured by brain state, by embedding the event × region matrix with t-SNE, clustering the embedding with HDBSCAN, reassigning noise points to their best-correlating cluster centroid in the original region space, relabelling clusters by descending size, and drawing them as red/blue/black point clouds with colour-matched legend text.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-tsne_hdbscan-cluster_scatter_plot"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_stats_patch_xps.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py",
+      "scripts/zebrafish_Ca_visualization_patch_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

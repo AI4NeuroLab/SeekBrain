@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-fingerprint_mannwhitney-box_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Test whether zebrafish larvae are significantly self-similar across days by splitting the cross-day FC-similarity matrix into intra-individual (diagonal) and inter-individual (off-diagonal) groups and comparing them with a two-sided Mann-Whitney U test, then plotting both distributions as jittered scatter points under unfilled min-to-max boxplots with the p-value annotated.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "fingerprint",
+    "mannwhitney",
+    "box"
+  ],
+  "does": [
+    "group_comparison"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "distribution_plot",
+    "identity_fingerprint"
+  ],
+  "use_when": [
+    "Run the Significance of FC fingerprinting: intra- vs inter-individual similarity recipe",
+    "Test whether zebrafish larvae are significantly self-similar across days by splitting the cross-day FC-similarity matrix into intra-individual (diagonal) and inter-individual (off-diagonal) groups and comparing them with a two-sided Mann-Whitney U test, then plotting both distributions as jittered scatter points under unfilled min-to-max boxplots with the p-value annotated.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-fingerprint_mannwhitney-box_plot"
+  ],
+  "avoid_when": [
+    "Independent biological replicates or an appropriate null model are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

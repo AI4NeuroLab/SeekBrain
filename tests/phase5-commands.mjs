@@ -6,13 +6,13 @@ const extensionSource = await readFile(new URL("src/extension/runtime/index.ts",
 const systemSource = await readFile(new URL("src/extension/commands/system-commands.ts", root), "utf8");
 const showSource = await readFile(new URL("src/extension/commands/show-command.ts", root), "utf8");
 const saveSource = await readFile(new URL("src/extension/commands/save-skill-command.ts", root), "utf8");
-const reportSource = await readFile(new URL("src/extension/commands/report-command.ts", root), "utf8");
+const reportSource = await readFile(new URL("src/extension/commands/study-report-command.ts", root), "utf8");
 
 assert.doesNotMatch(extensionSource, /pi\.registerCommand\(/);
 assert.match(extensionSource, /registerSystemCommands\(pi/);
 assert.match(extensionSource, /registerShowCommand\(pi/);
 assert.match(extensionSource, /registerSaveSkillCommand\(pi/);
-assert.match(extensionSource, /registerReportCommand\(pi/);
+assert.match(extensionSource, /registerStudyReportCommand\(pi/);
 assert.match(systemSource, /"seekbrain-reload-config"/);
 assert.match(systemSource, /"seekbrain-tools"/);
 assert.match(showSource, /"seekbrain-show"/);

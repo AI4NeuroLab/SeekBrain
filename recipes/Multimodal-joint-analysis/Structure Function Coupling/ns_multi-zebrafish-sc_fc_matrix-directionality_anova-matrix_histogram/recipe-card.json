@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-sc_fc_matrix-directionality_anova-matrix_histogram",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Test whether the existence and reciprocity of a structural connection changes functional coupling strength, by classifying every zebrafish region pair as unconnected / unidirectional / bidirectional from the directed structural connectome, pooling the per-larva FC values in each class, and comparing the three distributions with a one-way ANOVA.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "fc",
+    "matrix",
+    "directionality"
+  ],
+  "does": [
+    "group_comparison",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "distribution_plot",
+    "result_matrix"
+  ],
+  "use_when": [
+    "Analyze directionality of structural connections vs functional coupling strength",
+    "Generate directionality of structural connections vs functional coupling strength outputs",
+    "Apply the ns_multi-zebrafish-sc_fc_matrix-directionality_anova-matrix_histogram recipe"
+  ],
+  "avoid_when": [
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate",
+    "Independent biological replicates or an appropriate null model are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -10,6 +10,14 @@ import {
 } from "../../src/workflows/index.ts";
 
 describe("research planning workflow", () => {
+  it("defines each analysis question as the standalone child-run input", async () => {
+    const prompt = await readFile(join(process.cwd(), "prompts", "research_subquestions.md"), "utf8");
+    const normalized = prompt.replace(/\s+/g, " ");
+    expect(normalized).toContain("canonical raw question for a standalone SeekBrain run");
+    expect(normalized).toContain("state that foundational invariant, how to check it");
+    expect(normalized).toContain("keep anticipated results and support/contradict thresholds");
+  });
+
   it("verifies explicit Research Planning evidence without language-specific intent rules", () => {
     const question = "Please use Research Planning for this study. Dataset: /data/27";
     expect(verifiedExplicitResearchPlanningRequest(question, "Please use Research Planning for this study.")).toBe("Please use Research Planning for this study.");
@@ -96,6 +104,243 @@ describe("research planning workflow", () => {
     }
   });
 
+  it("keeps a detailed TaskBrief on one standard pipeline", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-route-requirements-"));
+    try {
+      const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
+      const question = "Classify fish 1-3 neurons from RNA spot counts with cfos, grouping, sampling, and aligned annotations.";
+      const run = await lifecycle.startRun(cwd, "run", undefined, question);
+      await lifecycle.updateState(run, { data_info: JSON.stringify({ modality: "RNA spot counts", annotations: ["gene", "fish", "brain region"] }) });
+      const workflow = new ResearchPlanningWorkflow({
+        lifecycle,
+        runAgent: async () => ({ ok: true, result: {
+          route: "research_planning",
+          reason: "The request contains many analysis requirements.",
+          dataset_summary: "RNA counts with the required annotations",
+          question_requirements: "Classify and visualize molecular subtypes.",
+          recommended_action: "Run the direct analysis pipeline.",
+          evidence_dimensions: ["molecular", "anatomical"],
+          inferred_background: "",
+          inferred_scientific_goal: "Classify molecular subtypes.",
+          task_brief: {
+            scientific_goal: "Classify fish neurons by RNA barcodes and visualize ordered subtype patterns.",
+            intent_mode: "focused_analysis",
+            intent_status: "ready",
+            biological_scope: ["fish 1-3 neurons"],
+            requested_data: ["Use continuous RNA spot counts.", "Use gene, fish, and brain-region identities."],
+            hard_constraints: [
+              "Restrict the analysis to fish 1-3.",
+              "Binarize 41 genes.",
+              "Exclude cfos from the 40-gene subtype barcode.",
+              "Take annotation modes every 10 cells.",
+            ],
+            output_preferences: [
+              "Retain cfos in the displayed matrix.",
+              "Select one representative expression cell every 130 cells.",
+            ],
+          },
+          execution_topology: "single_pipeline",
+        } }),
+        writeJson: async (path, value) => {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, JSON.stringify(value, null, 2));
+        },
+        appendEvent: async () => {},
+      });
+
+      const result = await workflow.assess({ cwd, runId: run.runId, rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
+      expect(result).toMatchObject({
+        route: "standard",
+        route_normalized_from: "research_planning",
+        execution_topology: "single_pipeline",
+        needs_user_review: false,
+        next_tool: "seekbrain_formulation_generate",
+      });
+      expect(result.task_brief.requested_data).toEqual(expect.arrayContaining([
+        "Use continuous RNA spot counts.",
+        "Use gene, fish, and brain-region identities.",
+      ]));
+      expect(result.task_brief.hard_constraints).toContain("Exclude cfos from the 40-gene subtype barcode.");
+      const explicitlyForced = await workflow.recordAssessment({
+        cwd,
+        runId: run.runId,
+        assessment: { ...result, route: "research_planning", route_override: "explicit_user_request" },
+      });
+      expect(explicitlyForced).toMatchObject({
+        route: "research_planning",
+        route_override: "explicit_user_request",
+        needs_user_review: true,
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("routes focused, open-discovery, multi-workstream, and ambiguous questions on separate axes", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-route-intent-modes-"));
+    try {
+      const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
+      const focusedQuestion = "Perform PCA on the cell expression matrix.";
+      const discoveryQuestion = "Find scientifically valuable discoveries in this dataset.";
+      const multiQuestion = "Test independent behavioral and neural explanations.";
+      const ambiguousQuestion = "Analyze this dataset.";
+      const runs = {
+        focused: await lifecycle.startRun(cwd, "focused", undefined, focusedQuestion),
+        discovery: await lifecycle.startRun(cwd, "discovery", undefined, discoveryQuestion),
+        multi: await lifecycle.startRun(cwd, "multi", undefined, multiQuestion),
+        ambiguous: await lifecycle.startRun(cwd, "ambiguous", undefined, ambiguousQuestion),
+      };
+      const brief = (
+        scientificGoal: string,
+        intentMode: "focused_analysis" | "open_discovery",
+        intentStatus: "ready" | "ambiguous",
+      ) => ({
+        scientific_goal: scientificGoal,
+        intent_mode: intentMode,
+        intent_status: intentStatus,
+        biological_scope: [],
+        requested_data: [],
+        hard_constraints: [],
+        output_preferences: [],
+      });
+      const responses: Record<string, any> = {
+        [focusedQuestion]: {
+          route: "research_planning",
+          reason: "The request is short.",
+          task_brief: brief(focusedQuestion, "focused_analysis", "ready"),
+          execution_topology: "single_pipeline",
+        },
+        [discoveryQuestion]: {
+          route: "standard",
+          reason: "The request delegates scientific discovery.",
+          task_brief: brief(discoveryQuestion, "open_discovery", "ready"),
+          execution_topology: "open_discovery",
+        },
+        [multiQuestion]: {
+          route: "standard",
+          reason: "The request requires independent behavioral and neural branches.",
+          task_brief: brief(multiQuestion, "focused_analysis", "ready"),
+          execution_topology: "independent_branches",
+        },
+        [ambiguousQuestion]: {
+          route: "standard",
+          reason: "Use the ordinary workflow.",
+          task_brief: brief(ambiguousQuestion, "focused_analysis", "ambiguous"),
+          execution_topology: "single_pipeline",
+        },
+      };
+      const workflow = new ResearchPlanningWorkflow({
+        lifecycle,
+        runAgent: async ({ prompt }) => {
+          const question = Object.keys(responses).find((candidate) => prompt.includes(candidate));
+          if (!question) return { ok: false, error: "missing fixture" };
+          return { ok: true, result: responses[question] };
+        },
+        writeJson: async (path, value) => {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, JSON.stringify(value, null, 2));
+        },
+        appendEvent: async () => {},
+      });
+
+      await expect(workflow.assess({ cwd, runId: runs.focused.runId, rolePrompt: "route", agentConfig: {}, finalizeSchema: {} }))
+        .resolves.toMatchObject({ route: "standard", route_normalized_from: "research_planning", next_tool: "seekbrain_formulation_generate" });
+      await expect(workflow.assess({ cwd, runId: runs.discovery.runId, rolePrompt: "route", agentConfig: {}, finalizeSchema: {} }))
+        .resolves.toMatchObject({ route: "research_planning", planning_mode: "discovery", route_normalized_from: "standard" });
+      await expect(workflow.assess({ cwd, runId: runs.multi.runId, rolePrompt: "route", agentConfig: {}, finalizeSchema: {} }))
+        .resolves.toMatchObject({ route: "research_planning", planning_mode: "decomposition", execution_topology: "independent_branches", route_normalized_from: "standard" });
+      await expect(workflow.assess({ cwd, runId: runs.ambiguous.runId, rolePrompt: "route", agentConfig: {}, finalizeSchema: {} }))
+        .resolves.toMatchObject({ route: "needs_clarification", route_normalized_from: "standard", needs_user_clarification: true });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("uses discovery planning to turn an authorized broad objective into Recipe-ready terminal tasks", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "seekbrain-discovery-planning-"));
+    try {
+      const lifecycle = new RunLifecycleWorkflow(new FileRunRepository());
+      const question = "Find scientifically valuable discoveries in this neural dataset.";
+      const run = await lifecycle.startRun(cwd, "run", undefined, question);
+      await lifecycle.updateState(run, { data_info: JSON.stringify({ modalities: ["neural activity", "behavior"], variables: ["time", "region", "condition"] }) });
+      const workflow = new ResearchPlanningWorkflow({
+        lifecycle,
+        runAgent: async ({ prompt, finalizeTool }) => {
+          expect(finalizeTool).toBe("finalize_research_plan");
+          expect(prompt).toContain("Planning mode: discovery.");
+          expect(prompt).toContain("Propose 2 or 3 distinct, biologically meaningful, dataset-grounded hypotheses");
+          expect(prompt).toContain("suitable for independent Recipe retrieval");
+          const task = (id: string, title: string) => ({
+            id,
+            title,
+            analysis_question: `${title}?`,
+            biological_hypothesis: `${title} is supported by the recorded observations.`,
+            analysis_strategy: `Quantify ${title.toLowerCase()} using the available variables.`,
+            required_data: ["recorded observations"],
+            expected_evidence: "A quantified effect with uncertainty.",
+            supports_conclusion_if: "The effect is robust across validation checks.",
+            contradicts_conclusion_if: "The effect is absent or unstable.",
+          });
+          return { ok: true, result: {
+            research_goal: "Identify testable neural discoveries.",
+            planning_rationale: "The open objective requires dataset-grounded hypothesis generation.",
+            subquestions: [
+              {
+                id: "one",
+                question: "Does regional activity vary by condition?",
+                hypothesis: "Regional activity differs by condition.",
+                role_in_overall_conclusion: "Tests a spatially resolved discovery direction.",
+                dataset_grounding: ["region", "condition", "neural activity"],
+                tasks: [task("one-task", "Test regional condition effects")],
+              },
+              {
+                id: "two",
+                question: "Does neural activity predict behavior over time?",
+                hypothesis: "Neural activity predicts behavioral variation.",
+                role_in_overall_conclusion: "Tests a cross-modal discovery direction.",
+                dataset_grounding: ["neural activity", "behavior", "time"],
+                tasks: [task("two-task", "Test neural-behavior coupling")],
+              },
+            ],
+            synthesis_strategy: "Compare the strength and robustness of the two discoveries.",
+          } };
+        },
+        writeJson: async (path, value) => {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, JSON.stringify(value, null, 2));
+        },
+        appendEvent: async () => {},
+      });
+      const assessed = await workflow.recordAssessment({
+        cwd,
+        runId: run.runId,
+        assessment: {
+          route: "research_planning",
+          reason: "The user delegated scientific-direction discovery.",
+          evidence_dimensions: ["neural activity", "behavior", "region", "time"],
+          inferred_scientific_goal: "Identify valuable findings supported by the dataset.",
+          task_brief: {
+            scientific_goal: question,
+            intent_mode: "open_discovery",
+            intent_status: "ready",
+            biological_scope: [],
+            requested_data: ["neural activity", "behavior", "region", "time"],
+            hard_constraints: [],
+            output_preferences: [],
+          },
+          execution_topology: "open_discovery",
+        },
+      });
+      expect(assessed).toMatchObject({ route: "research_planning", planning_mode: "discovery" });
+      await workflow.recordDecision(cwd, run.runId, "yes");
+      const prepared = await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "plan", agentConfig: {}, finalizeSchema: {} });
+      expect(prepared).toMatchObject({ ok: true, planning_mode: "discovery", subquestion_count: 2, task_count: 2 });
+      expect(prepared.subquestions[0].tasks[0].analysis_question).not.toBe(question);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("requires a Yes decision before preparing subquestions and lets No use the standard route", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "seekbrain-research-planning-"));
     try {
@@ -122,6 +367,20 @@ describe("research planning workflow", () => {
               evidence_dimensions: ["behavior", "neural", "pose"],
               inferred_background: "possible motor confound",
               inferred_scientific_goal: "distinguish cognitive and embodied priors",
+              task_brief: {
+                scientific_goal: "Test behavioral, neural, and posture explanations of the prior signal.",
+                intent_mode: "focused_analysis",
+                intent_status: "ready",
+                biological_scope: ["behavior", "neural activity", "posture"],
+                requested_data: ["behavior", "neural activity", "posture"],
+                hard_constraints: [
+                  "Quantify behavioral evidence for the prior signal.",
+                  "Quantify neural evidence for the prior signal.",
+                  "Test posture as an embodied confound.",
+                ],
+                output_preferences: [],
+              },
+              execution_topology: "independent_branches",
               literature_queries: ["behavior neural prior", "posture neural activity"],
             } };
           }
@@ -152,6 +411,10 @@ describe("research planning workflow", () => {
           }
           expect(finalizeTool).toBe("finalize_research_plan");
           expect(prompt).toContain("[Literature Grounding Background]\nDevelopmental evidence supports modality-specific tests.");
+          expect(prompt).toContain("Planning mode: decomposition.");
+          expect(prompt).toContain("TaskBrief from research intake:");
+          expect(prompt).toContain("Quantify behavioral evidence for the prior signal.");
+          expect(prompt).toContain("Execution topology from research intake:\nindependent_branches");
           const task = (id: string, title: string) => ({
             id,
             title,
@@ -195,12 +458,14 @@ describe("research planning workflow", () => {
       });
 
       const assessed = await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
-      expect(assessed).toMatchObject({ ok: true, route: "research_planning", needs_user_review: true, next_tool: "seekbrain_planning_decision_review" });
+      expect(assessed).toMatchObject({ ok: true, route: "research_planning", planning_mode: "decomposition", needs_user_review: true, next_tool: "seekbrain_planning_decision_review" });
       expect(assessed.literature_queries).toEqual(["behavior neural prior", "posture neural activity"]);
+      expect(assessed.task_brief.requested_data).toHaveLength(3);
+      expect(assessed.execution_topology).toBe("independent_branches");
       expect(await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "subquestion role", agentConfig: {}, finalizeSchema: {} })).toMatchObject({ ok: false, blocked_by_human_review: true });
 
       const declined = await workflow.recordDecision(cwd, run.runId, "no");
-      expect(declined).toMatchObject({ ok: true, route: "standard", next_tool: "seekbrain_recipe_retrieve" });
+      expect(declined).toMatchObject({ ok: true, route: "standard", next_tool: "seekbrain_formulation_generate" });
 
       await workflow.assess({ cwd, runId: run.runId, literatureProvider: "semantic_scholar", rolePrompt: "route role", agentConfig: {}, finalizeSchema: {} });
       expect(await workflow.recordDecision(cwd, run.runId, "agent_full_auto", "native_selector", "Agent-Full-Auto")).toMatchObject({
@@ -231,7 +496,7 @@ describe("research planning workflow", () => {
       });
       phase = "subquestions";
       const prepared = await workflow.prepareSubquestions({ cwd, runId: run.runId, rolePrompt: "subquestion role", agentConfig: {}, finalizeSchema: {}, peerReviewRequired: true });
-      expect(prepared).toMatchObject({ ok: true, needs_reviewer_review: true, subquestion_count: 2, task_count: 2 });
+      expect(prepared).toMatchObject({ ok: true, planning_mode: "decomposition", needs_reviewer_review: true, subquestion_count: 2, task_count: 2 });
       expect(prepared.subquestions).toHaveLength(2);
       expect(prepared.subquestions[0].id).toBe("SQ1");
       expect(prepared.subquestions[0].tasks[0].id).toBe("SQ1-T1");
@@ -489,7 +754,7 @@ describe("research planning workflow", () => {
       });
       expect(approved).toMatchObject({ ok: true, decision: "approve", status: "approved_for_execution", next_tool: "seekbrain_analysis_tasks_prepare" });
       const materialized = await workflow.materializeResearchTasks({ cwd, runId: run.runId });
-      expect(materialized).toMatchObject({ ok: true, reused: false, task_count: 2, next_tool: "seekbrain_recipe_retrieve" });
+      expect(materialized).toMatchObject({ ok: true, reused: false, task_count: 2, next_tool: "seekbrain_formulation_generate" });
       expect(materialized.task_runs.map((item: any) => item.task_id)).toEqual(["SQ1-T1", "SQ2-T1"]);
       expect(materialized.task_runs[0].run_dir).toBe(join(cwd, "project", "research_tasks", "SQ1-T1", "round1"));
       expect(materialized.task_runs[0].task_project_manifest_path).toBe(join(cwd, "project", "research_tasks", "SQ1-T1", "project.json"));
@@ -504,7 +769,14 @@ describe("research planning workflow", () => {
         round_number: 1,
         data_info: JSON.stringify({ variables: ["measurements"] }),
       });
-      expect(firstChild.inherited_context.task.biological_hypothesis).toBe("The effect is present.");
+      expect(firstChild.question).toBe("Is the effect present?");
+      expect(firstChild.inherited_context).toEqual({
+        source: "research_planning_engine",
+        parent_run_id: run.runId,
+        parent_run_dir: run.runDir,
+        research_task_id: "SQ1-T1",
+        research_subquestion_id: "SQ1",
+      });
       expect(firstChild.research_planning).toMatchObject({ status: "task_execution", enabled: false });
       const parentProject = JSON.parse(await readFile(join(cwd, "project", "project.json"), "utf8"));
       expect(parentProject.research_tasks).toEqual(expect.arrayContaining([

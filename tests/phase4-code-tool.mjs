@@ -26,7 +26,6 @@ assert.match(promptSource, /one compact non-visual verification/);
 assert.match(promptSource, /Avoid repeated[\s\S]*successful reruns/);
 assert.match(toolSource, /createDependencyInstallToolResultHandler/);
 assert.doesNotMatch(toolSource, /pi\.registerTool|createAgentSession|spawn\(/);
-assert.match(dependencySource, /CONDA_PREFIX/);
 assert.match(dependencySource, /--user/);
 assert.match(dependencySource, /yes_to_all/);
 assert.match(dependencySource, /SerializedReviewGate/);

@@ -6,6 +6,7 @@ import { Type } from "typebox";
 import {
   verifiedExplicitResearchPlanningRequest,
   workflowConfigResult,
+  type TaskBriefWorkflow,
   type ResearchPlanningWorkflow,
   type RunLifecycleWorkflow,
   type WorkflowRunContext,
@@ -15,6 +16,7 @@ import type { Json, SeekBrainToolDefinition } from "../runtime-types.ts";
 
 export interface LifecycleToolDependencies {
   lifecycle: RunLifecycleWorkflow;
+  taskBriefWorkflow: TaskBriefWorkflow;
   planningWorkflow: ResearchPlanningWorkflow;
   loadConfig(cwd: string): Promise<Json>;
   workflowConfig(config: Json): {
@@ -55,30 +57,57 @@ function effectiveWorkflowConfigResult(config: Json): Json {
 }
 
 export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrainToolDefinition[] {
+  async function resolveDirectTaskBrief(
+    cwd: string,
+    runId: string,
+    config: Json,
+    signal?: AbortSignal,
+  ): Promise<Json> {
+    return await deps.taskBriefWorkflow.resolveDirect({
+      cwd,
+      runId,
+      rolePrompt: await deps.readPrompt("task_brief"),
+      agentConfig: deps.pickAgentConfig(config, "seekbrain_task_brief"),
+      signal,
+    });
+  }
+
+  async function resolveRoutedTaskBrief(
+    cwd: string,
+    runId: string,
+    researchRoute: Json,
+    originalQuestion: string,
+    config: Json,
+    signal?: AbortSignal,
+  ): Promise<Json | undefined> {
+    if (researchRoute.task_brief && typeof researchRoute.task_brief === "object") {
+      return await deps.taskBriefWorkflow.resolveRoute({
+        cwd,
+        runId,
+        taskBrief: researchRoute.task_brief,
+        originalQuestion,
+      });
+    }
+    if (researchRoute.route === "standard") {
+      return await resolveDirectTaskBrief(cwd, runId, config, signal);
+    }
+    return undefined;
+  }
+
   return [
     defineTool({
       name: "seekbrain_research_start",
       label: "Start Research",
-      description: "Start a multi-round SeekBrain project and record the main Orchestrator's lightweight Planning assessment, with an internal compatibility fallback when no assessment is supplied. The direct analysis workflow materializes project_dir/round1; Research Planning keeps parent state under project_dir/planning and creates only child analysis-task rounds. Pass metadata_json_path when metadata already exists; the tool reads and locks its content internally.",
+      description: "Start a multi-round SeekBrain project. The Research Route Agent creates a lightweight TaskBrief, checks dataset fit, classifies broad execution topology, and selects the standard or Research Planning route in one call. The direct analysis workflow materializes project_dir/round1; Research Planning keeps parent state under project_dir/planning and creates only child analysis-task rounds. Pass metadata_json_path when metadata already exists; the tool reads and locks its content internally.",
       parameters: Type.Object({
         project_dir: Type.String({ description: "Stable project-ID directory. Round outputs are created below it as round1, round2, ..." }),
         question: Type.String({ description: "Research question for round1." }),
         background: Type.Optional(Type.String({ description: "Optional scientific background supplied by the user. It is incorporated into the Research Survey and downstream Research Planning context." })),
         data_info: Type.Optional(Type.String({ description: "Inline canonical metadata content. Omit this when metadata_json_path is available; it is inherited unchanged by later rounds." })),
         extra_path_info: Type.Optional(Type.String({ description: "Canonical path/access notes. They are inherited unchanged by later rounds." })),
+        reference_paths: Type.Optional(Type.Array(Type.String({ description: "Reference file or directory explicitly supplied in the user's natural-language request. Any material type; relative to the user working directory. Omit if none supplied." }))),
         metadata_json_path: Type.Optional(Type.String({ description: "Canonical metadata JSON path for this project. The tool reads and locks the file content internally." })),
-        planning_assessment: Type.Optional(Type.Object({
-          route: Type.Union([Type.Literal("standard"), Type.Literal("research_planning"), Type.Literal("needs_clarification")]),
-          reason: Type.String(),
-          dataset_summary: Type.Optional(Type.String()),
-          question_requirements: Type.Optional(Type.String()),
-          recommended_action: Type.Optional(Type.String()),
-          evidence_dimensions: Type.Optional(Type.Array(Type.String())),
-          inferred_background: Type.Optional(Type.String()),
-          inferred_scientific_goal: Type.Optional(Type.String()),
-          literature_queries: Type.Optional(Type.Array(Type.String(), { maxItems: 3 })),
-          explicit_request_quote: Type.Optional(Type.String({ description: "Exact quote from the current user request that explicitly asks for Research Planning by name. Omit when Research Planning is only recommended or discussed." })),
-        }, { description: "Compact Planning assessment prepared by the main Orchestrator from the current question and resolved dataset metadata. Supplying it avoids a separate routing-agent call." })),
+        research_planning_request_quote: Type.Optional(Type.String({ description: "Exact quote from the current user request that explicitly asks for Research Planning by name. This records consent without bypassing the Research Route Agent." })),
         deliverables: deliverablesSchema,
       }),
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -122,32 +151,42 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
             extra_path_info: params.extra_path_info,
             metadata_json_path: canonicalMetadataPath,
             user_background: params.background,
+            reference_paths: params.reference_paths,
           },
           deferInitialRound: workflowFlags.research_planning,
         });
         // metadata.json is the single canonical metadata artifact. A second round-local
         // snapshot duplicated the same content without adding execution value.
-        const suppliedAssessment = params.planning_assessment as Json | undefined;
         const researchPlanningAuto = process.env.SEEKBRAIN_RUN_MODE === "research_planning_auto";
-        const explicitPlanningEvidence = verifiedExplicitResearchPlanningRequest(params.question, suppliedAssessment?.explicit_request_quote);
+        const explicitPlanningEvidence = verifiedExplicitResearchPlanningRequest(
+          params.question,
+          params.research_planning_request_quote,
+        );
         let researchRoute = workflowFlags.research_planning
-          ? suppliedAssessment
-            ? await deps.planningWorkflow.recordAssessment({
-              cwd: ctx.cwd,
-              runId: created.run.runId,
-              assessment: { ...suppliedAssessment, route: researchPlanningAuto || explicitPlanningEvidence ? "research_planning" : suppliedAssessment.route },
-            })
-            : await deps.planningWorkflow.assess({
-              cwd: ctx.cwd,
-              runId: created.run.runId,
-              literatureProvider: workflowFlags.literature_provider,
-              background: params.background,
-              rolePrompt: await deps.readPrompt("research_route"),
-              agentConfig: deps.pickAgentConfig(config, "seekbrain_research_route"),
-              finalizeSchema: deps.researchRouteSchema(workflowFlags.literature_provider),
-              signal,
-            })
-          : { enabled: false, route: "standard", needs_user_review: false, needs_user_clarification: false, next_tool: "seekbrain_recipe_retrieve" };
+          ? await deps.planningWorkflow.assess({
+            cwd: ctx.cwd,
+            runId: created.run.runId,
+            literatureProvider: workflowFlags.literature_provider,
+            background: params.background,
+            rolePrompt: await deps.readPrompt("research_route"),
+            agentConfig: deps.pickAgentConfig(config, "seekbrain_research_route"),
+            finalizeSchema: deps.researchRouteSchema(workflowFlags.literature_provider),
+            signal,
+          })
+          : { enabled: false, route: "standard", needs_user_review: false, needs_user_clarification: false, next_tool: "seekbrain_formulation_generate" };
+        if (workflowFlags.research_planning && explicitPlanningEvidence && researchRoute.route !== "research_planning") {
+          researchRoute = await deps.planningWorkflow.recordAssessment({
+            cwd: ctx.cwd,
+            runId: created.run.runId,
+            assessment: {
+              ...researchRoute,
+              route: "research_planning",
+              route_override: "explicit_user_request",
+              reason: researchRoute.reason || "Research Planning was explicitly requested by the user.",
+              recommended_action: "Generate the hierarchical research plan after recording the explicit request.",
+            },
+          });
+        }
         if (workflowFlags.research_planning && researchPlanningAuto && researchRoute.route !== "research_planning") {
           researchRoute = await deps.planningWorkflow.recordAssessment({
             cwd: ctx.cwd,
@@ -155,12 +194,14 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
             assessment: {
               ...researchRoute,
               route: "research_planning",
+              route_override: "cli_research_planning",
               reason: "Research Planning was selected by the seekbrain run command.",
               recommended_action: "Run the hierarchical workflow in Agent-Full-Auto mode.",
             },
           });
         }
-        if (researchRoute.route === "research_planning" && (researchPlanningAuto || explicitPlanningEvidence)) {
+        const creativePlanning = workflowFlags.research_planning_strategy === "creative";
+        if (researchRoute.route === "research_planning" && (researchPlanningAuto || (!creativePlanning && explicitPlanningEvidence))) {
           const decision = researchPlanningAuto ? "agent_full_auto" : "yes";
           const source = researchPlanningAuto ? "cli_research_planning" : "explicit_user_request";
           const consentEvidence = researchPlanningAuto ? "--research-planning" : explicitPlanningEvidence;
@@ -172,9 +213,25 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
             planning_consent: researchPlanningAuto ? "agent_full_auto" : "explicit_request",
           };
         }
+        if (creativePlanning && !researchPlanningAuto && researchRoute.route === "research_planning") {
+          researchRoute = {
+            ...researchRoute,
+            needs_user_review: false,
+            planning_consent: "creative_idea_selection_first",
+            next_tool: "seekbrain_planning_generate",
+          };
+        }
         const active = workflowFlags.research_planning && researchRoute.route === "standard"
           ? await deps.lifecycle.materializeInitialRound(ctx.cwd, created.run.runId)
           : created;
+        const taskBrief = await resolveRoutedTaskBrief(
+          ctx.cwd,
+          active.run.runId,
+          researchRoute,
+          params.question,
+          config,
+          signal,
+        );
         deps.setActiveRunDir(active.run.runDir);
         const startResult = {
           ok: true,
@@ -191,7 +248,12 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
           metadata_locked: true,
           metadata_json_path: canonicalMetadataPath,
           deliverables: active.run.state.deliverables,
-          question: active.run.state.question,
+          question: taskBrief?.question || active.run.state.question,
+          ...(taskBrief ? {
+            task_brief: taskBrief.task_brief,
+            task_brief_path: taskBrief.task_brief_path,
+            task_brief_reused: taskBrief.reused,
+          } : {}),
           workflow_config: effectiveWorkflowConfigResult(config),
           research_route: researchRoute,
           next_tool: researchRoute.next_tool,
@@ -217,9 +279,10 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
         direction: Type.String({ description: "Accepted suggested direction or the user's own next research question." }),
         deliverables: deliverablesSchema,
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(ctx.cwd);
         const created = await deps.lifecycle.continueResearch(ctx.cwd, params.source_path, params.direction, params.deliverables);
+        const taskBrief = await resolveDirectTaskBrief(ctx.cwd, created.run.runId, config, signal);
         deps.setActiveRunDir(created.run.runDir);
         return deps.content({
           ok: true,
@@ -237,7 +300,10 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
           metadata_locked: true,
           inherited_context: created.run.state.inherited_context,
           deliverables: created.run.state.deliverables,
-          question: created.run.state.question,
+          question: taskBrief.question || created.run.state.question,
+          task_brief: taskBrief.task_brief,
+          task_brief_path: taskBrief.task_brief_path,
+          task_brief_reused: taskBrief.reused,
           workflow_config: workflowConfigResult(config as any),
           guidance: "Continue the normal SeekBrain stages using this new run_id. Reuse prior round artifacts only through inherited_context; write every new output inside the new round directory.",
         });
@@ -253,11 +319,23 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
         question: Type.Optional(Type.String({ description: "Research question or task text to persist in state.json." })),
         deliverables: deliverablesSchema,
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(ctx.cwd);
         const run = await deps.startRun(ctx.cwd, params.work_dir, params.deliverables, params.question);
+        const taskBrief = await resolveDirectTaskBrief(ctx.cwd, run.runId, config, signal);
         deps.setActiveRunDir(run.runDir);
-        return deps.content({ ok: true, extension: "seekbrain", run_id: run.runId, run_dir: run.runDir, deliverables: run.state.deliverables, question: run.state.question, workflow_config: workflowConfigResult(config as any) });
+        return deps.content({
+          ok: true,
+          extension: "seekbrain",
+          run_id: run.runId,
+          run_dir: run.runDir,
+          deliverables: run.state.deliverables,
+          question: taskBrief.question || run.state.question,
+          task_brief: taskBrief.task_brief,
+          task_brief_path: taskBrief.task_brief_path,
+          task_brief_reused: taskBrief.reused,
+          workflow_config: workflowConfigResult(config as any),
+        });
       },
       renderResult: renderSeekBrainResult("seekbrain_run_start"),
     }),
@@ -269,11 +347,23 @@ export function createLifecycleTools(deps: LifecycleToolDependencies): SeekBrain
         work_dir: Type.String({ description: "Existing run directory to resume. Preserve explicit absolute paths." }),
         question: Type.Optional(Type.String({ description: "Updated research question or follow-up instruction to persist in state.json." })),
       }),
-      async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const config = await deps.loadConfig(ctx.cwd);
         const run = await deps.resumeRun(ctx.cwd, params.work_dir, params.question);
+        const taskBrief = await resolveDirectTaskBrief(ctx.cwd, run.runId, config, signal);
         deps.setActiveRunDir(run.runDir);
-        return deps.content({ ok: true, extension: "seekbrain", run_id: run.runId, run_dir: run.runDir, question: run.state.question, state_path: run.statePath, workflow_config: workflowConfigResult(config as any) });
+        return deps.content({
+          ok: true,
+          extension: "seekbrain",
+          run_id: run.runId,
+          run_dir: run.runDir,
+          question: taskBrief.question || run.state.question,
+          state_path: run.statePath,
+          task_brief: taskBrief.task_brief,
+          task_brief_path: taskBrief.task_brief_path,
+          task_brief_reused: taskBrief.reused,
+          workflow_config: workflowConfigResult(config as any),
+        });
       },
       renderResult: renderResumeRunResult,
     }),

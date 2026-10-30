@@ -1,10 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Value } from "typebox/value";
+import { ExecutionContractSchema, type ExecutionContract } from "../../core/index.ts";
 import type { RunLifecycleWorkflow, WorkflowJson, WorkflowRunContext } from "./run-lifecycle.ts";
 
 export interface ReviewWorkflowDependencies {
   lifecycle: RunLifecycleWorkflow;
   writeText(path: string, value: string): Promise<void>;
+  writeJson(path: string, value: WorkflowJson): Promise<void>;
   appendEvent(event: WorkflowJson): Promise<void>;
 }
 
@@ -92,7 +95,7 @@ export class ReviewWorkflow {
     return { ok: true, run_id: run.runId, stage, review, message: stage === "plan" ? "Recorded researcher feedback for the methodological schema. For local schema edits, update the persisted schema with seekbrain_formulation_update before requesting approval again; rerun seekbrain_formulation_generate only for broad redesigns." : `Recorded researcher feedback for '${stage}'. Rerun or revise the relevant stage with this feedback before requesting approval again.` };
   }
 
-  async updatePlan(input: { cwd: string; runId: string; planMarkdown: unknown; reviewSummary?: string; warnings?: string[]; revisionNote?: string }): Promise<WorkflowJson> {
+  async updatePlan(input: { cwd: string; runId: string; planMarkdown: unknown; executionContract?: unknown; reviewSummary?: string; warnings?: string[]; revisionNote?: string }): Promise<WorkflowJson> {
     const run = await this.dependencies.lifecycle.resolveRun(input.cwd, input.runId);
     const planMarkdown = String(input.planMarkdown || "").trim();
     if (!planMarkdown) return { ok: false, run_id: run.runId, error: "plan_markdown is required" };
@@ -100,6 +103,14 @@ export class ReviewWorkflow {
     const previousRevision = Number(previous.revision || 1);
     const revision = Number.isFinite(previousRevision) ? previousRevision + 1 : 2;
     const planPath = join(run.runDir, "plan.md");
+    const executionContractPath = String(run.state.execution_contract_path || join(run.runDir, "execution_contract.json"));
+    const priorContract = Value.Check(ExecutionContractSchema, run.state.execution_contract)
+      ? run.state.execution_contract as ExecutionContract
+      : undefined;
+    const nextContract = input.executionContract === undefined ? priorContract : input.executionContract;
+    if (nextContract !== undefined && !Value.Check(ExecutionContractSchema, nextContract)) {
+      return { ok: false, run_id: run.runId, error: "execution_contract must contain non-empty requirements and validation_checks arrays." };
+    }
     const previousPath = join(run.runDir, "plan.previous.json");
     const next: WorkflowJson = {
       path: planPath,
@@ -114,16 +125,22 @@ export class ReviewWorkflow {
       const currentPlan = (await readFile(planPath, "utf8")).trim();
       if (currentPlan) await this.dependencies.writeText(previousPath, JSON.stringify({
         plan_markdown: currentPlan,
+        execution_contract: priorContract,
         review_summary: String(previous.review_summary || ""),
         warnings: Array.isArray(previous.warnings) ? previous.warnings : [],
         revision: previousRevision,
       }, null, 2));
     } catch { /* No prior Plan exists yet. */ }
     next.previous_path = previousPath;
+    if (nextContract) next.execution_contract_path = executionContractPath;
     await this.dependencies.writeText(planPath, planMarkdown);
-    await this.dependencies.lifecycle.updateState(run, { plan: next });
+    if (nextContract) await this.dependencies.writeJson(executionContractPath, nextContract as unknown as WorkflowJson);
+    await this.dependencies.lifecycle.updateState(run, {
+      plan: next,
+      ...(nextContract ? { execution_contract: nextContract, execution_contract_path: executionContractPath } : {}),
+    });
     await this.dependencies.appendEvent({ run_id: run.runId, event: "seekbrain_formulation_update", ok: true, plan_path: planPath, revision });
-    return { ok: true, run_id: run.runId, plan_path: planPath, revision, result: { review_summary: next.review_summary, warnings: next.warnings }, human_review: { required: true, approved: this.approved(run, "plan"), feedback: this.feedbackText(run, "plan"), needs_user_review: true }, message: "Updated plan.md. Show the concise review summary and ask the researcher to approve it before calling seekbrain_code_execute." };
+    return { ok: true, run_id: run.runId, plan_path: planPath, execution_contract_path: nextContract ? executionContractPath : undefined, revision, result: { execution_contract: nextContract, review_summary: next.review_summary, warnings: next.warnings }, human_review: { required: true, approved: this.approved(run, "plan"), feedback: this.feedbackText(run, "plan"), needs_user_review: true }, message: "Updated plan.md. Show the concise review summary and ask the researcher to approve it before calling seekbrain_code_execute." };
   }
 
   pending(run: WorkflowRunContext): WorkflowJson[] {

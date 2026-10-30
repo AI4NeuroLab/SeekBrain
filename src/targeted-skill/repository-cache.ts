@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { nonInteractiveGitEnv } from "../core/non-interactive-git.ts";
 
 type Json = Record<string, any>;
 
@@ -31,6 +32,7 @@ export interface MaterializedRepository {
   repository_dir?: string;
   source_commit?: string;
   candidate_files: RepositoryCandidateFile[];
+  tree_paths?: string[];
   reused: boolean;
   error?: string;
 }
@@ -38,10 +40,14 @@ export interface MaterializedRepository {
 export interface RepositoryCacheOptions {
   cacheRoot?: string;
   registryPath?: string;
+  failureCacheTtlMs?: number;
   runGit?: (args: string[], cwd: string | undefined, signal?: AbortSignal) => Promise<string>;
 }
 
-const SOURCE_SUFFIXES = new Set([".py", ".r", ".ipynb", ".m", ".jl", ".js", ".ts", ".sh", ".md", ".txt"]);
+export const REPOSITORY_SOURCE_EXTRACTOR_VERSION = "3";
+export const REPOSITORY_FAILURE_CACHE_TTL_MS = 10 * 60_000;
+
+const SOURCE_SUFFIXES = new Set([".py", ".r", ".rmd", ".qmd", ".ipynb", ".m", ".jl", ".js", ".ts", ".sh", ".md", ".txt"]);
 const EXCLUDED_SEGMENTS = new Set([".git", "node_modules", "data", "datasets", "results", "figures", "checkpoints", "weights", "dist", "build", "vendor"]);
 const activeMaterializations = new Map<string, Promise<MaterializedRepository>>();
 
@@ -94,7 +100,7 @@ async function defaultRunGit(args: string[], cwd?: string, signal?: AbortSignal)
       cwd,
       stdio: ["ignore", "pipe", "pipe"],
       signal,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      env: nonInteractiveGitEnv(),
     });
     let stdout = "";
     let stderr = "";
@@ -158,9 +164,53 @@ function rankPath(path: string, query: Set<string>): number {
 }
 
 function summarizeSource(path: string, content: string): string {
-  const signatures = content.match(/^\s*(?:def|class|function)\s+[^\n{]+/gm)?.slice(0, 4) || [];
+  const signatures = content.match(/^\s*(?:(?:def|class|function)\s+[^\n{]+|[A-Za-z.][A-Za-z0-9._]*\s*<-\s*function\s*\([^\n]*)/gm)?.slice(0, 4) || [];
   const imports = content.match(/^\s*(?:from\s+\S+\s+import|import\s+\S+|library\([^\n]+\))/gm)?.slice(0, 4) || [];
   return [...signatures, ...imports].join("; ") || `${extname(path).slice(1) || "text"} implementation reference`;
+}
+
+function extractRMarkdownCode(content: string): string {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const chunks: string[] = [];
+  let start = -1;
+  let body: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (start < 0 && /^\s*```\s*\{r(?:[\s,}])/i.test(lines[index])) {
+      start = index + 2;
+      body = [];
+      continue;
+    }
+    if (start >= 0 && /^\s*```\s*$/.test(lines[index])) {
+      const end = index;
+      chunks.push(`# Source lines ${start}-${end}\n${body.join("\n")}`);
+      start = -1;
+      body = [];
+      continue;
+    }
+    if (start >= 0) body.push(lines[index]);
+  }
+  return chunks.join("\n\n").trim();
+}
+
+function extractNotebookCode(content: string): string {
+  try {
+    const notebook = JSON.parse(content) as Json;
+    const cells = Array.isArray(notebook.cells) ? notebook.cells : [];
+    return cells.flatMap((cell: Json, index: number) => {
+      if (cell?.cell_type !== "code") return [];
+      const source = Array.isArray(cell.source) ? cell.source.join("") : String(cell.source || "");
+      return source.trim() ? [`# Notebook cell ${index + 1}\n${source.trim()}`] : [];
+    }).join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
+function inspectableSource(path: string, rawContent: string): string {
+  const suffix = extname(path.toLowerCase());
+  if (suffix === ".rmd" || suffix === ".qmd") return extractRMarkdownCode(rawContent).slice(0, 60_000);
+  if (suffix === ".ipynb") return extractNotebookCode(rawContent).slice(0, 60_000);
+  return rawContent.slice(0, 60_000);
 }
 
 async function materialize(rawRepository: string, question: string, title: string, options: RepositoryCacheOptions, signal?: AbortSignal): Promise<MaterializedRepository> {
@@ -171,9 +221,26 @@ async function materialize(rawRepository: string, question: string, title: strin
   const gitDir = join(repositoryDir, "repo.git");
   const materializedDir = join(repositoryDir, "files");
   const metadataPath = join(repositoryDir, "repository.json");
+  const failurePath = join(repositoryDir, "repository-failure.json");
   const runGit = options.runGit || defaultRunGit;
   await mkdir(repositoryDir, { recursive: true });
   let reused = existsSync(metadataPath) && existsSync(gitDir);
+  if (!reused) {
+    const failure = await readJson(failurePath, {});
+    const failedAt = Date.parse(String(failure.failed_at || ""));
+    const failureTtl = Math.max(0, options.failureCacheTtlMs ?? REPOSITORY_FAILURE_CACHE_TTL_MS);
+    if (failureTtl > 0 && Number.isFinite(failedAt) && Date.now() - failedAt < failureTtl) {
+      return {
+        ok: false,
+        repository_key: identity,
+        repository_url: url,
+        repository_dir: repositoryDir,
+        candidate_files: [],
+        reused: true,
+        error: String(failure.error || "repository materialization recently failed"),
+      };
+    }
+  }
   try {
     if (!existsSync(gitDir)) {
       await runGit(["clone", "--depth", "1", "--filter=blob:none", "--no-checkout", "--bare", url, gitDir], undefined, signal);
@@ -182,20 +249,31 @@ async function materialize(rawRepository: string, question: string, title: strin
     const sourceCommit = (await runGit(["rev-parse", "HEAD"], gitDir, signal)).trim();
     const paths = (await runGit(["ls-tree", "-r", "--name-only", "HEAD"], gitDir, signal)).split("\n").map((item) => item.trim()).filter(Boolean);
     const query = tokens(`${question} ${title}`);
-    const ranked = paths.map((path) => ({ path, score: rankPath(path, query) })).filter((item) => item.score >= 0).sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, 5);
+    const rankedAll = paths.map((path) => ({ path, score: rankPath(path, query) })).filter((item) => item.score >= 0).sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+    const readme = rankedAll.find((item) => /(?:^|\/)readme(?:\.[^/]*)?$/i.test(item.path));
+    const ranked = [readme, ...rankedAll].filter((item): item is { path: string; score: number } => Boolean(item))
+      .filter((item, index, all) => all.findIndex((other) => other.path === item.path) === index)
+      .slice(0, 6);
     const candidateFiles: RepositoryCandidateFile[] = [];
     await mkdir(materializedDir, { recursive: true });
     for (const item of ranked) {
-      const content = (await runGit(["show", `HEAD:${item.path}`], gitDir, signal)).slice(0, 60_000);
+      const content = inspectableSource(item.path, await runGit(["show", `HEAD:${item.path}`], gitDir, signal));
+      if (!content.trim()) continue;
       const localPath = join(materializedDir, item.path);
       await mkdir(dirname(localPath), { recursive: true });
       await writeFile(localPath, content, "utf8");
       candidateFiles.push({ path: item.path, local_path: localPath, summary: summarizeSource(item.path, content) });
     }
-    await writeJsonAtomic(metadataPath, { schema_version: 1, repository_key: identity, repository_url: url, source_commit: sourceCommit, candidate_files: candidateFiles, updated_at: new Date().toISOString() });
-    return { ok: true, repository_key: identity, repository_url: url, repository_dir: repositoryDir, source_commit: sourceCommit, candidate_files: candidateFiles, reused };
+    const treePaths = paths.slice(0, 240);
+    await writeJsonAtomic(metadataPath, { schema_version: 1, repository_key: identity, repository_url: url, source_commit: sourceCommit, extractor_version: REPOSITORY_SOURCE_EXTRACTOR_VERSION, candidate_files: candidateFiles, tree_paths: treePaths, updated_at: new Date().toISOString() });
+    await unlink(failurePath).catch(() => undefined);
+    return { ok: true, repository_key: identity, repository_url: url, repository_dir: repositoryDir, source_commit: sourceCommit, candidate_files: candidateFiles, tree_paths: treePaths, reused };
   } catch (error) {
-    return { ok: false, repository_key: identity, repository_url: url, repository_dir: repositoryDir, candidate_files: [], reused, error: String(error) };
+    const message = String(error);
+    if (!signal?.aborted) {
+      await writeJsonAtomic(failurePath, { schema_version: 1, repository_key: identity, repository_url: url, error: message, failed_at: new Date().toISOString() }).catch(() => undefined);
+    }
+    return { ok: false, repository_key: identity, repository_url: url, repository_dir: repositoryDir, candidate_files: [], reused, error: message };
   }
 }
 

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior-vonmises-phase_locking",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantify bump-to-scene phase locking with von Mises concentration and a circular-shift null distribution.",
+  "aliases": [
+    "analysis",
+    "zebrafish",
+    "neuroscience",
+    "reproduction"
+  ],
+  "does": [
+    "association"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "Analyze quantifying neural bump-scene phase coupling via von mises concentration",
+    "Generate quantifying neural bump-scene phase coupling via von mises concentration outputs",
+    "Apply the ns_multi-zebrafish-ca_behavior-vonmises-phase_locking recipe"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

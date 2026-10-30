@@ -1,0 +1,25 @@
+{
+  "tag": "brain-connectivity-modeler",
+  "yaml_metadata": {
+    "name": "brain-connectivity-modeler",
+    "description": "Advises on functional and effective connectivity methods, including PPI, DCM, Granger causality, and graph theory.",
+    "triggers": [
+      "choose a functional or effective connectivity method",
+      "run PPI or generalized PPI analysis",
+      "specify or compare dynamic causal models",
+      "assess whether Granger causality is appropriate for fMRI",
+      "construct and analyze a brain connectivity graph"
+    ],
+    "tags": [
+      "brain-connectivity",
+      "ppi",
+      "dcm",
+      "graph-theory",
+      "effective-connectivity"
+    ]
+  },
+  "scripts": [],
+  "references": [
+    "references/method-implementation-guide.md"
+  ]
+}

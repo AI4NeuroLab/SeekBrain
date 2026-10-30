@@ -36,7 +36,7 @@ export type DependencyInstallSelection =
   | { decision: "cancel" };
 
 export function researchPlanningReviewTitle(assessment: Json, summary?: string): string {
-  const reason = String(assessment.reason || summary || "SeekBrain identified multiple evidence workstreams.").slice(0, 520);
+  const reason = String(assessment.reason || summary || "SeekBrain identified independent analytical branches.").slice(0, 520);
   const planningEffect = /[\u3400-\u9fff]/.test(reason)
     ? "Research Planning will decompose these evidence dimensions into independently testable subquestions and synthesize them into an overall conclusion."
     : "Research Planning will decompose these evidence dimensions into independently testable subquestions before synthesizing the overall conclusion.";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { registerSaveSkillCommand } from "../../src/extension/commands/save-skill-command.ts";
-import { registerShowCommand } from "../../src/extension/commands/show-command.ts";
+import { registerShowCommand, skillFullMarkdown } from "../../src/extension/commands/show-command.ts";
 import { registerSystemCommands } from "../../src/extension/commands/system-commands.ts";
 import { registerReportCommand } from "../../src/extension/commands/report-command.ts";
 
@@ -13,26 +13,35 @@ function commandApi() {
     api: {
       registerCommand(name: string, command: any) { commands.set(name, command); },
       sendMessage(message: any) { messages.push(message); },
-      getAllTools: () => [{ name: "seekbrain_run_start" }, { name: "seekbrain_research_start" }],
-      getActiveTools: () => ["seekbrain_run_start"],
+      getAllTools: () => [{ name: "seekbrain_plan_generate" }, { name: "seekbrain_research_start" }],
+      getActiveTools: () => ["seekbrain_plan_generate"],
     },
   };
 }
 
 describe("Pi slash commands", () => {
+  it("labels composed Recipe sets as matches in the full recipe view", () => {
+    const markdown = skillFullMarkdown({
+      targeted_skill: "RECIPE: rna-classifier\n\nRECIPE: annotated-heatmap",
+      targeted_skill_result: { source: "composed_recipe_set" },
+    });
+    expect(markdown).toContain("Analysis Recipe — composed from local and RAG candidates");
+    expect(markdown).not.toContain("no match");
+  });
+
   it("registers config reload and tool diagnostics", async () => {
     const item = commandApi();
     let invalidated = false;
     registerSystemCommands(item.api, {
       workflowRoot: "/root",
       invalidateConfig: () => { invalidated = true; },
-      loadConfig: async () => ({ workflow: { seekbrain: { deep_research: true } } }),
+      loadConfig: async () => ({ workflow: { seekbrain: { deep_research: { max_rounds: 3 } } } }),
     });
     await item.commands.get("seekbrain-reload-config").handler("", { cwd: "/project" });
     await item.commands.get("seekbrain-tools").handler();
     expect(invalidated).toBe(true);
-    expect(JSON.parse(item.messages[0].content)).toMatchObject({ reloaded: true, workflow: { seekbrain: { deep_research: true } } });
-    expect(JSON.parse(item.messages[1].content)).toMatchObject({ has_seekbrain_run_start: true, active_seekbrain_research_start: false });
+    expect(JSON.parse(item.messages[0].content)).toMatchObject({ reloaded: true, workflow: { seekbrain: { deep_research: { max_rounds: 3 } } } });
+    expect(JSON.parse(item.messages[1].content)).toMatchObject({ has_seekbrain_plan_generate: true, active_seekbrain_research_start: false });
   });
 
   it("renders stored research in headless show mode", async () => {
@@ -40,14 +49,14 @@ describe("Pi slash commands", () => {
     registerShowCommand(item.api, {
       getActiveRunDir: () => undefined,
       readJson: async () => ({ runs: {} }),
-      resolveRun: async () => ({ state: { deep_research_context: "[Deep Research Background]\nFinding", deep_research_sources: [{ title: "Paper", pub_time: "2024", text: "Evidence" }] } }),
+      resolveRun: async () => ({ state: { deep_research: { round: 1, phase: "complete", rounds: [{ number: 1, decision: { reason: "Finding" }, report: { original_path: "report.md" } }] } } }),
       loadRunState: async () => ({}),
       runIndexPath: () => "index.json",
     });
     await item.commands.get("seekbrain-show").handler("research run-1", { cwd: "/project", hasUI: false, mode: "rpc" });
     expect(item.messages[0]).toMatchObject({ customType: "seekbrain-research", display: true });
     expect(item.messages[0].content).toContain("Finding");
-    expect(item.messages[0].content).toContain("Paper");
+    expect(item.messages[0].content).toContain("report.md");
   });
 
   it("creates a headless save-skill proposal without authoring before approval", async () => {

@@ -18,6 +18,16 @@ const environment: PythonInstallEnvironment = {
 };
 
 describe("missing dependency installation", () => {
+  it("uses Windows venv Scripts and Conda root interpreters and honors explicit overrides", () => {
+    expect(resolvePythonInstallEnvironment({ VIRTUAL_ENV: "C:\\Research Project\\.venv" }, "win32")).toMatchObject({
+      kind: "virtualenv", name: ".venv", python: "C:\\Research Project\\.venv\\Scripts\\python.exe",
+    });
+    expect(resolvePythonInstallEnvironment({ CONDA_PREFIX: "D:\\conda\\envs\\science" }, "win32").python).toBe("D:\\conda\\envs\\science\\python.exe");
+    const explicit = resolvePythonInstallEnvironment({ SEEKBRAIN_PYTHON: "C:/Custom Python/python.exe", CONDA_PREFIX: "D:/conda" }, "win32");
+    expect(explicit.python).toBe("C:/Custom Python/python.exe");
+    expect(explicit.kind).toBe("configured");
+    expect(explicit.installArgs).not.toContain("--user");
+  });
   it("detects Python missing-module errors and maps common import names to distributions", () => {
     expect(detectMissingPythonDependencies([
       "Traceback (most recent call last):",

@@ -27,7 +27,6 @@ export const LEGACY_TOOL_ID_MAP = {
   neuro_propose_code_update: "seekbrain_code_update_propose",
   neuro_review_code_update: "seekbrain_code_update_review",
   resolve_targeted_skill: "seekbrain_recipe_retrieve",
-  neuro_deep_research: "seekbrain_deep_research",
   neuro_plan: "seekbrain_formulation_generate",
   neuro_code: "seekbrain_code_execute",
   neuro_validate: "seekbrain_validation_run",

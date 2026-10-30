@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-macaque-spike_behavior-tensor_decomposition-temporal_motif",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes heterogeneous firing rate profiles in macaque PMd neurons by applying CP tensor decomposition to trial-averaged data sorted by choice and stimulus difficulty.",
+  "aliases": [
+    "neuroscience",
+    "PMd",
+    "tensor-decomposition",
+    "electrophysiology",
+    "perceptual-decision-making",
+    "neural-dynamics"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "macaque"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How do single neurons in the macaque PMd exhibit diverse firing rate profiles during decision tasks?",
+    "Perform tensor decomposition on PMd electrophysiological data to extract ramping vs non-monotonic activity.",
+    "Analyze Cisek and Kalaska PMd neuronal heterogeneity using CP decomposition",
+    "Identify temporal dynamics of PMd neurons sorted by choice and stimulus coherence",
+    "How does PMd activity challenge the uniform accumulator model of decision-making?"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

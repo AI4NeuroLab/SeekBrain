@@ -38,4 +38,29 @@ describe("observability sinks", () => {
       await rm(runDir, { recursive: true, force: true });
     }
   });
+
+  it("contains JSON serialization failures and skips serialization completely when disabled", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-log-errors-"));
+    try {
+      const warnings: any[] = [], broken = { toJSON() { throw new RangeError("Invalid string length"); } };
+      await expect(new FileDiagnosticSink(root).jsonl("cot.jsonl", [broken], warnings)).resolves.toBeUndefined();
+      expect(warnings[0].error).toContain("Invalid string length");
+      const disabled: any[] = [];
+      await new FileDiagnosticSink(root, false).jsonl("disabled.jsonl", [broken], disabled);
+      expect(disabled).toEqual([]);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  it("streams events before completion and survives malformed events", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-log-stream-"));
+    try {
+      const warnings: any[] = [], writer = await new FileDiagnosticSink(root).jsonlWriter("events.jsonl", warnings);
+      writer.write({ type: "message_end", value: 1 });
+      writer.write({ toJSON() { throw new Error("bad diagnostic event"); } });
+      writer.write({ type: "message_end", value: 2 });
+      await writer.close();
+      expect((await readFile(join(root, "events.jsonl"), "utf8")).trim().split("\n").map(x => JSON.parse(x).value)).toEqual([1, 2]);
+      expect(warnings[0].operation).toBe("serialize_jsonl");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
 });

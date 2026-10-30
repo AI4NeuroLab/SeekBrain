@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-circular_null-cofluctuation_event_trace",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Detect discrete high-amplitude co-fluctuation events in zebrafish whole-brain calcium data by computing the RMS of pairwise edge co-fluctuations at every frame, building a circular-shift null distribution, and thresholding with Benjamini-Hochberg FDR-corrected empirical p-values.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "circular",
+    "null",
+    "cofluctuation"
+  ],
+  "does": [
+    "association",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron",
+      "timepoint"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "Run the Circular-null co-fluctuation event detection recipe",
+    "Detect discrete high-amplitude co-fluctuation events in zebrafish whole-brain calcium data by computing the RMS of pairwise edge co-fluctuations at every frame, building a circular-shift null distribution, and thresholding with Benjamini-Hochberg FDR-corrected empirical p-values.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-circular_null-cofluctuation_event_trace"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_stats_patch_xps.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py",
+      "scripts/zebrafish_Ca_visualization_patch_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

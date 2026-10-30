@@ -1,9 +1,23 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { AgentConfig } from "../core/index.ts";
+import { withModelEnvironment } from "./runtime/shared/scoped-model-runtime.ts";
+import { installAnthropicThinkingCompatibility } from "../compat/anthropic-thinking.mjs";
+import { mergeEnvironment } from "../platform/environment.mjs";
+import { pythonProcessEnvironment, resolvePythonCommand } from "../platform/python.mjs";
 
 type JsonObject = Record<string, unknown>;
 type ModuleLoader = () => Promise<any>;
+
+export interface ExistingPiCustomTool {
+  name: string;
+  label?: string;
+  description: string;
+  promptSnippet?: string;
+  promptGuidelines?: string[];
+  parameters: unknown;
+  execute: (...args: any[]) => Promise<unknown> | unknown;
+}
 
 export interface ExistingPiAgentRequest {
   runDir: string;
@@ -12,10 +26,13 @@ export interface ExistingPiAgentRequest {
   prompt: string;
   agentConfig?: Readonly<AgentConfig>;
   tools?: string[];
+  customTools?: ExistingPiCustomTool[];
   images?: JsonObject[];
+  skillPaths?: string[];
   signal?: AbortSignal;
   onEvent?: (event: JsonObject) => void;
   onFinalize?: (payload: JsonObject) => Promise<void> | void;
+  beforeToolCall?: (event: { toolName: string; toolCallId?: string; args: unknown }) => Promise<void> | void;
   afterToolCall?: (
     event: {
       toolName: string;
@@ -36,6 +53,7 @@ export interface ExistingPiAgentRequest {
 
 export interface ExistingPiAgentResult {
   ok: boolean;
+  normal_end?: boolean;
   result?: JsonObject;
   error?: string;
   stats?: JsonObject;
@@ -45,15 +63,14 @@ export interface ExistingPiAgentResult {
 export interface ExistingPiAgentAdapterOptions {
   agentDir?: string;
   prepareEnvironment?: () => Promise<void>;
+  loadEnvironment?: () => Promise<NodeJS.ProcessEnv>;
   codingSdkLoader?: ModuleLoader;
-  aiSdkLoader?: ModuleLoader;
 }
 
 export class ExistingPiAgentAdapter {
   readonly #options: ExistingPiAgentAdapterOptions;
   #codingSdk: any;
-  #aiSdk: any;
-  #modelRegistry: any;
+  #modelRuntime: Promise<any> | undefined;
 
   constructor(options: ExistingPiAgentAdapterOptions = {}) {
     this.#options = options;
@@ -67,12 +84,18 @@ export class ExistingPiAgentAdapter {
     const timeoutSeconds = this.timeoutSeconds(request.agentConfig);
     try {
       const sdk = await this.codingSdk();
+      const environment = await this.#options.loadEnvironment?.();
+      const agentDir = this.#options.agentDir
+        ?? process.env.PI_CODING_AGENT_DIR
+        ?? join(homedir(), ".pi", "agent");
+      const settingsManager = sdk.SettingsManager?.create(request.runDir, agentDir);
       const { defineTool, createAgentSession, SessionManager } = sdk;
       if (!defineTool || !createAgentSession || !SessionManager) {
         throw new Error("Pi SDK subagent APIs are unavailable in this runtime");
       }
 
       let finalPayload: JsonObject | undefined;
+      let normalEnd = false;
       const finalize = defineTool({
         name: request.finalizeTool,
         label: request.finalizeTool,
@@ -89,20 +112,52 @@ export class ExistingPiAgentAdapter {
         },
       });
 
-      const activeTools = [...new Set([...(request.tools ?? []), request.finalizeTool])];
+      const customTools = (request.customTools ?? []).map((tool) => defineTool(tool));
+      if (environment && request.tools?.includes("bash") && sdk.createBashToolDefinition && !customTools.some((tool: any) => tool.name === "bash")) {
+        const python = resolvePythonCommand(environment);
+        const bash = sdk.createBashToolDefinition(request.runDir, {
+          shellPath: settingsManager?.getShellPath(),
+          commandPrefix: settingsManager?.getShellCommandPrefix(),
+          spawnHook: (context: any) => ({ ...context, env: mergeEnvironment(context.env, {
+            ...pythonProcessEnvironment(environment),
+            SEEKBRAIN_PYTHON: process.platform === "win32" ? python.replace(/\\/g, "/") : python,
+          }) }),
+        });
+        bash.promptGuidelines = [...(bash.promptGuidelines || []),
+          'Run Python with "$SEEKBRAIN_PYTHON" so analysis uses the configured interpreter, including paths containing spaces.'];
+        customTools.push(bash);
+      }
+      const activeTools = [...new Set([
+        ...(request.tools ?? []),
+        ...customTools.map((tool: { name: string }) => tool.name),
+        request.finalizeTool,
+      ])];
       const modelOptions = await this.resolveModel(request.agentConfig ?? {});
-      const agentDir = this.#options.agentDir
-        ?? process.env.PI_CODING_AGENT_DIR
-        ?? join(homedir(), ".pi", "agent");
+      if (environment && modelOptions.modelRuntime) {
+        modelOptions.modelRuntime = withModelEnvironment(modelOptions.modelRuntime as object, environment, { agentDir: this.#options.agentDir });
+        // The SDK checks its synchronous auth snapshot before starting a turn.
+        // Populate the session-scoped snapshot for keys supplied only by .env.
+        await (modelOptions.modelRuntime as any).getAvailable?.();
+      }
+      let resourceLoader: any;
+      if (request.skillPaths?.length) {
+        if (!sdk.DefaultResourceLoader) throw new Error("Pi SDK skill resource loader is unavailable");
+        resourceLoader = new sdk.DefaultResourceLoader({ cwd: request.runDir, agentDir, additionalSkillPaths: request.skillPaths });
+        await resourceLoader.reload();
+      }
       ({ session } = await createAgentSession({
         cwd: request.runDir,
         agentDir,
         tools: activeTools,
-        customTools: [finalize],
+        customTools: [finalize, ...customTools],
         sessionManager: SessionManager.inMemory(request.runDir),
+        ...(settingsManager ? { settingsManager } : {}),
+        ...(resourceLoader ? { resourceLoader } : {}),
         ...modelOptions,
         ...(request.agentConfig?.thinking ? { thinkingLevel: request.agentConfig.thinking } : {}),
       }));
+      // Also cover SDK-selected runtimes when no explicit model/env was passed.
+      installAnthropicThinkingCompatibility(session.modelRuntime, { agentDir });
       if (request.afterToolCall && session.agent) {
         const previousAfterToolCall = session.agent.afterToolCall?.bind(session.agent);
         session.agent.afterToolCall = async (context: any, signal?: AbortSignal) => {
@@ -127,7 +182,23 @@ export class ExistingPiAgentAdapter {
           };
         };
       }
-      unsubscribe = session.subscribe((event: JsonObject) => request.onEvent?.(event));
+      if (request.beforeToolCall && session.agent) {
+        const previousBeforeToolCall = session.agent.beforeToolCall?.bind(session.agent);
+        session.agent.beforeToolCall = async (context: any) => {
+          const previous = await previousBeforeToolCall?.(context);
+          await request.beforeToolCall?.({
+            toolName: String(context.toolCall?.name || ""),
+            toolCallId: context.toolCall?.id,
+            args: context.args,
+          });
+          return previous;
+        };
+      }
+      unsubscribe = session.subscribe((event: JsonObject) => {
+        const message = event.message as JsonObject | undefined;
+        if (event.type === "message_end" && message?.role === "assistant") normalEnd = message.stopReason === "stop";
+        request.onEvent?.(event);
+      });
 
       const promptPromise = request.images?.length
         ? session.prompt(request.prompt, { images: request.images })
@@ -151,7 +222,7 @@ export class ExistingPiAgentAdapter {
       await (guards.length ? Promise.race([promptPromise, ...guards]) : promptPromise);
       const stats = session.getSessionStats?.() as JsonObject | undefined;
       if (!finalPayload) {
-        return { ok: false, error: `subagent did not call ${request.finalizeTool}`, stats, timeout_seconds: timeoutSeconds || undefined };
+        return { ok: false, normal_end: normalEnd, error: `subagent did not call ${request.finalizeTool}`, stats, timeout_seconds: timeoutSeconds || undefined };
       }
       return { ok: true, result: finalPayload, stats };
     } catch (error) {
@@ -175,30 +246,26 @@ export class ExistingPiAgentAdapter {
     await this.#options.prepareEnvironment?.();
     this.#codingSdk = await (this.#options.codingSdkLoader?.()
       ?? import("@earendil-works/pi-coding-agent"));
-    const agentDir = this.#options.agentDir
-      ?? process.env.PI_CODING_AGENT_DIR
-      ?? join(homedir(), ".pi", "agent");
-    const authStorage = this.#codingSdk.AuthStorage?.create?.(join(agentDir, "auth.json"));
-    this.#modelRegistry = this.#codingSdk.ModelRegistry?.create?.(authStorage, join(agentDir, "models.json"));
     return this.#codingSdk;
   }
 
   private async resolveModel(agentConfig: Readonly<AgentConfig>): Promise<JsonObject> {
-    if (!agentConfig.provider || !agentConfig.model) return {};
-    try {
-      await this.codingSdk();
-      const custom = this.#modelRegistry?.find?.(agentConfig.provider, agentConfig.model);
-      if (custom) return { model: custom };
-    } catch {
-      // Fall through to the Pi AI built-in registry.
-    }
-    try {
-      const piAiModule = "@earendil-works/pi-ai";
-      this.#aiSdk ??= await (this.#options.aiSdkLoader?.() ?? import(piAiModule));
-      const model = this.#aiSdk.getModel?.(agentConfig.provider, agentConfig.model);
-      return model ? { model } : {};
-    } catch {
-      return {};
-    }
+    const explicitModel = Boolean(agentConfig.provider && agentConfig.model);
+    if (!explicitModel && !this.#options.loadEnvironment) return {};
+    const sdk = await this.codingSdk();
+    const agentDir = this.#options.agentDir
+      ?? process.env.PI_CODING_AGENT_DIR
+      ?? join(homedir(), ".pi", "agent");
+    this.#modelRuntime ??= sdk.ModelRuntime.create({
+      authPath: join(agentDir, "auth.json"),
+      modelsPath: join(agentDir, "models.json"),
+      allowModelNetwork: false,
+    });
+    const modelRuntime = await this.#modelRuntime;
+    await modelRuntime.refresh({ allowNetwork: false });
+    if (!explicitModel) return { modelRuntime };
+    const model = modelRuntime.getModel(agentConfig.provider, agentConfig.model);
+    if (!model) throw new Error(`Configured subagent model is unavailable: ${agentConfig.provider}/${agentConfig.model}`);
+    return { model, modelRuntime };
   }
 }

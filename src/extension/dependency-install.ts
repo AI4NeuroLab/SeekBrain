@@ -1,5 +1,6 @@
-import { spawn, spawnSync } from "node:child_process";
-import { basename, join } from "node:path";
+import { spawn } from "node:child_process";
+import { activePythonEnvironment, pythonProcessEnvironment, resolvePythonCommand } from "../platform/python.mjs";
+import { stopProcessTree } from "../platform/process-tree.mjs";
 import type {
   CodeAgentToolResultEvent,
   CodeAgentToolResultHandler,
@@ -61,7 +62,7 @@ export interface MissingPythonDependency {
 }
 
 export interface PythonInstallEnvironment {
-  kind: "conda" | "virtualenv" | "local_user";
+  kind: "conda" | "virtualenv" | "local_user" | "configured";
   name: string;
   python: string;
   installArgs: string[];
@@ -176,53 +177,26 @@ export function detectMissingPythonDependencies(text: string): MissingPythonDepe
   return [...found.values()].slice(0, 5);
 }
 
-function pythonExecutable(prefix: string, platform: NodeJS.Platform): string {
-  return platform === "win32" ? join(prefix, "python.exe") : join(prefix, "bin", "python");
-}
-
-function runnablePython(candidates: string[], env: NodeJS.ProcessEnv): string {
-  const unique = candidates.filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
-  return unique.find((command) => spawnSync(command, ["--version"], { env, stdio: "ignore" }).status === 0)
-    || unique[0]
-    || "python3";
-}
-
 export function resolvePythonInstallEnvironment(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
 ): PythonInstallEnvironment {
-  const condaPrefix = String(env.CONDA_PREFIX || "").trim();
-  if (condaPrefix) {
-    const name = String(env.CONDA_DEFAULT_ENV || basename(condaPrefix) || "active").trim();
-    const python = pythonExecutable(condaPrefix, platform);
+  const active = activePythonEnvironment(env, platform);
+  const explicit = String(env.SEEKBRAIN_PYTHON || "").trim();
+  if (active && (!explicit || explicit === active.python)) {
     return {
-      kind: "conda",
-      name,
-      python,
+      ...active,
       installArgs: ["-m", "pip", "install", "--disable-pip-version-check", "--no-input"],
-      description: `conda environment ${name} (${condaPrefix})`,
+      description: `${active.kind} environment ${active.name} (${active.python})`,
     };
   }
-
-  const virtualPrefix = String(env.VIRTUAL_ENV || "").trim();
-  if (virtualPrefix) {
-    const name = basename(virtualPrefix) || "active";
-    return {
-      kind: "virtualenv",
-      name,
-      python: pythonExecutable(virtualPrefix, platform),
-      installArgs: ["-m", "pip", "install", "--disable-pip-version-check", "--no-input"],
-      description: `Python virtual environment ${name} (${virtualPrefix})`,
-    };
-  }
-
-  const python = runnablePython([String(env.SEEKBRAIN_PYTHON || "").trim(), "python3", "python"], env);
+  const python = resolvePythonCommand(env, platform);
   return {
-    kind: "local_user",
-    name: "user site",
+    kind: explicit ? "configured" : "local_user",
+    name: explicit ? "configured interpreter" : "user site",
     python,
-    installArgs: ["-m", "pip", "install", "--disable-pip-version-check", "--no-input", "--user"],
-    description: `local Python user site via ${python}`,
+    installArgs: ["-m", "pip", "install", "--disable-pip-version-check", "--no-input", ...(explicit ? [] : ["--user"])],
+    description: explicit ? `configured Python interpreter (${python})` : `local Python user site via ${python}`,
   };
 }
 
@@ -239,7 +213,7 @@ export const runDependencyProcess: DependencyProcessRunner = async (command, arg
   let stderr = "";
   let settled = false;
   let timedOut = false;
-  const child = spawn(command, args, { env: options.env, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(command, args, { env: pythonProcessEnvironment(options.env), stdio: ["ignore", "pipe", "pipe"] });
   const finish = (result: DependencyProcessResult) => {
     if (settled) return;
     settled = true;
@@ -247,10 +221,10 @@ export const runDependencyProcess: DependencyProcessRunner = async (command, arg
     options.signal?.removeEventListener("abort", abort);
     resolve({ ...result, stdout: compactOutput(stdout), stderr: compactOutput(stderr) });
   };
-  const abort = () => child.kill("SIGTERM");
+  const abort = () => stopProcessTree(child);
   const timeout = setTimeout(() => {
     timedOut = true;
-    child.kill("SIGTERM");
+    stopProcessTree(child);
   }, options.timeoutMs);
   options.signal?.addEventListener("abort", abort, { once: true });
   child.stdout?.on("data", (chunk) => { stdout = compactOutput(stdout + String(chunk)); });

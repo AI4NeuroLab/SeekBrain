@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-drosophila-ca_behavior-pearson-scatter_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Calculates the Pearson correlation between EPG bump width and heading-direction encoding accuracy across fly trials during active movement periods.",
+  "aliases": [
+    "Drosophila",
+    "neuroscience",
+    "EPG-neurons",
+    "circular-statistics",
+    "navigation",
+    "population-analysis"
+  ],
+  "does": [
+    "association"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "drosophila"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "scatter_plot"
+  ],
+  "use_when": [
+    "compare fly EPG bump width to heading accuracy",
+    "calculate correlation between bump phase variance and head direction encoding",
+    "analyze relationship between EPG spatial spread and heading representation",
+    "perform across-fly population analysis of Drosophila navigation metrics",
+    "generate scatter plot of encoding accuracy vs bump width for EPG neurons"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

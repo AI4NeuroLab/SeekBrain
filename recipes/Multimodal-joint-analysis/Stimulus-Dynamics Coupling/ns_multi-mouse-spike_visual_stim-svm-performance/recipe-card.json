@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-spike_visual_stim-svm-performance",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Calculates and visualizes visual responsiveness fractions and population decoding accuracy across cortical regions using Allen Institute Ecephys data.",
+  "aliases": [
+    "electrophysiology",
+    "neural-decoding",
+    "visual-coding",
+    "AllenSDK",
+    "data-visualization",
+    "computational-neuroscience"
+  ],
+  "does": [
+    "decoding"
+  ],
+  "evidence_for": [
+    "stimulus_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "spike"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates"
+    ]
+  },
+  "primary_modalities": [
+    "spike"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "model_performance_metrics"
+  ],
+  "use_when": [
+    "How do I compare stimulus decoding accuracy between brain regions?",
+    "Calculate the fraction of visually responsive neurons per cortical area",
+    "Perform SVM decoding for visual stimulus identity in Neuropixels data",
+    "Visualize neural population effect sizes for Gabor patches and natural scenes",
+    "How to compute the visual responsiveness index using the AllenSDK?"
+  ],
+  "avoid_when": [
+    "Leakage-safe cross-validation groups or labels are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

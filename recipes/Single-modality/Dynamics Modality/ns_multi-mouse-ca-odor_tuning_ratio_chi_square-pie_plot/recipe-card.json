@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-mouse-ca-odor_tuning_ratio_chi_square-pie_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Calculates and visualizes the percentage of excited, suppressed, and non-responsive granule cell-odor pairs by pooling task and passive condition datasets.",
+  "aliases": [
+    "neuroscience",
+    "odor-response-analysis",
+    "granule-cells",
+    "data-visualization",
+    "response-masking",
+    "behavioral-states"
+  ],
+  "does": [
+    "group_comparison"
+  ],
+  "evidence_for": [
+    "stimulus_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "distribution_plot"
+  ],
+  "use_when": [
+    "calculate odor response percentages for task vs passive conditions",
+    "generate pie charts for granule cell odor pair responses",
+    "how do excited and suppressed odor responses compare in task and passive states?",
+    "compute response mask statistics from joint cell odor pair npy files",
+    "analyze granule cell response distributions under different behavioral conditions"
+  ],
+  "avoid_when": [
+    "Independent biological replicates or an appropriate null model are unavailable"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

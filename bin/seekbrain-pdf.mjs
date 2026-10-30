@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createRequire } from "node:module";
-import { existsSync, readFileSync, createWriteStream } from "node:fs";
+import { existsSync, readFileSync, createWriteStream, mkdirSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,16 +14,21 @@ const lexer = markedModule.lexer || markedModule.marked?.lexer;
 
 const markdownArg = process.argv[2];
 if (!markdownArg) {
-  console.error("Usage: seekbrain-pdf <report.md>");
+  console.error("Usage: seekbrain-pdf <report.md> [--output <report.pdf>]");
   process.exit(2);
 }
 
 const markdownPath = resolve(process.cwd(), markdownArg);
+const briefCommunication = process.argv.includes("--brief-communication");
 if (!existsSync(markdownPath)) {
   console.error(`Markdown report not found: ${markdownPath}`);
   process.exit(2);
 }
-const outputPath = join(dirname(markdownPath), `${basename(markdownPath, extname(markdownPath))}.pdf`);
+const outputIndex = process.argv.indexOf("--output");
+if (outputIndex !== -1 && (!process.argv[outputIndex + 1] || process.argv[outputIndex + 1].startsWith("--"))) { console.error("--output requires a PDF path"); process.exit(2); }
+const outputPath = outputIndex === -1 ? join(dirname(markdownPath), `${basename(markdownPath, extname(markdownPath))}.pdf`) : resolve(process.cwd(), process.argv[outputIndex + 1]);
+if (outputPath === markdownPath) { console.error("PDF output must differ from the Markdown input"); process.exit(2); }
+mkdirSync(dirname(outputPath), { recursive: true });
 const markdown = readFileSync(markdownPath, "utf8");
 const tokens = lexer(markdown);
 const titleToken = tokens.find((token) => token.type === "heading" && token.depth === 1);
@@ -32,7 +37,7 @@ const documentTitle = String(titleToken?.text || basename(markdownPath, extname(
 const doc = new PDFDocument({
   size: "A4",
   margins: { top: 68, right: 68, bottom: 68, left: 68 },
-  info: { Title: documentTitle, Author: "SeekBrain Report Agent", Creator: "SeekBrain", Subject: "Research Planning scientific report" },
+  info: { Title: documentTitle, Author: "SeekBrain Report Agent", Creator: "SeekBrain", Subject: "Scientific report" },
   bufferPages: true,
   autoFirstPage: true,
 });
@@ -142,7 +147,7 @@ function writeParagraph(token, options = {}) {
 function writeHeading(token) {
   const depth = Number(token.depth || 2);
   const settings = depth === 1
-    ? { size: 22, before: 0, after: 0.8, align: "center" }
+    ? { size: briefCommunication ? 20 : 22, before: 0, after: 0.8, align: briefCommunication ? "left" : "center" }
     : depth === 2 ? { size: 14, before: 0.9, after: 0.35, align: "left" }
       : { size: 11.5, before: 0.65, after: 0.25, align: "left" };
   ensureSpace(depth === 1 ? 74 : 46);
@@ -228,16 +233,42 @@ function writeTable(token) {
   doc.moveDown(0.65);
 }
 
+let reportSection = "";
+let afterMainText = false;
 for (let index = 0; index < tokens.length; index += 1) {
   const token = tokens[index];
+  if (briefCommunication && token.type === "html") {
+    const marker = /seekbrain:(abstract|main|displays|references|end)/.exec(token.raw || "");
+    if (marker) reportSection = marker[1];
+    if (reportSection === "main") {
+      const paragraphs = [];
+      while (index + 1 < tokens.length && !/seekbrain:(displays|references|end)/.test(tokens[index + 1].raw || "")) {
+        index++;
+        if (tokens[index].type !== "space") paragraphs.push(plain(tokens[index].text || tokens[index].raw || ""));
+      }
+      const width = textWidth();
+      doc.font(fonts.body).fontSize(10.3).fillColor("#202124")
+        .text(paragraphs.join("\n\n"), doc.page.margins.left, doc.y, { width, columns: 2, columnGap: 20, align: "justify", lineGap: 1.4 });
+      afterMainText = true;
+    }
+    continue;
+  }
   if (token.type === "space" || token.type === "html") continue;
+  if (afterMainText) { doc.addPage(); afterMainText = false; }
   if (token.type === "heading") { writeHeading(token); continue; }
   if (token.type === "paragraph") {
+    if (briefCommunication && reportSection === "abstract") {
+      const runs = inlineRuns(token.tokens || [], { bold: true });
+      writeRuns(runs, { size: 11, align: "left", paragraphGap: 0.9 });
+      continue;
+    }
     const imageToken = token.tokens?.length === 1 && token.tokens[0]?.type === "image" ? token.tokens[0] : null;
     if (imageToken) {
-      const next = tokens[index + 1];
+      let captionIndex = index + 1;
+      while (tokens[captionIndex]?.type === "space") captionIndex++;
+      const next = tokens[captionIndex];
       const caption = next?.type === "paragraph" && /^\s*(?:\*\*)?Figure\s+\d+/i.test(String(next.raw || next.text || "")) ? next : undefined;
-      if (writeImage(imageToken, caption)) { if (caption) index += 1; continue; }
+      if (writeImage(imageToken, caption)) { if (caption) index = captionIndex; continue; }
     }
     writeParagraph(token);
     continue;
@@ -276,8 +307,12 @@ for (let index = range.start; index < range.start + range.count; index += 1) {
     doc.font(fonts.sans).fontSize(7.5).fillColor("#666666")
       .text(documentTitle, doc.page.margins.left, 34, { width: textWidth() - 50, ellipsis: true, lineBreak: false });
   }
-  doc.font(fonts.sans).fontSize(8).fillColor("#666666")
-    .text(String(pageNumber), doc.page.margins.left, pageBottom() - 10, { width: textWidth(), align: "center", lineBreak: false });
+  doc.font(fonts.sans).fontSize(8).fillColor("#666666");
+  // Render inside the lower margin, outside the body columns, without starting a new page.
+  const bottomMargin = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+  doc.text(String(pageNumber), doc.page.margins.left, doc.page.height - 40, { width: textWidth(), align: "center", lineBreak: false });
+  doc.page.margins.bottom = bottomMargin;
 }
 
 doc.end();

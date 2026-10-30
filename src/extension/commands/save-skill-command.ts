@@ -179,7 +179,7 @@ export function registerSaveSkillCommand(pi: SaveSkillCommandAPI, dependencies: 
         output_dir: (Array.isArray(targeted.extra_skill_dirs) && targeted.extra_skill_dirs[0]) || ".seekbrain/skills/from_expert",
         smmt, folder_name: folderName, pi_name: piName, description: result.proposed_description, triggers: result.triggers, tags: result.tags,
         question, question_history: run.state.question_history || [], data_info: metadataText, plan_markdown: planText,
-        statistics, conclusions, deep_research_context: run.state.deep_research_context || "", targeted_skill: recipeText,
+        statistics, conclusions, targeted_skill: recipeText,
         resource_profile: run.state.resource_profile || {}, image_analyses: [], deliverables: run.state.deliverables || [],
         transcript_digest: digest, generated_code_path: existsSync(generatedCode) ? generatedCode : "", use_llm_body: true,
       };

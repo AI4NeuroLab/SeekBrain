@@ -22,6 +22,22 @@ function visualIssues(value) {
     .slice(0, 1);
 }
 
+function recipeFeedback(value) {
+  if (!value || typeof value !== "object") return undefined;
+  const allowed = new Set(["recipe_defect", "retrieval_mismatch", "implementation_defect", "data_mismatch", "environment", "inconclusive"]);
+  const attribution = allowed.has(String(value.attribution || "")) ? String(value.attribution) : "inconclusive";
+  return {
+    attribution,
+    recipe_id: String(value.recipe_id || "").trim(),
+    defect_type: String(value.defect_type || "").trim(),
+    failed_checks: strings(value.failed_checks),
+    evidence: strings(value.evidence),
+    preserve: strings(value.preserve),
+    suggested_scope: ["local", "method", "retrieval", "none"].includes(String(value.suggested_scope || "")) ? String(value.suggested_scope) : "none",
+    summary: String(value.summary || "").trim(),
+  };
+}
+
 /**
  * Normalize a validator response into one deterministic workflow route.
  * The model reports facts; this function owns all action selection.
@@ -36,6 +52,7 @@ export function normalizeValidation(raw, context = {}) {
   const blockingIssues = strings(raw?.blocking_issues);
   const methodologicalCaveats = strings(raw?.methodological_caveats);
   const normalizedVisualIssues = visualIssues(raw?.visual_issues);
+  const normalizedRecipeFeedback = recipeFeedback(raw?.recipe_feedback);
 
   if (raw?.pass === true && perFigureFailures.length) {
     blockingIssues.push("One or more figures failed while the overall result was marked as passed.");
@@ -72,6 +89,7 @@ export function normalizeValidation(raw, context = {}) {
     refinement_feedback: refineTarget?.feedback || "",
     refine_target: refineTarget,
     validated_code_attempt: codeAttempt,
+    ...(normalizedRecipeFeedback ? { recipe_feedback: normalizedRecipeFeedback } : {}),
   };
 }
 

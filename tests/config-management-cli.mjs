@@ -31,12 +31,12 @@ const runtime = { cwd: work, homeDir: home, packageRoot: PACKAGE_ROOT, env: {} }
 try {
   let captured = capture();
   assert.equal(await main(["config", "get", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
-  assert.match(captured.output().stdout, /relevance_threshold = 0\.5/);
+  assert.match(captured.output().stdout, /relevance_threshold = 0\.6/);
   assert.match(captured.output().stdout, /Source: package default/);
 
   captured = capture();
   assert.equal(await main(["config", "list", "modules.targeted_skill"], captured.io, runtime), 0);
-  assert.match(captured.output().stdout, /modules\.targeted_skill\.top_k = 1/);
+  assert.match(captured.output().stdout, /modules\.targeted_skill\.top_k = 3/);
   assert.match(captured.output().stdout, /modules\.targeted_skill\.compatibility\.candidate_pool_size = 10/);
 
   captured = capture();
@@ -78,7 +78,7 @@ try {
   assert.equal(await main(["config", "unset", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
   captured = capture();
   assert.equal(await main(["config", "get", "modules.targeted_skill.relevance_threshold"], captured.io, runtime), 0);
-  assert.match(captured.output().stdout, /relevance_threshold = 0\.5/);
+  assert.match(captured.output().stdout, /relevance_threshold = 0\.6/);
   assert.match(captured.output().stdout, /Source: package default/);
 } finally {
   await rm(work, { recursive: true, force: true });

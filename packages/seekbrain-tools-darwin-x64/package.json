@@ -1,0 +1,18 @@
+{
+  "name": "seekbrain-tools-darwin-x64",
+  "version": "0.1.0",
+  "description": "SeekBrain fd and ripgrep binaries for darwin-x64",
+  "license": "MIT",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin",
+    "licenses",
+    "manifest.json",
+    "README.md"
+  ]
+}

@@ -12,9 +12,11 @@ for (const tool of [...humanReview.split(","), ...diffReview.split(",")]) {
   assert.equal(automation.split(",").includes(tool), false, `${tool} must not be exposed headlessly`);
 }
 assert.equal(AUTOMATION_TOOLS.split(",").includes("seekbrain_analysis_task_control"), false, "task retry/cancel requires an explicit interactive user decision");
-assert.equal(INTERACTIVE_TOOLS.split(",").includes("seekbrain_analysis_task_control"), true);
+assert.equal(INTERACTIVE_TOOLS.split(",").includes("seekbrain_analysis_task_control"), false);
 for (const tool of [...humanReview.split(","), ...diffReview.split(",")]) {
-  assert.equal(INTERACTIVE_TOOLS.split(",").includes(tool), true, `${tool} must remain interactive`);
+  assert.equal(INTERACTIVE_TOOLS.split(",").includes(tool), false, `${tool} must not be exposed in the v014 default workflow`);
 }
 
-console.log("SeekBrain non-interactive toolset excludes diff review tools");
+assert.equal(AUTOMATION_TOOLS, INTERACTIVE_TOOLS);
+assert.ok(AUTOMATION_TOOLS.split(",").includes("seekbrain_plan_generate"));
+console.log("SeekBrain unified toolsets expose planning and execution without legacy review gates");

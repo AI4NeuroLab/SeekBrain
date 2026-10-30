@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-omics-differential_gene-temporal_expression_profile",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantifies and visualizes differential gene expression across cortical cell subclasses between pre- and post-eye-opening developmental stages using pseudobulk statistical methods.",
+  "aliases": [
+    "transcriptomics",
+    "single-cell",
+    "differential-expression",
+    "developmental-biology",
+    "pseudobulk",
+    "data-visualization"
+  ],
+  "does": [
+    "group_comparison",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "omics"
+    ],
+    "observation_units": [
+      "gene",
+      "timepoint"
+    ],
+    "requires": [
+      "gene_expression_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How do gene expression profiles change in cortical subclasses after eye-opening?",
+    "Generate volcano plots for developmental DGE across cell types",
+    "Calculate log2 fold-change for genes regulated by sensory experience",
+    "Perform subclass-specific differential expression analysis between P7 and P14",
+    "Summarize upregulated and downregulated genes across cortical developmental windows"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -107,7 +107,10 @@ describe("Phase 4 lifecycle workflows", () => {
       const manifestBefore = JSON.parse(await readFile(join(cwd, "project", "project.json"), "utf8"));
       expect(manifestBefore.rounds).toEqual([]);
       expect(manifestBefore.planning_run.run_id).toBe(planning.run.runId);
-      await workflow.updateState(planning.run, { literature_queries: ["zebrafish head direction", "visual landmark plasticity"] });
+      await workflow.updateState(planning.run, {
+        literature_queries: ["zebrafish head direction", "visual landmark plasticity"],
+        research_planning: { assessment: { inferred_background: "larval zebrafish molecular measurements" } },
+      });
 
       const ordinary = await workflow.materializeInitialRound(cwd, planning.run.runId);
       expect(ordinary.roundNumber).toBe(1);
@@ -116,6 +119,7 @@ describe("Phase 4 lifecycle workflows", () => {
         data_info: "locked metadata",
         user_background: "user-supplied scientific context",
         planning_source_run_id: planning.run.runId,
+        scientific_background: "larval zebrafish molecular measurements",
         literature_queries: ["zebrafish head direction", "visual landmark plasticity"],
       });
       const reused = await workflow.materializeInitialRound(cwd, planning.run.runId);
@@ -131,11 +135,11 @@ describe("Phase 4 lifecycle workflows", () => {
     expect(capabilities).toMatchObject({
       ok: true,
       continuation_tool: "seekbrain_research_continue",
-      optional: { deep_research: "disabled_no_literature_provider", image_refine: "disabled_by_user_config" },
+      optional: { image_refine: "disabled_by_user_config" },
       literature: { provider: "none", available: false },
     });
     expect(workflowConfigResult(DEFAULT_SEEKBRAIN_CONFIG)).toMatchObject({
-      optional: { research_planning: "enabled", research_planning_peer_review: "enabled", research_survey: "disabled_no_literature_provider", deep_research: "disabled_no_literature_provider", targeted_skill: "enabled" },
+      optional: { research_planning: "enabled", research_planning_peer_review: "enabled", research_survey: "disabled_no_literature_provider", targeted_skill: "enabled" },
       human_review: { enabled: true, gates: { plan: true } },
     });
   });

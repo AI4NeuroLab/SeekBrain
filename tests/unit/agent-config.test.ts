@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { Value } from "typebox/value";
+import { AgentConfigSchema } from "../../src/core/schemas/config.ts";
 import {
   DEFAULT_SEEKBRAIN_CONFIG,
   mainPiArguments,
@@ -8,6 +10,12 @@ import {
 } from "../../src/core/index.ts";
 
 describe("agent configuration", () => {
+  it("accepts zero to disable an agent deadline and preserves it during inheritance", () => {
+    expect(Value.Check(AgentConfigSchema, { timeout_seconds: 0 })).toBe(true);
+    expect(Value.Check(AgentConfigSchema, { timeout_seconds: -1 })).toBe(false);
+    const config = mergeConfig(DEFAULT_SEEKBRAIN_CONFIG, { agents: { seekbrain_default: { timeout_seconds: 300 }, seekbrain_code: { timeout_seconds: 0 } } }) as SeekBrainConfig;
+    expect(resolveAgentConfig(config, "seekbrain_code").timeout_seconds).toBe(0);
+  });
   it("inherits only shared fields for subagents", () => {
     const config = mergeConfig(DEFAULT_SEEKBRAIN_CONFIG, {
       agents: {

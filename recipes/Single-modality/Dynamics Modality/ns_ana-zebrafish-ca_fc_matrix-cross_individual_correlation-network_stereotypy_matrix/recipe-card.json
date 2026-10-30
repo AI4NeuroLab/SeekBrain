@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca_fc_matrix-cross_individual_correlation-network_stereotypy_matrix",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantify how stereotyped functional connectivity is across zebrafish larvae by vectorising each larva's FC matrix upper triangle and correlating every pair of larvae, then ordering the resulting larva-by-larva similarity matrix from most to least representative and rendering it as a lower-triangular heatmap.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "fc",
+    "matrix",
+    "cross"
+  ],
+  "does": [
+    "association",
+    "group_comparison",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [
+    "calcium"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "similarity_matrix"
+  ],
+  "use_when": [
+    "Run the Inter-larva FC stereotypy from upper-triangle correlations recipe",
+    "Quantify how stereotyped functional connectivity is across zebrafish larvae by vectorising each larva's FC matrix upper triangle and correlating every pair of larvae, then ordering the resulting larva-by-larva similarity matrix from most to least representative and rendering it as a lower-triangular heatmap.",
+    "Generate the outputs described by ns_ana-zebrafish-ca_fc_matrix-cross_individual_correlation-network_stereotypy_matrix"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

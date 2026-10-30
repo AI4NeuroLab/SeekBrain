@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-mouse-omics-gam-expression_profile",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes and visualizes gene expression trends across developmental time points in neural lineages, classifying markers into Up, Transient, Down, or Constant trajectory patterns.",
+  "aliases": [
+    "scRNA-seq",
+    "trajectory-analysis",
+    "developmental-biology",
+    "gene-expression",
+    "temporal-dynamics",
+    "bioinformatics"
+  ],
+  "does": [
+    "regression"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "mouse"
+    ],
+    "modalities": [
+      "omics"
+    ],
+    "observation_units": [
+      "gene"
+    ],
+    "requires": [
+      "gene_expression_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How do I plot developmental trajectories for marker genes in mouse visual cortex?",
+    "Categorize gene expression into up-regulated or transient trends during development",
+    "Visualize lineage-specific gene dynamics using smoothed trajectory modeling",
+    "Script to classify scRNA-seq markers as constant or transient over time",
+    "Generate temporal expression heatmaps for excitatory and inhibitory cell lineages"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -3,8 +3,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
+import { nonInteractiveGitEnv } from "../core/non-interactive-git.ts";
 import { stringify as stringifyYaml } from "yaml";
 import { regenerateSkillIndex } from "./indexer.ts";
+import { buildEvidenceManifest, buildRagRecipeCard, evaluateRecipeDraft, hasExecutablePython } from "./recipe-forge.ts";
 
 type Json = Record<string, any>;
 
@@ -37,7 +39,7 @@ export interface RagSkillContextInput {
   paperText: string;
   repoLink: string;
   repoDir: string;
-  repositoryFiles: Array<{ path: string; extension: string; size: number }>;
+  repositoryFiles: Array<{ path: string; extension: string; size: number; excerpt?: string }>;
   signal?: AbortSignal;
 }
 
@@ -84,13 +86,31 @@ async function cloneRepository(repoLink: string, cloneDir: string, signal?: Abor
   if (existsSync(join(cloneDir, ".clone_done"))) return;
   await mkdir(resolve(cloneDir, ".."), { recursive: true });
   await new Promise<void>((done, reject) => {
-    const child = spawn("git", ["clone", "--depth", "1", repoLink, cloneDir], { stdio: ["ignore", "ignore", "pipe"], signal });
+    const child = spawn("git", ["clone", "--depth", "1", repoLink, cloneDir], {
+      stdio: ["ignore", "ignore", "pipe"],
+      signal,
+      env: nonInteractiveGitEnv(),
+    });
     let stderr = "";
     child.stderr.on("data", (chunk) => { stderr = (stderr + String(chunk)).slice(-4000); });
     child.on("error", reject);
     child.on("close", (code) => code === 0 ? done() : reject(new Error(`git clone failed (${code}): ${stderr.trim()}`)));
   });
   await writeFile(join(cloneDir, ".clone_done"), `${repoLink}\n`, "utf8");
+}
+
+async function repositoryCommit(repositoryDir: string, signal?: AbortSignal): Promise<string | undefined> {
+  return await new Promise((done) => {
+    const child = spawn("git", ["-C", repositoryDir, "rev-parse", "HEAD"], {
+      stdio: ["ignore", "pipe", "ignore"],
+      signal,
+      env: nonInteractiveGitEnv(),
+    });
+    let stdout = "";
+    child.stdout.on("data", (chunk) => { stdout = (stdout + String(chunk)).slice(-200); });
+    child.on("error", () => done(undefined));
+    child.on("close", (code) => done(code === 0 && /^[a-f0-9]{40}$/i.test(stdout.trim()) ? stdout.trim() : undefined));
+  });
 }
 
 function tokens(value: string): Set<string> {
@@ -248,15 +268,21 @@ export class RagSkillGenerator {
     // the same GitHub repository again, reuse no longer depends on question wording.
     const folderName = repoIdentifier(input.repoLink);
     const skillDir = join(outputDir, folderName);
-    if (existsSync(join(skillDir, "SKILL.md"))) return { ok: true, skill_path: skillDir, reused: true, repo_link: input.repoLink };
+    if (existsSync(join(skillDir, "SKILL.md"))) {
+      let metadata: Json = {};
+      try { metadata = JSON.parse(await readFile(join(skillDir, "metadata.json"), "utf8")); } catch { /* legacy generated Recipe */ }
+      return { ok: true, skill_path: skillDir, reused: true, repo_link: input.repoLink, recipe_status: metadata.lifecycle?.status || "candidate", quality_gate: metadata.quality_gate };
+    }
 
     const cacheDir = join(outputDir, ".cache", ragSkillTitleCacheKey(input.title));
     const cloneDir = join(cacheDir, "repo_clone");
     let repositoryFiles: Array<{ path: string; content: string; extension: string; size: number; score: number }> = [];
+    let sourceCommit: string | undefined;
     const warnings: string[] = [];
     try {
       await cloneRepository(input.repoLink, cloneDir, input.signal);
       repositoryFiles = await collectSourceFiles(cloneDir, `${input.question} ${input.title}`);
+      sourceCommit = await repositoryCommit(cloneDir, input.signal);
     } catch (error) {
       warnings.push(`repository parsing failed; generated from paper context only: ${String(error)}`);
     }
@@ -266,7 +292,7 @@ export class RagSkillGenerator {
       paperText: input.paperText,
       repoLink: input.repoLink,
       repoDir: cloneDir,
-      repositoryFiles: repositoryFiles.map(({ path, extension, size }) => ({ path, extension, size })),
+      repositoryFiles: repositoryFiles.map(({ path, extension, size, content }) => ({ path, extension, size, excerpt: content.slice(0, 4000) })),
       signal: input.signal,
     };
     let context = fallbackContext(contextInput, repositoryFiles);
@@ -305,13 +331,41 @@ export class RagSkillGenerator {
     try { authored = this.author ? await this.author(authorInput) : fallbackAuthor(authorInput); }
     catch (error) { warnings.push(`recipe author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
 
+    const skillText = skillDocument(authored, authorInput);
+    const analysisScript = String(authored.analysis_script || "");
+    const utilityScript = String(authored.utility_script || "");
+    const card = buildRagRecipeCard({ authored, question: input.question, evidenceLevel, repositoryUrl: input.repoLink, sourceCommit });
+    const qualityGate = await evaluateRecipeDraft({ card, skillBody: skillText, analysisScript, utilityScript, evidenceLevel, paperText: input.paperText, matchedFiles });
+    warnings.push(...qualityGate.warnings);
+    if (!qualityGate.passed) {
+      return { ok: false, error: `Recipe candidate failed static quality gate: ${qualityGate.blocking_issues.join("; ")}`, warnings, quality_gate: qualityGate, recipe_status: "candidate" };
+    }
+    const evidenceManifest = buildEvidenceManifest({
+      question: input.question,
+      title: input.title,
+      paperText: input.paperText,
+      provider: input.provider,
+      doi: input.doi,
+      pmid: input.pmid,
+      pmcid: input.pmcid,
+      evidenceLevel,
+      repositoryUrl: input.repoLink,
+      sourceCommit,
+      matchedFiles,
+      matchedPaperContext: authorInput.matchedPaperContext,
+      matchedRepoContext: authorInput.matchedRepoContext,
+      connectionAnalysis: authorInput.connectionAnalysis,
+      reproductionPlan: authorInput.reproductionPlan,
+    });
+
     const scriptsDir = join(skillDir, "scripts");
     const referencesDir = join(skillDir, "references");
     const matchedDir = join(referencesDir, "matched_files");
     await Promise.all([mkdir(scriptsDir, { recursive: true }), mkdir(matchedDir, { recursive: true })]);
-    await writeFile(join(skillDir, "SKILL.md"), skillDocument(authored, authorInput), "utf8");
-    await writeFile(join(scriptsDir, "run_analysis.py"), String(authored.analysis_script || fallbackAuthor(authorInput).analysis_script), "utf8");
-    if (String(authored.utility_script || "").trim()) await writeFile(join(scriptsDir, "utils.py"), String(authored.utility_script), "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), skillText, "utf8");
+    await writeFile(join(skillDir, "recipe-card.json"), `${JSON.stringify(card, null, 2)}\n`, "utf8");
+    if (hasExecutablePython(analysisScript)) await writeFile(join(scriptsDir, "run_analysis.py"), analysisScript, "utf8");
+    if (hasExecutablePython(utilityScript)) await writeFile(join(scriptsDir, "utils.py"), utilityScript, "utf8");
     await writeFile(join(referencesDir, "question.md"), `# Question\n\n${input.question}\n`, "utf8");
     await writeFile(join(referencesDir, "paper_context.md"), `# Paper context\n\n## ${input.title}\n\n${input.paperText}\n`, "utf8");
     await writeFile(join(referencesDir, "repo_context.md"), `# Repository context\n\n${input.repoLink}\n\n${repoOverview}\n`, "utf8");
@@ -319,9 +373,10 @@ export class RagSkillGenerator {
     await writeFile(join(referencesDir, "matched_repo_context.md"), `# Matched repository context\n\n${authorInput.matchedRepoContext}\n`, "utf8");
     await writeFile(join(referencesDir, "connection_analysis.md"), `# Paper-to-code connection\n\n${authorInput.connectionAnalysis}\n`, "utf8");
     await writeFile(join(referencesDir, "reproduction_plan.md"), `# Reproduction plan\n\n${authorInput.reproductionPlan}\n`, "utf8");
+    await writeFile(join(referencesDir, "evidence_manifest.json"), `${JSON.stringify(evidenceManifest, null, 2)}\n`, "utf8");
     for (const file of matchedFiles) await writeFile(join(matchedDir, safeName(file.path, 180)), `# Source: ${file.path}\n\n${file.content}`, "utf8");
     const metadata = {
-      schema_version: 2,
+      schema_version: 3,
       question: input.question,
       title: input.title,
       ...(input.provider === "semantic_scholar" || input.provider === "pubmed" ? {
@@ -331,17 +386,21 @@ export class RagSkillGenerator {
         pmid: input.pmid || null,
         pmcid: input.pmcid || null,
         repository_url: input.repoLink,
-        scripts_available: true,
+        scripts_available: hasExecutablePython(analysisScript),
       } : {}),
       repo_link: input.repoLink,
       repo_key: normalizeRepoLink(input.repoLink),
       repository_file_count: repositoryFiles.length,
       matched_repo_files: matchedFiles.map((file) => file.path),
+      source_commit: sourceCommit || null,
+      lifecycle: { status: "candidate", eligible_for_repertoire_retrieval: false },
+      quality: { passed_runs: 0, recipe_attributed_failures: 0 },
+      quality_gate: qualityGate,
       generated_at: new Date().toISOString(),
     };
     await writeFile(join(skillDir, "metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
     await regenerateSkillIndex(outputDir);
-    return { ok: true, skill_path: skillDir, reused: false, repo_link: input.repoLink, warnings };
+    return { ok: true, skill_path: skillDir, reused: false, repo_link: input.repoLink, source_commit: sourceCommit, warnings, quality_gate: qualityGate, recipe_status: "candidate" };
   }
 
   private async generatePaperOnly(input: {
@@ -381,12 +440,34 @@ export class RagSkillGenerator {
     const warnings: string[] = [];
     try { authored = this.author ? await this.author(authorInput) : fallbackAuthor(authorInput); }
     catch (error) { warnings.push(`recipe author fallback used: ${String(error)}`); authored = fallbackAuthor(authorInput); }
+    const skillText = skillDocument(authored, authorInput);
+    const card = buildRagRecipeCard({ authored, question: input.question, evidenceLevel: "paper_only" });
+    const qualityGate = await evaluateRecipeDraft({ card, skillBody: skillText, analysisScript: "", evidenceLevel: "paper_only", paperText: input.paperText, matchedFiles: [] });
+    warnings.push(...qualityGate.warnings);
+    if (!qualityGate.passed) return { ok: false, error: `Paper-only Recipe candidate failed static quality gate: ${qualityGate.blocking_issues.join("; ")}`, warnings, quality_gate: qualityGate, recipe_status: "candidate" };
+    const evidenceManifest = buildEvidenceManifest({
+      question: input.question,
+      title: input.title,
+      paperText: input.paperText,
+      provider: input.provider,
+      doi: input.doi,
+      pmid: input.pmid,
+      pmcid: input.pmcid,
+      evidenceLevel: "paper_only",
+      matchedFiles: [],
+      matchedPaperContext: input.paperText,
+      matchedRepoContext: "",
+      connectionAnalysis: authorInput.connectionAnalysis,
+      reproductionPlan: authorInput.reproductionPlan,
+    });
     const referencesDir = join(skillDir, "references");
     await mkdir(referencesDir, { recursive: true });
-    await writeFile(join(skillDir, "SKILL.md"), skillDocument(authored, authorInput), "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), skillText, "utf8");
+    await writeFile(join(skillDir, "recipe-card.json"), `${JSON.stringify(card, null, 2)}\n`, "utf8");
     await writeFile(join(referencesDir, "paper_context.md"), `# Paper context\n\n## ${input.title}\n\n${input.paperText}\n`, "utf8");
+    await writeFile(join(referencesDir, "evidence_manifest.json"), `${JSON.stringify(evidenceManifest, null, 2)}\n`, "utf8");
     await writeFile(join(skillDir, "metadata.json"), `${JSON.stringify({
-      schema_version: 2,
+      schema_version: 3,
       question: input.question,
       title: input.title,
       evidence_level: "paper_only",
@@ -396,9 +477,12 @@ export class RagSkillGenerator {
       pmcid: input.pmcid || null,
       repository_url: null,
       scripts_available: false,
+      lifecycle: { status: "candidate", eligible_for_repertoire_retrieval: false },
+      quality: { passed_runs: 0, recipe_attributed_failures: 0 },
+      quality_gate: qualityGate,
       generated_at: new Date().toISOString(),
     }, null, 2)}\n`, "utf8");
     await regenerateSkillIndex(input.outputDir);
-    return { ok: true, skill_path: skillDir, reused: false, evidence_level: "paper_only", warnings };
+    return { ok: true, skill_path: skillDir, reused: false, evidence_level: "paper_only", warnings, quality_gate: qualityGate, recipe_status: "candidate" };
   }
 }

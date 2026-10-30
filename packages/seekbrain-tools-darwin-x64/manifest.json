@@ -1,0 +1,25 @@
+{
+  "versions": {
+    "fd": "10.3.0",
+    "rg": "14.1.1"
+  },
+  "archives": {
+    "fd-v10.3.0-x86_64-apple-darwin.tar.gz": {
+      "sha256": "50d30f13fe3d5914b14c4fff5abcbd4d0cdab4b855970a6956f4f006c17117a3",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-x86_64-apple-darwin.tar.gz"
+    },
+    "ripgrep-14.1.1-x86_64-apple-darwin.tar.gz": {
+      "sha256": "fc87e78f7cb3fea12d69072e7ef3b21509754717b746368fd40d88963630e2b3",
+      "url": "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-apple-darwin.tar.gz"
+    }
+  },
+  "files": {
+    "bin/fd": "e3936d70c47bf8439797aa2c6c1ddff868424ff6bc418fc8501e819a2d58ccad",
+    "licenses/fd/LICENSE-MIT": "322cfc7aa0c774d0eca3b2610f1d414de3ddbd7d8dd4b9dea941a13a6eb07455",
+    "licenses/fd/LICENSE-APACHE": "73c83c60d817e7df1943cb3f0af81e4939a8352c9a96c2fd00451b1116fa635c",
+    "bin/rg": "923dcc25cab57d33f4e7dd0476d4b74a554401a38817e246a8d6101dcd51c50f",
+    "licenses/rg/LICENSE-MIT": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+    "licenses/rg/COPYING": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+    "licenses/rg/UNLICENSE": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+  }
+}

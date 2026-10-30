@@ -5,11 +5,13 @@ import type { Json } from "./runtime-types.ts";
 export interface RuntimeSessionDependencies {
   projectRoot: string;
   configFile: string;
+  env?: NodeJS.ProcessEnv;
   invalidateConfig(): void;
   loadConfig(cwd: string): Promise<Json>;
 }
 
 export function createRuntimeSession(deps: RuntimeSessionDependencies) {
+  const env = { ...(deps.env ?? process.env) };
   let activeRunDir: string | undefined;
   let configWatcher: FSWatcher | undefined;
   let configWatchedPath: string | undefined;
@@ -39,7 +41,7 @@ export function createRuntimeSession(deps: RuntimeSessionDependencies) {
       notify?: (message: string, level?: "info" | "warning" | "error") => void,
     ) {
       const workflowCwd = deps.projectRoot || cwd;
-      const path = process.env.SEEKBRAIN_CONFIG || resolve(workflowCwd, deps.configFile);
+      const path = env.SEEKBRAIN_CONFIG || resolve(workflowCwd, deps.configFile);
       if (configWatcher && configWatchedPath === path) return;
       stopConfigWatcher();
       if (!existsSync(path)) return;

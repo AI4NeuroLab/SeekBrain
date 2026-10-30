@@ -1,9 +1,14 @@
+import type { SeekBrainRuntimeOptions } from "./runtime-options.ts";
+import { getModeController } from "./mode-controller.ts";
+import { registerStudyReportCommand } from "../commands/study-report-command.ts";
+import { createUnifiedStudyTools } from "./stages/unified-study-tools.ts";
+import { createStudyStatusTools } from "./stages/study-status-tools.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FileRunRepository } from "../../core/index.ts";
+import { FileRunRepository, PlanFinalizeSchema } from "../../core/index.ts";
 import { ExistingPiAgentAdapter } from "../existing-pi-agent-adapter.ts";
 import { createResearchPlanningTools, researchRouteSchema } from "./stages/research-planning-tools.ts";
 import { createSystemTools } from "./stages/system-tools.ts";
@@ -37,7 +42,6 @@ import { registerSystemCommands } from "../commands/system-commands.ts";
 import { registerShowCommand } from "../commands/show-command.ts";
 import { registerSaveSkillCommand } from "../commands/save-skill-command.ts";
 import { registerValidatedRepositoryScripts } from "../../targeted-skill/repository-cache.ts";
-import { registerReportCommand } from "../commands/report-command.ts";
 import { registerTransparencyCardRenderers } from "../tui/transparency-card.ts";
 import { toPiToolResult } from "../tool-adapter.ts";
 import {
@@ -50,71 +54,10 @@ import { writeSkill } from "../../targeted-skill/index.ts";
 type Json = Record<string, any>;
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const PROJECT_ROOT = resolve(process.env.SEEKBRAIN_PROJECT_ROOT || process.env.SEEKBRAIN_ROOT || process.cwd());
 const PROMPT_DIR = join(PACKAGE_ROOT, "prompts");
 const DEFAULT_CONFIG_PATH = join(PACKAGE_ROOT, "config", "default.yaml");
 const RUN_INDEX_FILE = ".pi/seekbrain/run_index.json";
 const CONFIG_FILE = "seekbrain.config.yaml";
-
-const runRepository = new FileRunRepository();
-const runLifecycle = new RunLifecycleWorkflow(runRepository);
-
-const configService = createConfigService({
-  projectRoot: PROJECT_ROOT,
-  defaultConfigPath: DEFAULT_CONFIG_PATH,
-  configFile: CONFIG_FILE,
-});
-const {
-  invalidateConfigCache,
-  loadConfig,
-  loadConfigCached,
-  debugDiskWritesEnabled,
-  syncWorkflowWritePolicy,
-  seekbrainWorkflowConfig,
-  pickAgentConfig,
-  literatureAgentConfig,
-  humanGateEnabled,
-  loadEnv,
-  ensureProcessEnvFromDotenv,
-} = configService;
-
-const codeEditService = createCodeEditService({
-  projectRoot: PROJECT_ROOT,
-  loadEnv,
-});
-
-const piAgentAdapter = new ExistingPiAgentAdapter({
-  prepareEnvironment: async () => ensureProcessEnvFromDotenv(PROJECT_ROOT),
-});
-
-const observability = createObservabilityService({ debugDiskWritesEnabled });
-const {
-  numberValue,
-  readableLogEntriesFromEvent,
-  pushReadableLog,
-  appendReadableLog,
-  usageEntry,
-  usageEntryFromMessage,
-  tryAppendUsageEntry,
-  flushUsageSummaries,
-  mainSessionStats,
-  writeDiagnosticJson,
-  writeDiagnosticText,
-  writeDiagnosticJsonl,
-  snapshotSubagentFiles,
-} = observability;
-
-const runSubagent = createSubagentRunner({
-  adapter: piAgentAdapter,
-  debugDiskWritesEnabled,
-  pushReadableLog,
-  usageEntry,
-  tryAppendUsageEntry,
-  writeDiagnosticJson,
-  writeDiagnosticText,
-  writeDiagnosticJsonl,
-  snapshotSubagentFiles,
-});
 
 function content(details: Json, text?: string) {
   return toPiToolResult(details, limitForMain, text);
@@ -142,20 +85,6 @@ async function readPrompt(name: string) {
 
 type RunContext = WorkflowRunContext;
 
-const runAccess = createRunAccess({
-  lifecycle: runLifecycle,
-  debugDiskWritesEnabled,
-});
-const {
-  loadRunState,
-  effectiveMetadata,
-  resolveQuestion,
-  startRun,
-  resolveRun,
-  resumeRun,
-  updateState,
-  snapshotRunArtifacts,
-} = runAccess;
 async function appendStateEntry(pi: ExtensionAPI, event: Json) {
   try {
     await pi.appendEntry("seekbrain-state", event);
@@ -164,13 +93,92 @@ async function appendStateEntry(pi: ExtensionAPI, event: Json) {
   }
 }
 
-const createDependencyApprovalQueue = createDependencyApprovalQueueFactory({
-  projectRoot: PROJECT_ROOT,
-  loadEnv,
-  resolveRun,
-  updateState,
-});
-export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
+export async function registerSeekBrainRuntime(pi: ExtensionAPI, options: SeekBrainRuntimeOptions = {}) {
+  // Every extension registration owns its services, including when Pi reuses a cached factory.
+  const env = { ...(options.env ?? process.env) };
+  const PROJECT_ROOT = resolve(options.projectRoot || env.SEEKBRAIN_PROJECT_ROOT || env.SEEKBRAIN_ROOT || process.cwd());
+  const runRepository = new FileRunRepository();
+  const runLifecycle = new RunLifecycleWorkflow(runRepository);
+
+  const configService = createConfigService({
+    projectRoot: PROJECT_ROOT,
+    defaultConfigPath: DEFAULT_CONFIG_PATH,
+    configFile: CONFIG_FILE,
+    env,
+  });
+  const {
+    invalidateConfigCache,
+    loadConfig,
+    loadConfigCached,
+    debugDiskWritesEnabled,
+    syncWorkflowWritePolicy,
+    seekbrainWorkflowConfig,
+    pickAgentConfig,
+    literatureAgentConfig,
+    humanGateEnabled,
+    loadEnv,
+  } = configService;
+
+  const codeEditService = createCodeEditService({
+    projectRoot: PROJECT_ROOT,
+    loadEnv,
+  });
+
+  const piAgentAdapter = new ExistingPiAgentAdapter({
+    agentDir: env.SEEKBRAIN_CODING_AGENT_DIR || env.PI_CODING_AGENT_DIR,
+    loadEnvironment: () => loadEnv(PROJECT_ROOT),
+  });
+
+  const observability = createObservabilityService({ debugDiskWritesEnabled });
+  const {
+    numberValue,
+    readableLogEntriesFromEvent,
+    appendReadableLog,
+    appendRawCotLog,
+    usageEntry,
+    usageEntryFromMessage,
+    tryAppendUsageEntry,
+    flushUsageSummaries,
+    mainSessionStats,
+    writeDiagnosticJson,
+    writeDiagnosticText,
+    writeDiagnosticJsonl,
+    snapshotSubagentFiles,
+  } = observability;
+
+  const runSubagent = createSubagentRunner({
+    adapter: piAgentAdapter,
+    debugDiskWritesEnabled,
+    usageEntry,
+    tryAppendUsageEntry,
+    writeDiagnosticJson,
+    writeDiagnosticText,
+    writeDiagnosticJsonl,
+    readableLogEntriesFromEvent,
+    snapshotSubagentFiles,
+  });
+
+  const runAccess = createRunAccess({
+    lifecycle: runLifecycle,
+    debugDiskWritesEnabled,
+  });
+  const {
+    loadRunState,
+    effectiveMetadata,
+    resolveQuestion,
+    startRun,
+    resolveRun,
+    resumeRun,
+    updateState,
+    snapshotRunArtifacts,
+  } = runAccess;
+  const createDependencyApprovalQueue = createDependencyApprovalQueueFactory({
+    projectRoot: PROJECT_ROOT,
+    loadEnv,
+    resolveRun,
+    updateState,
+  });
+
   const collectedToolDefinitions: SeekBrainToolDefinition[] = [];
   const toolDefinitions = {
     push: ((definition: SeekBrainToolDefinition) => collectedToolDefinitions.push(definition)) as ExtensionAPI["registerTool"],
@@ -180,12 +188,19 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     configFile: CONFIG_FILE,
     invalidateConfig: invalidateConfigCache,
     loadConfig: loadConfigCached,
+    env,
   });
   registerTransparencyCardRenderers(pi);
   const {
+    studyWorkflow,
+    literatureTools,
+    webTools,
+    taskBriefWorkflow,
     researchSkillWorkflow,
     researchSurveyWorkflow,
     researchPlanningWorkflow,
+    creativeResearchPlanningWorkflow,
+    creativeScientificSearchWorkflow,
     researchTaskScheduler,
     reportEvidenceCompiler,
     generateScientificReport,
@@ -202,6 +217,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     session,
     packageRoot: PACKAGE_ROOT,
     projectRoot: PROJECT_ROOT,
+    env,
     runLifecycle,
     loadConfig: loadConfigCached,
     workflowConfig: seekbrainWorkflowConfig,
@@ -228,6 +244,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   });
 
   registerSeekBrainRuntimeHooks(pi, {
+    restoreSessionRun: () => session.setActiveRunDir(getModeController(pi).project ? join(getModeController(pi).project!, ".seekbrain") : undefined),
     getActiveRunDir: session.getActiveRunDir,
     setActiveRunDir: session.setActiveRunDir,
     startConfigWatcher: session.startConfigWatcher,
@@ -238,6 +255,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     appendUsage: tryAppendUsageEntry,
     readableLogEntries: readableLogEntriesFromEvent,
     appendReadableLog,
+    appendRawCotLog,
     transparencyEnabled: async () => seekbrainWorkflowConfig(await loadConfig(PROJECT_ROOT)).transparency,
     readRunState: (runDir) => readJson(join(runDir, "state.json"), {}),
     researchCard: researchCardMarkdown,
@@ -297,15 +315,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     registerRepositoryScripts: (input) => registerValidatedRepositoryScripts(input),
   });
 
-  registerReportCommand(pi, {
-    // The evidence compiler accepts parent projects, planning runs, task
-    // projects, task rounds, and nested artifact directories. Preserve the
-    // active path so it can resolve the canonical parent without losing a
-    // directory level here.
-    getActiveProjectPath: () => session.getActiveRunDir(),
-    catalog: (projectPath) => reportEvidenceCompiler.catalog(projectPath),
-    generate: generateScientificReport,
-  });
+  registerStudyReportCommand(pi, { workflow: studyWorkflow, getActiveRunDir: session.getActiveRunDir });
 
   collectedToolDefinitions.push(...createReportingTools({
     compiler: reportEvidenceCompiler,
@@ -319,6 +329,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     content,
   }));
   collectedToolDefinitions.push(...createDatasetTools({
+    loadEnv,
     loadConfig: loadConfigCached,
     readPrompt,
     pickAgentConfig,
@@ -327,6 +338,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   }));
   collectedToolDefinitions.push(...createLifecycleTools({
     lifecycle: runLifecycle,
+    taskBriefWorkflow,
     planningWorkflow: researchPlanningWorkflow,
     loadConfig: loadConfigCached,
     workflowConfig: seekbrainWorkflowConfig,
@@ -343,7 +355,10 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
   collectedToolDefinitions.push(...createResearchPlanningTools({
     projectRoot: PROJECT_ROOT,
     lifecycle: runLifecycle,
+    taskBriefWorkflow,
     planningWorkflow: researchPlanningWorkflow,
+    creativeWorkflow: creativeResearchPlanningWorkflow,
+    creativeSearchWorkflow: creativeScientificSearchWorkflow,
     scheduler: researchTaskScheduler,
     surveyWorkflow: researchSurveyWorkflow,
     loadConfig: loadConfigCached,
@@ -381,11 +396,7 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
         ...input,
         rolePrompt: await readPrompt("plan"),
         agentConfig: pickAgentConfig(config, "seekbrain_plan"),
-        finalizeSchema: Type.Object({
-          plan_markdown: Type.String(),
-          review_summary: Type.String(),
-          warnings: Type.Array(Type.String()),
-        }),
+        finalizeSchema: PlanFinalizeSchema,
       });
     },
     content,
@@ -449,8 +460,22 @@ export async function registerSeekBrainRuntime(pi: ExtensionAPI) {
     workflow: interpretWorkflow,
     loadConfig: loadConfigCached,
     readPrompt,
-    pickAgentConfig,
+    literatureAgentConfig,
     content,
   }));
-  registerTools(pi, collectedToolDefinitions);
+  const unified = createUnifiedStudyTools({ deepResearchMaxRounds: async () => (await loadConfigCached(PROJECT_ROOT)).workflow?.seekbrain?.deep_research?.max_rounds ?? 3, workflow: studyWorkflow, setActiveRunDir: session.setActiveRunDir, getMode: () => getModeController(pi).mode, getProjectPath: () => getModeController(pi).project, content });
+  const datasetTools = collectedToolDefinitions.filter(tool => tool.name === "seekbrain_data_resolve");
+  const system = [...createStudyStatusTools({ workflow: studyWorkflow, getProjectPath: () => getModeController(pi).project, content }), ...datasetTools];
+  const controller = getModeController(pi);
+  const refreshWebAccess = async () => {
+    const config = await loadConfigCached(PROJECT_ROOT);
+    controller.webSearchEnabled = config.workflow?.seekbrain?.web_search !== false;
+    pi.setActiveTools(pi.getAllTools().map(tool => tool.name).filter(name => controller.allows(name)));
+  };
+  pi.on("session_start", refreshWebAccess);
+  pi.on("before_agent_start", refreshWebAccess);
+  const definitions = [...system, ...unified, ...literatureTools(), ...webTools()];
+  registerTools(pi, definitions.map(tool => ({ ...tool,
+    execute: (id: string, params: any, signal: AbortSignal | undefined, update: any, ctx: any) => controller.run(tool.name, signal, combined => Promise.resolve(tool.execute(id, params, combined, update, ctx)) as Promise<any>),
+  })) as SeekBrainToolDefinition[]);
 }

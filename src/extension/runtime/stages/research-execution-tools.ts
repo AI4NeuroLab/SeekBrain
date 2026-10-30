@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { basename } from "node:path";
 import { Type } from "typebox";
+import { PlanFinalizeSchema } from "../../../core/index.ts";
 import type {
   PlanWorkflow,
   ResearchSkillWorkflow,
@@ -32,7 +32,6 @@ export interface ResearchExecutionToolDependencies {
   workflowConfig(config: Json): Json & {
     targeted_skill_match: boolean;
     targeted_skill_generate: boolean;
-    deep_research: boolean;
   };
   humanGateEnabled(config: Json, stage: string): boolean;
   readPrompt(name: string): Promise<string>;
@@ -91,7 +90,7 @@ toolDefinitions.push({
 toolDefinitions.push({
   name: "seekbrain_execution_run",
   label: "Run Analysis Execution Engine",
-  description: "Canonical start-or-resume entry point for the complete Analysis Execution Engine. Show every analysis task, reconcile interrupted child stages, prepare pending recipes, Deep Research context, and methodological schemas with bounded concurrency, serialize researcher review, and continue approved tasks through Code Generation & Execution, Validation, optional Figure Refinement, and Result Interpretation as slots become available.",
+  description: "Canonical start-or-resume entry point for the complete Analysis Execution Engine. Show every analysis task, reconcile interrupted child stages, prepare Deep Research context and methodological schemas with bounded concurrency, serialize researcher review, and continue approved tasks through Code Generation & Execution, Validation, optional Figure Refinement, and Result Interpretation as slots become available.",
   parameters: Type.Object({ run_id: Type.String() }),
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const config = await loadConfigCached(PROJECT_ROOT);
@@ -117,7 +116,7 @@ toolDefinitions.push({
     const reviewPolicy = await researchTaskScheduler.nextPlanReview(ctx.cwd, params.run_id);
     const planGateEnabled = humanGateEnabled(config, "plan");
     const initiallyAutoApprove = agentFullAuto || !planGateEnabled || reviewPolicy.approve_remaining === true;
-    const [deepResearchPrompt, planPrompt] = await Promise.all([readPrompt("deep_research"), readPrompt("plan")]);
+    const planPrompt = await readPrompt("plan");
     const childStates = new Map<string, Json>();
     await Promise.all(allTasks.map(async (task: Json) => {
       const child = await resolveRun(ctx.cwd, task.run_id);
@@ -131,8 +130,7 @@ toolDefinitions.push({
         && state.validation_invalidated_by_code_edit !== true;
       return [taskId, {
         task_id: taskId,
-        skill: state.targeted_skill_path || state.targeted_skill_result ? "complete" : "waiting",
-        deep_research: state.deep_research_context ? "complete" : "waiting",
+        skill: "skipped",
         plan: state.plan ? "complete" : "waiting",
         review: state.human_reviews?.plan?.status === "approved" ? "approved" : state.plan ? "queued" : "waiting",
         code: state.code ? "complete" : "waiting",
@@ -235,47 +233,6 @@ toolDefinitions.push({
     const prepareTask = async (task: Json): Promise<Json> => {
       const taskId = String(task.task_id);
       try {
-        updateProgress(taskId, { skill: "running", deep_research: "running" }, `${taskId} · retrieving analysis recipe and running Deep Research`);
-        await Promise.all([
-          researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "skill_started" }),
-          researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "deep_research_started" }),
-        ]);
-        const skillPromise = researchSkillWorkflow.resolveTargetedSkill({
-            cwd: ctx.cwd, workflowRoot: PROJECT_ROOT, runId: task.run_id,
-            params: {}, config, flags: workflow, signal,
-          }).then(async (skill) => {
-            const names = (skill.skill_paths || []).map((path: unknown) => basename(String(path))).filter(Boolean);
-            const skillSummary = skill.matched
-              ? skill.source === "generated_from_rag"
-                ? `Crystallized ${names.join(", ") || "analysis recipe"} from literature and code`
-                : `Retrieved ${names.join(", ") || "analysis recipe"} from the Neuroscience Analysis Repertoire`
-              : String(skill.warnings?.[0] || "No matching analysis recipe found");
-            updateProgress(taskId, { skill: skill.matched ? "matched" : "not_found", skill_summary: skillSummary }, `${taskId} · Recipe ${skill.matched ? "ready" : "not found"}`);
-            await researchTaskScheduler.publishEvent({
-              cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "skill_resolved",
-              payload: { skill_summary: skillSummary, skill_source: skill.source, skill_paths: skill.skill_paths || [] },
-            });
-            return { skill, skillSummary };
-          });
-        const researchPromise = researchSkillWorkflow.deepResearch({
-            cwd: ctx.cwd, workflowRoot: PROJECT_ROOT, runId: task.run_id,
-            params: {}, flags: workflow,
-            agentConfig: pickAgentConfig(config, "seekbrain_deep_research"),
-            rolePrompt: deepResearchPrompt,
-            finalizeSchema: Type.Object({
-              deep_research_context: Type.String(), summary: Type.String(), warnings: Type.Array(Type.String()),
-            }),
-            signal,
-          }).then(async (research) => {
-            const researchSummary = String(research.result?.summary || research.rag_error || `${Number(research.source_count || 0)} sources`);
-            updateProgress(taskId, { deep_research: "complete", deep_research_summary: researchSummary, source_count: Number(research.source_count || 0) }, `${taskId} · Deep Research complete`);
-            await researchTaskScheduler.publishEvent({
-              cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "deep_research_completed",
-              payload: { deep_research_summary: researchSummary, source_count: Number(research.source_count || 0), rag_ok: research.rag_ok },
-            });
-            return { research, researchSummary };
-          });
-        const [{ skill, skillSummary }, { research, researchSummary }] = await Promise.all([skillPromise, researchPromise]);
         updateProgress(taskId, { plan: "running" }, `${taskId} · generating methodological schema`);
         await researchTaskScheduler.publishEvent({ cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "plan_started" });
         const plan = await planWorkflow.execute({
@@ -283,9 +240,7 @@ toolDefinitions.push({
           runId: task.run_id,
           rolePrompt: planPrompt,
           agentConfig: pickAgentConfig(config, "seekbrain_plan"),
-          finalizeSchema: Type.Object({
-            plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()),
-          }),
+          finalizeSchema: PlanFinalizeSchema,
           humanReviewRequired: false,
           signal,
         });
@@ -300,10 +255,10 @@ toolDefinitions.push({
         }
         await researchTaskScheduler.publishEvent({
           cwd: ctx.cwd, parentRunId: params.run_id, taskId, type: "plan_ready",
-          payload: { plan_path: plan.plan_path, plan_summary: planSummary, plan_warnings: plan.result?.warnings || [], plan_revision: Number(plan.revision || 0), rollback_available: false, skill_summary: skillSummary, deep_research_summary: researchSummary },
+          payload: { plan_path: plan.plan_path, plan_summary: planSummary, plan_warnings: plan.result?.warnings || [], plan_revision: Number(plan.revision || 0), rollback_available: false },
         });
         updateProgress(taskId, { plan: "ready", plan_summary: planSummary, review: initiallyAutoApprove ? "approved" : "queued" }, `${taskId} · Methodological schema ready`);
-        return { task_id: task.task_id, run_id: task.run_id, ok: true, plan_path: plan.plan_path, plan_summary: planSummary, skill_summary: skillSummary, deep_research_summary: researchSummary };
+        return { task_id: task.task_id, run_id: task.run_id, ok: true, plan_path: plan.plan_path, plan_summary: planSummary };
       } catch (error) {
         await researchTaskScheduler.publishEvent({
           cwd: ctx.cwd, parentRunId: params.run_id, taskId: task.task_id, type: "task_failed",
@@ -328,9 +283,7 @@ toolDefinitions.push({
             expectedRevision,
             rolePrompt: planPrompt,
             agentConfig: pickAgentConfig(config, "seekbrain_plan"),
-            finalizeSchema: Type.Object({
-              plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()),
-            }),
+            finalizeSchema: PlanFinalizeSchema,
             signal,
           });
         } catch (error) {
@@ -352,7 +305,6 @@ toolDefinitions.push({
             plan_revision: planRevision,
             rollback_available: Boolean(child.state.plan?.previous_path),
             skill_summary: task.skill_summary,
-            deep_research_summary: task.deep_research_summary,
             ...(revised.ok ? {} : { revision_error: revised.error || "Plan revision failed" }),
           },
         });
@@ -425,7 +377,7 @@ toolDefinitions.push({
       enqueuePlanningTasks((next.tasks || []).filter((task: Json) => nextIds.has(String(task.task_id))));
     };
     enqueuePlanningTasks(initiallyClaimedTasks);
-    emitProgress("Preparing analysis recipes, Deep Research, and methodological schemas in parallel");
+    emitProgress("Preparing Deep Research and methodological schemas in parallel");
     while (remaining.size || activeRevisions.size) {
       const completed = await Promise.race([
         ...[...remaining.entries()].map(([index, running]) => running.then((settled) => ({
@@ -560,7 +512,7 @@ toolDefinitions.push({
       expectedRevision: Number(queue.current.plan_revision || 0),
       rolePrompt: await readPrompt("plan"),
       agentConfig: pickAgentConfig(config, "seekbrain_plan"),
-      finalizeSchema: Type.Object({ plan_markdown: Type.String(), review_summary: Type.String(), warnings: Type.Array(Type.String()) }),
+      finalizeSchema: PlanFinalizeSchema,
       signal,
     });
     const child = await resolveRun(ctx.cwd, task.run_id);
@@ -575,7 +527,6 @@ toolDefinitions.push({
         plan_revision: Number(child.state.plan?.revision || queue.current.plan_revision || 0),
         rollback_available: Boolean(child.state.plan?.previous_path),
         skill_summary: task.skill_summary,
-        deep_research_summary: task.deep_research_summary,
         ...(revised.ok ? {} : { revision_error: revised.error }),
       },
     });

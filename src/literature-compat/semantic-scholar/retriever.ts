@@ -186,7 +186,7 @@ export class SemanticScholarRetriever implements LiteratureQueryClient {
         sources,
         source_count: sources.length,
         warnings,
-        ...(input.require_github === true ? { papers: selected } : {}),
+        ...((input.require_github === true || input.include_papers === true) ? { papers: selected } : {}),
         metrics: {
           query_variant_count: variants.length,
           attempted_query_count: attemptedQueryCount,

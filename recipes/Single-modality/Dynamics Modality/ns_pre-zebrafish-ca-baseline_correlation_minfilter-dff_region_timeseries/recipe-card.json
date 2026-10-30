@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_pre-zebrafish-ca-baseline_correlation_minfilter-dff_region_timeseries",
+  "version": "1.0",
+  "status": "active",
+  "kind": "preprocess",
+  "summary": "Turn raw motion-corrected zebrafish calcium fluorescence into ΔF/F₀ using a Gaussian-smoothed running-minimum baseline, then average per neuron down to one time series per atlas brain region, and render the stacked anterior-to-posterior ridge plot of regional traces with the visual-stimulus window marked.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "baseline",
+    "correlation",
+    "minfilter"
+  ],
+  "does": [
+    "preprocess",
+    "association",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron",
+      "timepoint"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "Analyze δf/f₀ extraction and regional averaging from raw calcium traces",
+    "Generate δf/f₀ extraction and regional averaging from raw calcium traces outputs",
+    "Apply the ns_pre-zebrafish-ca-baseline_correlation_minfilter-dff_region_timeseries recipe"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

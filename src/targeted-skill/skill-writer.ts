@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
 import { regenerateSkillIndex } from "./indexer.ts";
+import { inferSemanticTerms, type RecipeCard } from "./recipe-card.ts";
 import { canonicalLabel, normalizeSmmt, piName, validateSmmt } from "./taxonomy.ts";
 
 type Json = Record<string, any>;
@@ -14,7 +15,6 @@ const REFERENCE_FILES: Record<string, (input: Json) => string> = {
   "plan.md": (input) => `# Methodological schema\n\n${input.plan_markdown || "No methodological schema recorded."}\n`,
   "statistics.md": (input) => `# Statistics\n\n\`\`\`json\n${JSON.stringify(input.statistics || {}, null, 2)}\n\`\`\`\n`,
   "conclusions.md": (input) => `# Conclusions\n\n${JSON.stringify(input.conclusions || {}, null, 2)}\n`,
-  "research-context.md": (input) => `# Research context\n\n${input.deep_research_context || "No research context recorded."}\n`,
   "artifacts.md": (input) => `# Run artifacts\n\n${JSON.stringify({ resource_profile: input.resource_profile || {}, image_analyses: input.image_analyses || [], deliverables: input.deliverables || [] }, null, 2)}\n`,
   "transcript-digest.md": (input) => `# Transcript digest\n\n${input.transcript_digest || "No transcript digest recorded."}\n`,
 };
@@ -85,8 +85,30 @@ export async function writeSkill(input: Json, cwd = process.cwd()): Promise<Json
     }
 
     const metadataPath = join(skillDir, "metadata.json");
-    await writeFile(metadataPath, `${JSON.stringify({ schema_version: 1, created_at: new Date().toISOString(), run_id: input.run_id || null, smmt, folder_name: folderName, pi_name: commandName, source_run_dir: input.run_dir ? relative(projectRoot, resolve(input.run_dir)) : null }, null, 2)}\n`, "utf8");
+    await writeFile(metadataPath, `${JSON.stringify({ schema_version: 2, created_at: new Date().toISOString(), run_id: input.run_id || null, smmt, folder_name: folderName, pi_name: commandName, lifecycle: { status: "active" }, quality: { passed_runs: 1, recipe_attributed_failures: 0 }, source_run_dir: input.run_dir ? relative(projectRoot, resolve(input.run_dir)) : null }, null, 2)}\n`, "utf8");
     written.push(metadataPath);
+    const triggers = Array.isArray(input.triggers) ? input.triggers.map(String).filter(Boolean) : [];
+    const semanticTerms = inferSemanticTerms([input.description, input.question, ...triggers, ...(Array.isArray(input.tags) ? input.tags : [])].join(" "));
+    const recipeCard: RecipeCard = {
+      schema_version: 1,
+      recipe_id: commandName,
+      version: "1.0.0",
+      status: "active",
+      kind: smmt.stage === "ns_vis" ? "visualization" : ["ns_pre", "ns_seg", "ns_reg", "ns_feat"].includes(smmt.stage) ? "preprocess" : "analysis",
+      summary: String(input.description || `Reusable SeekBrain analysis captured from run ${input.run_id || "unknown"}.`).trim(),
+      aliases: [...new Set([...triggers, ...(Array.isArray(input.tags) ? input.tags.map(String).filter(Boolean) : [])])],
+      does: [...new Set([smmt.method, smmt.target, ...semanticTerms].filter(Boolean))],
+      evidence_for: semanticTerms.filter((term) => ["regional_localization", "temporal_dynamics", "trajectory_analysis", "structure_function_coupling", "behavioral_encoding", "stimulus_encoding", "cell_type_specificity", "disease_related", "multimodal_coupling", "latent_state", "connectivity"].includes(term)),
+      accepts: { species: smmt.species === "global" ? [] : [smmt.species], modalities: smmt.modality ? [smmt.modality] : [], observation_units: [], requires: [] },
+      produces: smmt.target ? [smmt.target] : [],
+      use_when: triggers.length ? triggers : [String(input.question || input.description || "").trim()].filter(Boolean),
+      avoid_when: [],
+      source: { type: "expert", evidence_refs: ["references/plan.md", "references/statistics.md", "references/conclusions.md"] },
+      quality: { passed_runs: 1, recipe_attributed_failures: 0 },
+    };
+    const cardPath = join(skillDir, "recipe-card.json");
+    await writeFile(cardPath, `${JSON.stringify(recipeCard, null, 2)}\n`, "utf8");
+    written.push(cardPath);
     const index = await regenerateSkillIndex(outputDir);
     return { ok: true, skill_dir: skillDir, folder_name: folderName, pi_name: commandName, smmt, files_written: written, index_updated: index.path, validate_skills: { status: "passed", issues: [], warnings }, warnings };
   } catch (error) {

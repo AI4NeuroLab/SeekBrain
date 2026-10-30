@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-swc-nblast-morphological_metric",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Classifies cerebellar efferent neurons from registered SWC morphologies using NBLAST similarity and hierarchical clustering.",
+  "aliases": [
+    "analysis",
+    "zebrafish",
+    "neuroscience",
+    "reproduction"
+  ],
+  "does": [
+    "feature_extraction"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "morphology"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "swc_reconstructions"
+    ]
+  },
+  "primary_modalities": [
+    "morphology"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How to reproduce For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+    "Generate For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a from zebrafish data",
+    "Analyze data for For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+    "Reproduce figure For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a",
+    "Run analysis for For_121_cerebellar_efferent_neurons__91_eurydendroid_cells_a"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

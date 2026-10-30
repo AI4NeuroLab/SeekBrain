@@ -38,6 +38,11 @@ assert.equal(parsed.action, "launch");
 assert.equal(parsed.nonInteractive, true);
 assert.deepEqual(parsed.options.piArgs, ["--offline", "--model", "provider/model"]);
 
+const deepResearchParsed = parseArgs(["run", "--mode", "deep-research", "--query", "Study donor differences"]);
+assert.equal(deepResearchParsed.action, "launch");
+assert.equal(deepResearchParsed.options.interactionMode, "deep-research");
+assert.ok(buildPiLaunchSpec(deepResearchParsed, { cwd: "/tmp", homeDir: "/tmp", env: {} }).env.SEEKBRAIN_INTERACTION_MODE === "deep-research");
+
 const researchPlanningParsed = parseArgs([
   "run",
   "--research-planning",
@@ -79,7 +84,7 @@ try {
   assert.equal(spec.cwd, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_ROOT, projectRoot);
   assert.equal(spec.env.SEEKBRAIN_NON_INTERACTIVE, "1");
-  assert.equal(spec.env.SEEKBRAIN_RUN_MODE, "standard");
+  assert.equal(spec.env.SEEKBRAIN_RUN_MODE, "unified_auto");
   assert.equal(spec.env.PI_SKIP_VERSION_CHECK, "1");
   assert.equal(spec.args[0], paths.piCli);
   assert.ok(spec.args.includes("--no-extensions"));
@@ -93,12 +98,14 @@ try {
   assert.ok(spec.args.includes("medium"));
   assert.equal(spec.env.SEEKBRAIN_USER_CONFIG, userConfig);
   assert.equal(spec.env.SEEKBRAIN_CONFIG, join(projectRoot, "seekbrain.config.yaml"));
-  assert.match(spec.args.at(-1), /^\/entry question/);
-  assert.match(spec.args.at(-1), /standard direct analysis workflow/);
+  assert.match(spec.args.at(-1), /^question/);
+  assert.doesNotMatch(spec.args.at(-1), /unified Plan|Non-interactive execution policy/);
+  assert.ok(!spec.args.includes("--prompt-template"));
 
   const researchPlanningSpec = buildPiLaunchSpec(researchPlanningParsed, { cwd: projectRoot, homeDir: userHome, env: {} });
-  assert.equal(researchPlanningSpec.env.SEEKBRAIN_RUN_MODE, "research_planning_auto");
-  assert.match(researchPlanningSpec.args.at(-1), /Research Planning in Agent-Full-Auto mode/);
+  assert.equal(researchPlanningSpec.env.SEEKBRAIN_RUN_MODE, "unified_auto");
+  assert.match(researchPlanningSpec.args.at(-1), /^question/);
+  assert.doesNotMatch(researchPlanningSpec.args.at(-1), /unified Plan/);
 
   let stdout = "";
   let stderr = "";
@@ -167,7 +174,7 @@ try {
     assert.match(initializedUser, /research_planning: true/);
     assert.match(initializedUser, /research_planning_strategy: standard/);
     assert.match(initializedUser, /research_survey: false/);
-    assert.match(initializedUser, /deep_research: false/);
+    assert.match(initializedUser, /max_rounds: 3/);
     assert.match(initializedUser, /targeted_skill_generate: false/);
     assert.match(initializedUser, /seekbrain_default:/);
     assert.match(initializedUser, /base_url: ""/);

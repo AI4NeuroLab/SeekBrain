@@ -1,0 +1,25 @@
+{
+  "versions": {
+    "fd": "10.3.0",
+    "rg": "14.1.1"
+  },
+  "archives": {
+    "fd-v10.3.0-aarch64-unknown-linux-musl.tar.gz": {
+      "sha256": "996b9b1366433b211cb3bbedba91c9dbce2431842144d925428ead0adf32020b",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.3.0/fd-v10.3.0-aarch64-unknown-linux-musl.tar.gz"
+    },
+    "ripgrep-14.1.1-aarch64-unknown-linux-gnu.tar.gz": {
+      "sha256": "c827481c4ff4ea10c9dc7a4022c8de5db34a5737cb74484d62eb94a95841ab2f",
+      "url": "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-aarch64-unknown-linux-gnu.tar.gz"
+    }
+  },
+  "files": {
+    "bin/fd": "d0fc407937b8a8aec44f3a80b4a08219ba61dde234590358abb168b44478d493",
+    "licenses/fd/LICENSE-MIT": "322cfc7aa0c774d0eca3b2610f1d414de3ddbd7d8dd4b9dea941a13a6eb07455",
+    "licenses/fd/LICENSE-APACHE": "73c83c60d817e7df1943cb3f0af81e4939a8352c9a96c2fd00451b1116fa635c",
+    "bin/rg": "e07d5c85fa9ca740ff4ab8bbac60a1e11c7a5ce242435f7820a03f7c20ef6276",
+    "licenses/rg/LICENSE-MIT": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+    "licenses/rg/COPYING": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+    "licenses/rg/UNLICENSE": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+  }
+}

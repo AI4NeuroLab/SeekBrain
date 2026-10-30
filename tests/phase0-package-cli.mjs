@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { helpText, main, PACKAGE_ROOT, parseArgs, VERSION } from "../src/cli/cli.mjs";
 
@@ -9,7 +10,7 @@ const expectedHelp = await readFile(new URL("fixtures/seekbrain-help.txt", impor
 const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
 const binSource = await readFile(new URL("bin/seekbrain.mjs", root), "utf8");
 
-assert.equal(PACKAGE_ROOT, root.pathname.replace(/\/$/, ""));
+assert.equal(PACKAGE_ROOT, fileURLToPath(new URL(".", root)).replace(/[\\/]$/, ""));
 assert.equal(VERSION, manifest.version);
 assert.equal(helpText(), expectedHelp);
 assert.deepEqual(parseArgs(["-h"]), { action: "help" });

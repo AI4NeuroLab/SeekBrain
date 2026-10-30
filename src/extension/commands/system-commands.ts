@@ -36,9 +36,9 @@ export function registerSystemCommands(pi: SystemCommandAPI, dependencies: Syste
         customType: "seekbrain-tools",
         content: JSON.stringify({
           extension: "seekbrain", all_tools: allTools, active_tools: activeTools,
-          has_seekbrain_run_start: allTools.includes("seekbrain_run_start"), active_seekbrain_run_start: activeTools.includes("seekbrain_run_start"),
+          has_seekbrain_plan_generate: allTools.includes("seekbrain_plan_generate"), active_seekbrain_plan_generate: activeTools.includes("seekbrain_plan_generate"),
           has_seekbrain_research_start: allTools.includes("seekbrain_research_start"), active_seekbrain_research_start: activeTools.includes("seekbrain_research_start"),
-          has_seekbrain_research_continue: allTools.includes("seekbrain_research_continue"), active_seekbrain_research_continue: activeTools.includes("seekbrain_research_continue"),
+          has_seekbrain_execution_run: allTools.includes("seekbrain_execution_run"), active_seekbrain_execution_run: activeTools.includes("seekbrain_execution_run"),
         }, null, 2),
         display: true,
       });

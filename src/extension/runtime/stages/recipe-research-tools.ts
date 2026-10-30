@@ -12,7 +12,6 @@ export interface RecipeResearchToolDependencies {
     targeted_skill_match: boolean;
     targeted_skill_generate: boolean;
     rag_recipe_crystallization?: boolean;
-    deep_research: boolean;
     [key: string]: any;
   };
   literatureAgentConfig(config: Json, name: string): Json;
@@ -51,7 +50,7 @@ export function createRecipeResearchTools(deps: RecipeResearchToolDependencies):
     defineTool({
       name: "seekbrain_recipe_retrieve",
       label: "Retrieve Analysis Recipe",
-      description: "Retrieve a validated trajectory recipe from the Neuroscience Analysis Repertoire, then fall back to literature-and-code Recipe Crystallization and reuse.",
+      description: "Scout local RecipeCards and Paper RAG repositories as equal candidate sources, inspect a bounded shortlist, and return one scientific backbone plus an optional complementary method.",
       parameters: Type.Object({
         question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
         run_id: Type.String(),
@@ -89,43 +88,6 @@ export function createRecipeResearchTools(deps: RecipeResearchToolDependencies):
         return deps.content(publicRecipeResult(resolved));
       },
       renderResult: renderSeekBrainResult("seekbrain_recipe_retrieve"),
-    }),
-    defineTool({
-      name: "seekbrain_deep_research",
-      label: "Deep Research",
-      description: "Query Paper RAG and synthesize bounded neuroscience background context for downstream agents.",
-      parameters: Type.Object({
-        question: Type.Optional(Type.String({ description: "Research question or task. Falls back to state.json question." })),
-        run_id: Type.String(),
-        top_k: Type.Optional(Type.Number()),
-        rag_base_url: Type.Optional(Type.String()),
-        rag_timeout: Type.Optional(Type.Number()),
-        source_char_limit: Type.Optional(Type.Number()),
-        additional_context: Type.Optional(Type.String()),
-      }),
-      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        const config = await deps.loadConfig(ctx.cwd);
-        const agentConfig = deps.literatureAgentConfig(config, "seekbrain_deep_research");
-        const workflow = deps.workflowConfig(config);
-        return deps.content(await deps.workflow.deepResearch({
-          cwd: ctx.cwd,
-          workflowRoot: deps.workflowRoot,
-          runId: params.run_id,
-          question: params.question,
-          additionalContext: params.additional_context,
-          params,
-          flags: workflow,
-          agentConfig,
-          rolePrompt: await deps.readPrompt("deep_research"),
-          finalizeSchema: Type.Object({
-            deep_research_context: Type.String(),
-            summary: Type.String(),
-            warnings: Type.Array(Type.String()),
-          }),
-          signal,
-        }));
-      },
-      renderResult: renderSeekBrainResult("seekbrain_deep_research"),
     }),
   ];
 }

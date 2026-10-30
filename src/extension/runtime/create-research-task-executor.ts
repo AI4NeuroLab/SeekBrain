@@ -3,20 +3,28 @@ import { Type } from "typebox";
 import type {
   CodeWorkflow,
   ImageWorkflow,
-  InterpretWorkflow,
   ResearchTaskExecutionDependencies,
   ValidateWorkflow,
   WorkflowRunContext,
+  RunLifecycleWorkflow,
+} from "../../workflows/index.ts";
+import {
+  ConclusionClaimsSchema,
+  InterpretationEvidenceSchema,
+  type InterpretWorkflow,
 } from "../../workflows/index.ts";
 import type { Json } from "./runtime-types.ts";
+import { currentTaskValidated, persistTaskResults } from "../../workflows/unified/task-results.ts";
 
 export interface ResearchTaskExecutorDependencies {
+  runLifecycle: RunLifecycleWorkflow;
   projectRoot: string;
   loadConfig(cwd: string): Promise<Json>;
   workflowConfig(config: Json): Json;
   readPrompt(name: string): Promise<string>;
   resolveRun(cwd: string, runId?: string): Promise<WorkflowRunContext>;
   pickAgentConfig(config: Json, name: string): Json;
+  literatureAgentConfig(config: Json, name: string): Json;
   humanGateEnabled(config: Json, stage: string): boolean;
   defaultMaxCodeAttempts: number;
   codeWorkflow: CodeWorkflow;
@@ -35,6 +43,7 @@ export function createResearchTaskExecutor(
     readPrompt,
     resolveRun,
     pickAgentConfig,
+    literatureAgentConfig,
     humanGateEnabled,
     defaultMaxCodeAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
     codeWorkflow,
@@ -45,11 +54,14 @@ export function createResearchTaskExecutor(
   return async ({ cwd, task, publish, signal, afterCodeToolCall }) => {
     const config = await loadConfigCached(PROJECT_ROOT);
     const workflow = seekbrainWorkflowConfig(config);
-    const [codePrompt, validatePrompt, refinePrompt, interpretPrompt] = await Promise.all([
-      readPrompt("code"), readPrompt("validate"), readPrompt("image_refine"), readPrompt("interpret"),
-    ]);
     let child = await resolveRun(cwd, task.run_id);
-    if (child.state.interpretation && child.state.conclusions) {
+    const unified = child.state.flow_version === "0.1.4";
+    if (unified && child.state.execution_result && currentTaskValidated(child)) {
+      const results = await persistTaskResults(child, deps.runLifecycle);
+      await publish("task_completed", { result_manifest_path: results.result_manifest_path, recovered_existing_result: true });
+      return { task_id: task.task_id, run_id: task.run_id, ok: true, result_manifest_path: results.result_manifest_path, recovered_existing_result: true };
+    }
+    if (!unified && child.state.interpretation && child.state.conclusions) {
       const conclusionsPath = String(child.state.conclusions.path || join(child.runDir, "conclusions.json"));
       await publish("task_completed", {
         completed_at: new Date().toISOString(),
@@ -60,6 +72,9 @@ export function createResearchTaskExecutor(
       });
       return { task_id: task.task_id, run_id: task.run_id, ok: true, recovered_existing_result: true };
     }
+    const [codePrompt, validatePrompt, refinePrompt] = await Promise.all([
+      readPrompt("code"), readPrompt("validate"), readPrompt("image_refine"),
+    ]);
     const needsCode = Number(child.state.code_attempt || 0) === 0 || child.state.validation?.route === "retry_code";
     await publish("execution_started", { resumed: Number(child.state.code_attempt || 0) > 0 });
     await publish("code_started", {
@@ -75,20 +90,10 @@ export function createResearchTaskExecutor(
       agentConfig: pickAgentConfig(config, "seekbrain_code"),
       finalizeSchema: Type.Object({
         code_files: Type.Array(Type.Object({ path: Type.String() }), { minItems: 1 }),
-        exec_log: Type.String(),
-        statistics: Type.Any(),
-        artifacts: Type.Array(Type.Object({
-          name: Type.Optional(Type.String()),
-          path: Type.String(),
-          kind: Type.Union([Type.Literal("figure"), Type.Literal("statistics"), Type.Literal("data"), Type.Literal("code"), Type.Literal("markdown"), Type.Literal("json"), Type.Literal("log"), Type.Literal("other")]),
-          role: Type.Optional(Type.String()),
-          description: Type.Optional(Type.String()),
-          produced_by: Type.Optional(Type.String()),
-        })),
         summary: Type.String(),
         warnings: Type.Array(Type.String()),
       }),
-      planReviewRequired: humanGateEnabled(config, "plan"),
+      planReviewRequired: child.state.flow_version === "0.1.4" ? false : humanGateEnabled(config, "plan"),
       maxAttempts: DEFAULT_MAX_CODE_ATTEMPTS,
       signal,
       afterToolCall: afterCodeToolCall,
@@ -147,6 +152,10 @@ export function createResearchTaskExecutor(
       return { task_id: task.task_id, run_id: task.run_id, ok: false, blocked: true, stage: "validate", validation_path: validation.validation_path };
     }
 
+    if (child.state.flow_version === "0.1.4" && validation.result?.pass !== true) {
+      return { task_id: task.task_id, run_id: task.run_id, ok: false, stage: "validate", error: "No validated scientific evidence from this task" };
+    }
+
     let refinement: Json | undefined;
     if (validation.result?.route === "refine_image" && workflow.image_refine) {
       await publish("refinement_started", { figure_path: validation.result.refine_target?.figure_path });
@@ -174,6 +183,15 @@ export function createResearchTaskExecutor(
       await publish("refinement_completed", { attempted: false, skipped: true });
     }
 
+    if (unified) {
+      child = await resolveRun(cwd, task.run_id);
+      const results = await persistTaskResults(child, deps.runLifecycle);
+      await publish("task_completed", { result_manifest_path: results.result_manifest_path, validation_path: validation.validation_path });
+      return { task_id: task.task_id, run_id: task.run_id, ok: true,
+        result_manifest_path: results.result_manifest_path, validation_path: validation.validation_path,
+        refinement_attempted: Boolean(refinement), refinement_ok: refinement?.ok };
+    }
+    const [interpretResearchPrompt, interpretPrompt] = await Promise.all([readPrompt("interpret_research"), readPrompt("interpret")]);
     await publish("interpretation_started", {
       validation_path: validation.validation_path,
       refinement_attempted: Boolean(refinement),
@@ -182,17 +200,11 @@ export function createResearchTaskExecutor(
     const interpretation = await interpretWorkflow.execute({
       cwd,
       runId: task.run_id,
+      researchRolePrompt: interpretResearchPrompt,
       rolePrompt: interpretPrompt,
-      agentConfig: pickAgentConfig(config, "seekbrain_interpret"),
-      finalizeSchema: Type.Object({
-        conclusions: Type.Array(Type.String()),
-        summary: Type.String(),
-        limitations: Type.Array(Type.String()),
-        next_research_directions: Type.Array(Type.Object({
-          title: Type.String(),
-          research_question: Type.String(),
-        })),
-      }),
+      agentConfig: literatureAgentConfig(config, "seekbrain_interpret"),
+      researchFinalizeSchema: InterpretationEvidenceSchema,
+      finalizeSchema: ConclusionClaimsSchema,
       signal,
     });
     if (!interpretation.ok) throw new Error(`Result Interpretation failed for ${task.task_id}: ${interpretation.error || "unknown error"}`);

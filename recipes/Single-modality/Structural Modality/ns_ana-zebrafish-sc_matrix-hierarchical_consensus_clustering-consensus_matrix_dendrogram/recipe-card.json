@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-sc_matrix-hierarchical_consensus_clustering-consensus_matrix_dendrogram",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "This recipe identifies structural connectivity (SC) network modules in a zebrafish brain connectome using a hierarchical consensus clustering algorithm.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "matrix",
+    "hierarchical",
+    "consensus"
+  ],
+  "does": [
+    "clustering",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "cluster_assignments",
+    "result_matrix"
+  ],
+  "use_when": [
+    "Run the Structural Connectivity Hierarchical Consensus Module Detection recipe",
+    "This recipe identifies structural connectivity (SC) network modules in a zebrafish brain connectome using a hierarchical consensus clustering algorithm.",
+    "Generate the outputs described by ns_ana-zebrafish-sc_matrix-hierarchical_consensus_clustering-consensus_matrix_dendrogram"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/main.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

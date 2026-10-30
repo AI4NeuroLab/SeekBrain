@@ -1,0 +1,18 @@
+{
+  "name": "seekbrain-tools-linux-arm64",
+  "version": "0.1.0",
+  "description": "SeekBrain fd and ripgrep binaries for linux-arm64",
+  "license": "MIT",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin",
+    "licenses",
+    "manifest.json",
+    "README.md"
+  ]
+}

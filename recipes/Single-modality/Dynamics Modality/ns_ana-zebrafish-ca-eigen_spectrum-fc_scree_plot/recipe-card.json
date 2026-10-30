@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_ana-zebrafish-ca-eigen_spectrum-fc_scree_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Draw the scree plot of the functional connectivity (FC) diffusion-map eigenvalue spectrum for zebrafish whole-brain calcium data — a black line of eigenvalue versus gradient index — to show how fast gradient importance decays and to justify keeping only the leading modes.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "eigen",
+    "spectrum",
+    "fc"
+  ],
+  "does": [
+    "dimensionality_reduction",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "connectivity_metrics"
+  ],
+  "use_when": [
+    "Run the FC eigenvalue scree plot recipe",
+    "Draw the scree plot of the functional connectivity (FC) diffusion-map eigenvalue spectrum for zebrafish whole-brain calcium data — a black line of eigenvalue versus gradient index — to show how fast gradient importance decays and to justify keeping only the leading modes.",
+    "Generate the outputs described by ns_ana-zebrafish-ca-eigen_spectrum-fc_scree_plot"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

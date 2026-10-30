@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "recipe_id": "fmri-task-design-guide",
+  "version": "1.0",
+  "status": "provisional",
+  "kind": "analysis",
+  "summary": "Plan and review task-based fMRI experiments, including block, event-related, rapid event-related, and mixed designs; jitter and condition ordering; trial counts; scanner timing; design efficiency; behavioral constraints; and BOLD detection power.",
+  "aliases": [
+    "fmri",
+    "task-design",
+    "jitter",
+    "design-efficiency",
+    "experimental-design",
+    "fmri-task-design-guide"
+  ],
+  "does": [
+    "experimental_design"
+  ],
+  "evidence_for": [
+    "stimulus_encoding",
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [],
+    "modalities": [
+      "fmri"
+    ],
+    "observation_units": [
+      "trial",
+      "run",
+      "subject"
+    ],
+    "requires": [
+      "scientific_hypothesis",
+      "experimental_constraints"
+    ]
+  },
+  "primary_modalities": [
+    "fmri"
+  ],
+  "context_modalities": [
+    "behavior"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "task_timing_plan",
+    "condition_order",
+    "contrast_plan",
+    "design_efficiency_assessment"
+  ],
+  "use_when": [
+    "design a task-based fMRI experiment",
+    "choose block event-related or mixed fMRI design",
+    "optimize jitter inter-stimulus intervals or trial ordering",
+    "calculate fMRI design efficiency",
+    "plan trial counts scan duration and baseline periods"
+  ],
+  "avoid_when": [
+    "The task timing cannot be reconciled with scanner timing and behavioral constraints",
+    "The scientific contrast and expected response are not defined",
+    "The dataset has already been acquired and only retrospective statistical analysis is requested"
+  ],
+  "source": {
+    "type": "expert",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/design-optimization-examples.md"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

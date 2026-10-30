@@ -30,6 +30,27 @@ const contentRules = [
   ["hard-coded IP service URL", /https?:\/\/(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?/],
 ];
 
+// Reviewed upstream examples remain useful tests/documentation. Match the
+// example value, never skip an entire test file or disable credential checks.
+function isKnownExample(path, rule, value) {
+  const fixture = /(?:\.test\.[cm]?[jt]s$|^tests\/|\/__fixtures__\/)/.test(path);
+  if (rule === "provider credential" && fixture) {
+    if (/^gh[pousr]_/.test(value) && value.length < 40) return true;
+    return /(?:test|fake|example|placeholder|redacted|dummy|not-a-real|secret|stored|sensitive|hidden|broken|abcdefgh|12345678)/i.test(value);
+  }
+  if (rule === "AWS access key" && fixture) return value === "AKIA" + "IOSFODNN7EXAMPLE";
+  if (rule === "personal home path") {
+    return /^\/(?:home|Users)\/(?:me|u|a|alex|Alex|username|example|dev|fmriprep)\/$/.test(value);
+  }
+  if (rule === "hard-coded IP service URL") {
+    if (/^http:\/\/127\.0\.0\.1(?::\d+)?$/.test(value)) return true;
+    const { host } = new URL(value);
+    if (fixture && ["93.184.216.34", "192.168.1.5:3000", "192.168.32.7:30141"].includes(host)) return true;
+    return /^web\/lib\/i18n\/messages\//.test(path) && host === "192.168.32.7:30141";
+  }
+  return false;
+}
+
 const findings = [];
 for (const path of files) {
   const vendoredReference = /^library\/skills\/trajectory\/[^/]+\/references\/matched_files\//.test(path);
@@ -50,7 +71,8 @@ for (const path of files) {
     // Matched repository files are verbatim upstream evidence. Author-local
     // example paths are expected there and are not SeekBrain deployment paths.
     if (vendoredReference && (rule === "personal shared-storage path" || rule === "personal home path")) continue;
-    if (pattern.test(source)) findings.push({ path, rule });
+    const matches = source.matchAll(new RegExp(pattern.source, "g"));
+    if ([...matches].some(match => !isKnownExample(path, rule, match[0]))) findings.push({ path, rule });
   }
 }
 

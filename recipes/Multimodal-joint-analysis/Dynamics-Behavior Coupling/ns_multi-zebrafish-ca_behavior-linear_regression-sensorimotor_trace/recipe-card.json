@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior-linear_regression-sensorimotor_trace",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Build the three-modality sensorimotor raster for a single zebrafish larva — binarized swim behaviour, the light/dark visual stimulus sequence, and single-neuron ΔF/F₀ calcium traces for four functionally defined ensembles (Motor+, Motor−, Dark, Light) selected as the 50 most extreme neurons by precomputed correlation ranking — all drawn on one shared time axis with per-neuron traces at low alpha and the population…",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "behavior",
+    "linear",
+    "regression"
+  ],
+  "does": [
+    "regression",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "Analyze sensorimotor trace panel for one larva",
+    "Generate sensorimotor trace panel for one larva outputs",
+    "Apply the ns_multi-zebrafish-ca_behavior-linear_regression-sensorimotor_trace recipe"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

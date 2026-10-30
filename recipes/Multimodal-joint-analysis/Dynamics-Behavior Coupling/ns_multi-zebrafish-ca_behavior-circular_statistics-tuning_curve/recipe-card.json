@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior-circular_statistics-tuning_curve",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes and visualizes head-direction cell tuning transformations in symmetric environments by generating synchronized heatmaps across pre-learning, learning, and post-learning epochs.",
+  "aliases": [
+    "Head-Direction Cells",
+    "Spatial Navigation",
+    "Circular Statistics",
+    "Virtual Reality",
+    "Neural Population Dynamics",
+    "Tuning Curve Analysis"
+  ],
+  "does": [
+    "association",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "How do HD-cell tuning curves change when exposed to a symmetric visual scene?",
+    "Generate a centered heatmap of neural tuning curves for spatial orientation.",
+    "Assess bimodality in head-direction cell activity during virtual reality learning epochs.",
+    "Sort ROI tuning curves by preferred orientation across multiple experimental phases.",
+    "Compare pre-learning and post-learning HD-cell responses using normalized color-scaled heatmaps."
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -1,4 +1,6 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { pythonProcessEnvironment, resolvePythonCommand } from "../../../platform/python.mjs";
+import { stopProcessTree } from "../../../platform/process-tree.mjs";
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import type { Json } from "../runtime-types.ts";
@@ -41,27 +43,23 @@ export function createCodeEditService(deps: CodeEditServiceDependencies) {
       }
       const startedAt = Date.now();
       const env = await deps.loadEnv(deps.projectRoot);
-      const candidates = [env.SEEKBRAIN_PYTHON, "python3", "python"].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
-      const pythonCommand = candidates.find((command) => spawnSync(command, ["--version"], { env, stdio: "ignore" }).status === 0);
-      if (!pythonCommand) {
-        return { ok: false, exit_code: null, command: null, error: "Python was not found. Set SEEKBRAIN_PYTHON to a working interpreter before running Code stages." };
-      }
+      const pythonCommand = resolvePythonCommand(env);
       return await new Promise<Json>((done) => {
         let stdout = "";
         let stderr = "";
         let settled = false;
-        const child = spawn(pythonCommand, [codePath], { cwd: runDir, env });
+        const child = spawn(pythonCommand, [codePath], { cwd: runDir, env: pythonProcessEnvironment(env) });
         const finish = (result: Json) => {
           if (settled) return;
           settled = true;
           signal?.removeEventListener("abort", abort);
           done({ ...result, command: pythonCommand, stdout, stderr, duration_ms: Date.now() - startedAt });
         };
-        const abort = () => child.kill("SIGTERM");
+        const abort = () => stopProcessTree(child);
         signal?.addEventListener("abort", abort, { once: true });
         child.stdout?.on("data", (chunk) => { stdout = appendLimitedOutput(stdout, chunk); });
         child.stderr?.on("data", (chunk) => { stderr = appendLimitedOutput(stderr, chunk); });
-        child.on("error", (error) => finish({ ok: false, exit_code: null, error: String(error) }));
+        child.on("error", (error) => finish({ ok: false, exit_code: null, error: `${error}. Set SEEKBRAIN_PYTHON to a working interpreter.` }));
         child.on("close", (code, childSignal) => finish({
           ok: code === 0,
           exit_code: code,

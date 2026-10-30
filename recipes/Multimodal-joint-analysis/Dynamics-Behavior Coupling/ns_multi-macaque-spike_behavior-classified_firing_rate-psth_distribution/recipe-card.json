@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-macaque-spike_behavior-classified_firing_rate-psth_distribution",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Computes and visualizes trial-averaged PSTHs for PMd neurons categorized by decision choice and coherence difficulty during the perceptual decision-formation period.",
+  "aliases": [
+    "electrophysiology",
+    "PMd",
+    "perceptual decision-making",
+    "PSTH",
+    "neuroscience",
+    "single-unit analysis"
+  ],
+  "does": [
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "macaque"
+    ],
+    "modalities": [
+      "spike",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "spike_times_or_firing_rates",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "spike",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot",
+    "distribution_plot"
+  ],
+  "use_when": [
+    "How do I analyze heterogeneous PMd neuronal responses during decision making?",
+    "Compute stimulus-aligned PSTHs for macaque PMd neurons by choice and difficulty",
+    "Generate sliding window firing rate plots for PMd units from stimulus to RT",
+    "How to challenge canonical ramping models with single-neuron firing patterns?",
+    "Analyze trial-averaged firing rates in PMd with 75ms bins and SEM"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

@@ -65,13 +65,8 @@ function wordmark(theme: any): string {
     + theme.bold(theme.fg("text", "Brain"));
 }
 
-function pipeline(theme: any, narrow = false): string {
-  const stages = narrow
-    ? ["ASK", "ANALYZE", "VALIDATE", "INSIGHT"]
-    : ["QUESTION", "PLAN", "ANALYZE", "VALIDATE", "INSIGHT"];
-  return stages
-    .map((stage) => theme.fg("muted", stage))
-    .join(theme.fg("accent", "  ›  "));
+function modeHints(theme: any): string {
+  return ["Ask", "Plan", "Research", "Deep Research"].map(mode => theme.fg("muted", mode)).join(theme.fg("accent", "  ·  "));
 }
 
 function action(theme: any, key: string, label: string): string {
@@ -101,11 +96,11 @@ function startHint(theme: any, expanded: boolean, narrow = false): string {
 
 function detailRows(theme: any): Array<[string, string]> {
   return [
-    ["START", theme.fg("text", "Type a research question or dataset path directly in the editor below")],
-    ["DATA", theme.fg("dim", "a dataset path alone profiles the dataset and suggests research directions")],
+    ["START", theme.fg("text", "Type a question, discuss a plan, or request an analysis")],
+    ["MODES", theme.fg("dim", "/ask · /plan · /research · /deep-research")],
     ["MODELS", action(theme, "/seekbrain-setup", "choose Primary / Fast models")],
     ["KEYS", theme.fg("dim", "esc interrupt · ctrl+p models · shift+tab thinking · ctrl+c clear · ctrl+d exit")],
-    ["LOADED", theme.fg("dim", `research workflow · adaptive stage tracker · usage footer · ${workspaceName()}`)],
+    ["LOADED", theme.fg("dim", `mode controls · task activity · usage footer · ${workspaceName()}`)],
   ];
 }
 
@@ -115,11 +110,11 @@ function renderWideHeader(theme: any, width: number, expanded: boolean): string[
   const logo = displayWordmark(theme);
   const lines = [
     topBorder(theme, width, title),
-    splitRow(theme, width, leftWidth, logo[0], `  ${theme.fg("success", "● READY FOR RESEARCH")}`),
+    splitRow(theme, width, leftWidth, logo[0], `  ${theme.fg("success", "● READY")}`),
     splitRow(theme, width, leftWidth, logo[1], `  ${theme.bold(theme.fg("text", "SCIENTIFIC RESEARCH AGENT"))}`),
     splitToFullDivider(theme, width, leftWidth),
     framedRow(theme, width, `  ${theme.fg("text", "Ask a research question. Add data when it helps. SeekBrain handles the workflow.")}`),
-    framedRow(theme, width, `  ${pipeline(theme)}`),
+    framedRow(theme, width, `  ${modeHints(theme)}`),
     framedRow(theme, width, `  ${startHint(theme, expanded)}`),
   ];
   if (expanded) {
@@ -151,7 +146,7 @@ function renderCompactHeader(theme: any, width: number, expanded: boolean): stri
       width,
       `  ${theme.fg("text", narrow ? "Ask a question. Add data when useful." : "Ask a research question. Add data when it helps. SeekBrain handles the workflow.")}`,
     ),
-    framedRow(theme, width, `  ${pipeline(theme, narrow)}`),
+    framedRow(theme, width, `  ${modeHints(theme)}`),
     framedRow(theme, width, `  ${startHint(theme, expanded, narrow)}`),
   ];
   if (expanded) {
@@ -201,5 +196,5 @@ export function applySeekBrainDefaults(ctx: ExtensionContext): void {
   const configuredTheme = String(process.env.SEEKBRAIN_THEME || "").trim();
   if (configuredTheme) ctx.ui.setTheme(configuredTheme);
   ctx.ui.setHeader((_tui, theme) => seekBrainHeader(theme));
-  setTimeout(() => ctx.ui.setTitle("SeekBrain · Research Console"), 150);
+  setTimeout(() => ctx.ui.setTitle("SeekBrain"), 150);
 }

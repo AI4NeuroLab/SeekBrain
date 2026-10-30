@@ -21,8 +21,9 @@ function renderFooter(
   inputTokens: number,
   outputTokens: number,
   costLabel: string,
+  mode: string,
 ): string {
-  const line = theme.fg("dim", ` ${model}  `)
+  const line = theme.fg("accent", ` ${mode} `) + theme.fg("dim", `| ${model}  `)
     + theme.fg("accent", `ctx ${contextPercent}%`)
     + theme.fg("dim", "  |  ")
     + theme.fg("success", `${formatTokens(inputTokens)} in`)
@@ -57,7 +58,8 @@ export default function registerUsageFooter(pi: ExtensionAPI) {
           const contextPercent = Math.max(0, Math.min(100, Math.round(finiteNumber(ctx.getContextUsage()?.percent))));
           const model = ctx.model?.id || "no-model";
           const costLabel = costReported ? `$${cost.toFixed(4)}` : "cost n/a";
-          return [renderFooter(theme, width, model, contextPercent, inputTokens, outputTokens, costLabel)];
+          const mode = footerData.getExtensionStatuses().get("seekbrain-mode") || "Research";
+          return [renderFooter(theme, width, model, contextPercent, inputTokens, outputTokens, costLabel, mode)];
         },
       };
     });

@@ -102,13 +102,16 @@ describe("RagSkillGenerator paper-only mode", () => {
       outputDir: root,
     });
     expect(result).toMatchObject({ ok: true, evidence_level: "paper_only" });
-    expect((await readdir(result.skill_path)).sort()).toEqual(["SKILL.md", "metadata.json", "references"].sort());
-    expect((await readdir(join(result.skill_path, "references"))).sort()).toEqual(["paper_context.md"]);
+    expect((await readdir(result.skill_path)).sort()).toEqual(["SKILL.md", "metadata.json", "recipe-card.json", "references"].sort());
+    expect((await readdir(join(result.skill_path, "references"))).sort()).toEqual(["evidence_manifest.json", "paper_context.md"]);
     expect(existsSync(join(result.skill_path, "scripts"))).toBe(false);
     expect(existsSync(join(result.skill_path, "references", "repo_context.md"))).toBe(false);
     expect(await readFile(join(result.skill_path, "SKILL.md"), "utf8")).toContain("No associated implementation repository was verified");
+    expect(JSON.parse(await readFile(join(result.skill_path, "recipe-card.json"), "utf8"))).toMatchObject({ status: "candidate", kind: "reference", source: { type: "rag" } });
+    expect(JSON.parse(await readFile(join(result.skill_path, "references", "evidence_manifest.json"), "utf8"))).toMatchObject({ evidence_level: "paper_only", paper: { pmid: "123", pmcid: "PMC456" } });
     expect(JSON.parse(await readFile(join(result.skill_path, "metadata.json"), "utf8"))).toMatchObject({
-      evidence_level: "paper_only", provider: "pubmed", pmid: "123", pmcid: "PMC456", repository_url: null, scripts_available: false,
+      schema_version: 3, evidence_level: "paper_only", provider: "pubmed", pmid: "123", pmcid: "PMC456", repository_url: null, scripts_available: false,
+      lifecycle: { status: "candidate", eligible_for_repertoire_retrieval: false }, quality_gate: { passed: true },
     });
   });
 });

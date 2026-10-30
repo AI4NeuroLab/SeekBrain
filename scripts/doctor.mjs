@@ -1,6 +1,9 @@
 import process from "node:process";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { resolvePythonCommand } from "../src/platform/python.mjs";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const minimum = [22, 19, 0];
 const current = process.versions.node.split(".").map(Number);
@@ -25,8 +28,8 @@ if (!supported) {
 const root = new URL("../", import.meta.url);
 const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
 const frozenDependencies = {
-  "@earendil-works/pi-coding-agent": "0.80.10",
-  "@earendil-works/pi-tui": "0.80.10",
+  "@earendil-works/pi-coding-agent": "1.2.0",
+  "@earendil-works/pi-tui": "1.2.0",
 };
 for (const [name, expected] of Object.entries(frozenDependencies)) {
   const declared = manifest.dependencies?.[name];
@@ -46,11 +49,27 @@ for (const [name, expected] of Object.entries(frozenDependencies)) {
 }
 
 let python;
-for (const command of [process.env.SEEKBRAIN_PYTHON, "python3", "python"].filter(Boolean)) {
-  const result = spawnSync(command, ["--version"], { encoding: "utf8" });
+for (const command of [resolvePythonCommand()]) {
+  const result = spawnSync(command, ["--version"], { encoding: "utf8", timeout: 5000, windowsHide: true });
   if (result.status === 0) {
     python = { command, version: (result.stdout || result.stderr).trim() };
     break;
+  }
+}
+
+if (process.platform === "win32") {
+  try {
+    const piEntry = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
+    const { SettingsManager } = await import("@earendil-works/pi-coding-agent");
+    const { getShellConfig } = await import(pathToFileURL(join(dirname(piEntry), "utils", "shell.js")));
+    const shell = getShellConfig(SettingsManager.create(process.cwd()).getShellPath());
+    if (shell.commandTransport === "stdin") throw new Error("WSL Bash was selected by Windows Node. Install Git for Windows or configure shellPath for Git Bash.");
+    const result = spawnSync(shell.shell, [...shell.args, "printf seekbrain-bash-ok"], { encoding: "utf8", timeout: 5000, windowsHide: true });
+    if (result.error || result.status !== 0 || result.stdout !== "seekbrain-bash-ok") throw result.error || new Error(result.stderr || "Bash probe failed");
+    console.log(`Bash: ${shell.shell}`);
+  } catch (error) {
+    console.error(`Bash: ${error.message}`);
+    process.exitCode = 1;
   }
 }
 if (python) console.log(`${python.command}: ${python.version}`);

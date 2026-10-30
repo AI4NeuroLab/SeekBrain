@@ -1,4 +1,5 @@
 import { appendFile, copyFile, mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
 import { dirname } from "node:path";
 import { PathPolicy } from "../artifacts/path-policy.ts";
 import { atomicWriteJson } from "../state/atomic-json.ts";
@@ -29,11 +30,35 @@ export class FileDiagnosticSink {
   }
 
   async jsonl(path: string, entries: unknown[], warnings: DiagnosticWarning[]): Promise<void> {
-    const data = entries.map((entry) => JSON.stringify(entry)).join("\n") + (entries.length ? "\n" : "");
     await this.attempt("write_jsonl", path, warnings, async (safePath) => {
       await mkdir(dirname(safePath), { recursive: true });
-      await writeFile(safePath, data, "utf8");
+      await writeFile(safePath, "", "utf8");
+      for (const entry of entries) await appendFile(safePath, `${JSON.stringify(entry)}\n`, "utf8");
     });
+  }
+
+  async jsonlWriter(path: string, warnings: DiagnosticWarning[]): Promise<{ write(entry: any): void; close(): Promise<void> }> {
+    const noop = { write() {}, async close() {} };
+    if (!this.enabled) return noop;
+    try {
+      const safe = this.paths.resolve(path); await mkdir(dirname(safe), { recursive: true });
+      const stream = createWriteStream(safe, { flags: "w" });
+      let failed = false, overflowRecorded = false;
+      stream.on("error", error => { failed = true; warnings.push(this.warning("stream_jsonl", path, error)); });
+      return {
+        write: entry => {
+          if (failed) return;
+          try {
+            if (stream.writableLength > 1024 * 1024 && entry?.type === "message_update") {
+              if (!overflowRecorded) { warnings.push(this.warning("stream_jsonl", path, "Streaming deltas omitted under IO backpressure; final messages are retained")); overflowRecorded = true; }
+              return;
+            }
+            stream.write(`${JSON.stringify(entry)}\n`);
+          } catch (error) { warnings.push(this.warning("serialize_jsonl", path, error)); }
+        },
+        close: () => new Promise<void>(resolve => { if (failed || stream.destroyed) resolve(); else { stream.once("error", () => resolve()); stream.end(resolve); } }),
+      };
+    } catch (error) { warnings.push(this.warning("stream_jsonl", path, error)); return noop; }
   }
 
   async appendJsonl(path: string, entry: unknown, warnings: DiagnosticWarning[]): Promise<void> {

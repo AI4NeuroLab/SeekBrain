@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-sc_fc_matrix-degree_correlation_polyfit-scatter_plot",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantify how well structural node degree predicts functional node degree in the zebrafish brain — weighted row sums of the undirected structural connectome versus weighted row sums of the group-average FC matrix, tested with Pearson correlation and a least-squares line, plotted as a scatter with a best-fit line and the r value in the corner.",
+  "aliases": [
+    "zebrafish",
+    "sc",
+    "fc",
+    "matrix",
+    "degree"
+  ],
+  "does": [
+    "association",
+    "regression",
+    "connectivity"
+  ],
+  "evidence_for": [
+    "structure_function_coupling",
+    "connectivity"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "connectome"
+    ],
+    "observation_units": [
+      "region",
+      "edge"
+    ],
+    "requires": [
+      "connectivity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "connectome"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "scatter_plot"
+  ],
+  "use_when": [
+    "Analyze structural degree vs functional degree — correlation and linear fit",
+    "Generate structural degree vs functional degree — correlation and linear fit outputs",
+    "Apply the ns_multi-zebrafish-sc_fc_matrix-degree_correlation_polyfit-scatter_plot recipe"
+  ],
+  "avoid_when": [
+    "The intended conclusion requires causal inference from an observational association alone",
+    "Connectivity estimates are unsupported because sampling, preprocessing, or matrix alignment is inadequate"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

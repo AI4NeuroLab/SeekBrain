@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-gene_anatomy-expression_level_clustering-heatmap",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "This recipe generates a heatmap visualization of spatially resolved gene expression markers across brain regions in larval zebrafish.",
+  "aliases": [
+    "zebrafish",
+    "gene",
+    "anatomy",
+    "expression",
+    "level"
+  ],
+  "does": [
+    "clustering"
+  ],
+  "evidence_for": [
+    "regional_localization"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "omics",
+      "atlas"
+    ],
+    "observation_units": [
+      "gene",
+      "region"
+    ],
+    "requires": [
+      "gene_expression_matrix",
+      "atlas_annotations_or_coordinates"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [
+    "atlas"
+  ],
+  "transferable_roles": [],
+  "produces": [
+    "heatmap_figure",
+    "cluster_assignments"
+  ],
+  "use_when": [
+    "Analyze zebrafish gene expression heatmap",
+    "Generate zebrafish gene expression heatmap outputs",
+    "Apply the ns_multi-zebrafish-gene_anatomy-expression_level_clustering-heatmap recipe"
+  ],
+  "avoid_when": [
+    "A low-dimensional embedding alone would be treated as confirmatory statistical evidence",
+    "Atlas labels, coordinates, or registrations are missing or incompatible"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/main.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

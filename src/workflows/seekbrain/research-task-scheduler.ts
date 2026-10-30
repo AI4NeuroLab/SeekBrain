@@ -21,8 +21,6 @@ export type ResearchTaskEventType =
   | "planning_started"
   | "skill_started"
   | "skill_resolved"
-  | "deep_research_started"
-  | "deep_research_completed"
   | "plan_started"
   | "plan_ready"
   | "plan_revision_requested"
@@ -71,8 +69,6 @@ const EVENT_TARGET: Record<ResearchTaskEventType, ResearchTaskStatus> = {
   planning_started: "planning",
   skill_started: "planning",
   skill_resolved: "planning",
-  deep_research_started: "planning",
-  deep_research_completed: "planning",
   plan_started: "planning",
   plan_ready: "awaiting_plan_review",
   plan_revision_requested: "revising_plan",
@@ -96,9 +92,7 @@ const EVENT_TARGET: Record<ResearchTaskEventType, ResearchTaskStatus> = {
 const EVENT_ORDER: Record<ResearchTaskEventType, number> = {
   planning_started: 10,
   skill_started: 11,
-  deep_research_started: 11,
   skill_resolved: 12,
-  deep_research_completed: 12,
   plan_started: 13,
   plan_ready: 20,
   plan_revision_requested: 30,
@@ -123,8 +117,6 @@ const ALLOWED_FROM: Record<ResearchTaskEventType, ResearchTaskStatus[]> = {
   planning_started: ["queued"],
   skill_started: ["planning"],
   skill_resolved: ["planning"],
-  deep_research_started: ["planning"],
-  deep_research_completed: ["planning"],
   plan_started: ["planning"],
   plan_ready: ["planning", "revising_plan"],
   plan_revision_requested: ["awaiting_plan_review"],
@@ -613,7 +605,6 @@ export class ResearchTaskScheduler {
           plan_revision: Number(event.payload.plan_revision || 0),
           rollback_available: event.payload.rollback_available === true,
           skill_summary: event.payload.skill_summary || current.skill_summary,
-          deep_research_summary: event.payload.deep_research_summary || current.deep_research_summary,
           status: autoApprove ? "approved" : "waiting",
           enqueued_at: now,
           ...(autoApprove ? { resolved_at: now, decision: "approve_remaining" } : {}),

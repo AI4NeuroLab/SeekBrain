@@ -18,7 +18,6 @@ export function resolveLiteratureProvider(config: Json): LiteratureProvider {
     config.modules?.targeted_skill?.rag_base_url,
     config.modules?.targeted_skill?.base_url,
     config.agents?.seekbrain_survey?.rag?.base_url,
-    config.agents?.seekbrain_deep_research?.rag?.base_url,
   ];
   return legacyUrls.some(nonEmpty) ? "ailab_rag" : "none";
 }
@@ -31,7 +30,6 @@ export function literatureCapabilities(config: Json) {
     provider,
     available,
     research_survey: available && workflow.research_survey !== false,
-    deep_research: available && workflow.deep_research === true,
     targeted_skill_match: workflow.targeted_skill_match !== false,
     targeted_skill_generate: available && workflow.targeted_skill_generate !== false,
   };

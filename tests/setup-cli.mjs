@@ -70,13 +70,13 @@ assert.deepEqual(failedPubmedValidation, { ok: false, error: "authentication_fai
 assert.doesNotMatch(JSON.stringify(failedPubmedValidation), /pubmed-secret/);
 
 const legacyLiterature = parseDocument("modules:\n  targeted_skill:\n    rag_base_url: http://legacy.example\nagents:\n  seekbrain_survey:\n    rag:\n      base_url: http://legacy.example\nworkflow:\n  seekbrain: {}\n");
-applyLiteratureConfiguration(legacyLiterature, { source: "ailab_rag", baseUrl: "http://legacy.example" }, false, "/protected/literature-credentials.json");
+applyLiteratureConfiguration(legacyLiterature, { source: "ailab_rag", baseUrl: "http://legacy.example" }, "/protected/literature-credentials.json");
 const migratedLiterature = parseYaml(legacyLiterature.toString());
 assert.equal(migratedLiterature.literature.paper_source, "ailab_rag");
 assert.equal(migratedLiterature.literature.providers.ailab_rag.base_url, "http://legacy.example");
 assert.equal(migratedLiterature.modules.targeted_skill.rag_base_url, "http://legacy.example");
 
-const routed = parseDocument("workflow:\n  seekbrain:\n    deep_research: true\nagents: {}\n");
+const routed = parseDocument("workflow:\n  seekbrain:\n    deep_research: { max_rounds: 5 }\nagents: {}\n");
 applyModelRouting(
   routed,
   { provider: "strong", model: "core", thinking: "high" },
@@ -84,8 +84,8 @@ applyModelRouting(
 );
 const routedConfig = parseYaml(routed.toString());
 for (const agent of [
-  "seekbrain", "seekbrain_deep_research", "seekbrain_survey", "seekbrain_skill_match", "seekbrain_skill_context",
-  "seekbrain_skill_generate", "seekbrain_plan", "seekbrain_code", "seekbrain_validate", "seekbrain_interpret",
+  "seekbrain", "seekbrain_survey", "seekbrain_skill_match", "seekbrain_skill_context",
+  "seekbrain_skill_generate", "seekbrain_plan", "seekbrain_formulation", "seekbrain_report", "seekbrain_code", "seekbrain_validate", "seekbrain_interpret",
 ]) {
   assert.equal(routedConfig.agents[agent].provider, "strong");
   assert.equal(routedConfig.agents[agent].model, "core");
@@ -95,7 +95,7 @@ for (const agent of ["seekbrain_default", "seekbrain_refine_image"]) {
   assert.equal(routedConfig.agents[agent].model, "fast");
 }
 assert.ok(Object.values(routedConfig.agents).every((agent) => agent.thinking === undefined), "model routing must not create Thinking settings");
-assert.equal(routedConfig.workflow.seekbrain.deep_research, true);
+assert.deepEqual(routedConfig.workflow.seekbrain.deep_research, { max_rounds: 5 });
 
 const preservedRouting = parseDocument("agents:\n  seekbrain:\n    thinking: max\n    timeout_seconds: 42\n  seekbrain_default:\n    thinking: off\n");
 applyModelRouting(preservedRouting, { provider: "strong", model: "core" }, { provider: "quick", model: "fast" });
@@ -165,7 +165,7 @@ const fakeRuntime = {
   async login(provider, type, interaction) {
     selected.push({ provider, type, key: await interaction.prompt({ type: "secret" }) });
   },
-  async reloadConfig() {},
+  async refresh() {},
   async getAvailable() {
     return [
       { provider: "openai", id: "core-vision", reasoning: true, input: ["text", "image"] },
@@ -197,11 +197,11 @@ assert.equal(userConfig.agents.seekbrain_default.model, "fast-vision");
 assert.equal(userConfig.agents.seekbrain_interpret.model, "core-vision");
 assert.equal(userConfig.agents.seekbrain.thinking, "medium");
 assert.equal(userConfig.agents.seekbrain_default.thinking, "off");
-assert.equal(userConfig.agents.seekbrain_validate.thinking, "high");
+assert.equal(userConfig.agents.seekbrain_validate.thinking, "medium");
 assert.equal(userConfig.agents.seekbrain_interpret.thinking, "high");
 assert.equal(userConfig.literature.paper_source, "none");
 assert.equal(userConfig.workflow.seekbrain.research_survey, false);
-assert.equal(userConfig.workflow.seekbrain.deep_research, false);
+assert.deepEqual(userConfig.workflow.seekbrain.deep_research, { max_rounds: 3 });
 assert.equal(userConfig.workflow.seekbrain.targeted_skill_match, true);
 assert.equal(userConfig.workflow.seekbrain.targeted_skill_generate, false);
 assert.deepEqual(userConfig.workflow.seekbrain.human_review, {
@@ -217,8 +217,9 @@ assert.deepEqual(userConfig.workflow.seekbrain.report.pdf, {
   command: "seekbrain-pdf",
   timeout_seconds: 120,
 });
-assert.equal(userConfig.modules.targeted_skill.relevance_threshold, 0.5);
-assert.equal(userConfig.agents.seekbrain_code.timeout_seconds, 1800);
+assert.equal(userConfig.modules.targeted_skill.relevance_threshold, 0.6);
+assert.equal(userConfig.agents.seekbrain_code.timeout_seconds, 0);
+assert.equal(userConfig.agents.seekbrain_validate.timeout_seconds, 0);
 assert.equal(userConfig.agents.seekbrain_validate.vision, true);
 assert.equal(userConfig.agents.seekbrain_interpret.vision, true);
 await rm(work, { recursive: true, force: true });
@@ -253,15 +254,16 @@ try {
   assert.equal(literatureConfig.literature.paper_source, "semantic_scholar");
   assert.equal(literatureConfig.literature.providers.semantic_scholar.credential_ref, "semantic_scholar_default");
   assert.equal(literatureConfig.workflow.seekbrain.research_survey, true);
-  assert.equal(literatureConfig.workflow.seekbrain.deep_research, false);
+  assert.equal(literatureConfig.workflow.seekbrain.deep_research, undefined);
   assert.equal(literatureConfig.workflow.seekbrain.targeted_skill_generate, true);
   assert.doesNotMatch(await readFile(join(literatureWork, ".config", "seekbrain", "config.yaml"), "utf8"), /semantic-key/);
   assert.equal(credentials.credentials.semantic_scholar_default.api_key, "semantic-key");
   assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
 
   const configPath = join(literatureWork, ".config", "seekbrain", "config.yaml");
-  const manuallyEnabled = (await readFile(configPath, "utf8")).replace("deep_research: false", "deep_research: true");
-  await writeFile(configPath, manuallyEnabled, "utf8");
+  const manuallyEnabled = parseDocument(await readFile(configPath, "utf8"));
+  manuallyEnabled.setIn(["workflow", "seekbrain", "deep_research"], { max_rounds: 5 });
+  await writeFile(configPath, manuallyEnabled.toString(), "utf8");
   const reusePrompts = [];
   const reused = await runSetup({
     homeDir: literatureWork,
@@ -290,7 +292,7 @@ try {
     { message: "Keep existing literature setup (Semantic Scholar)?", defaultValue: true },
   ]);
   const reusedConfig = parseYaml(await readFile(configPath, "utf8"));
-  assert.equal(reusedConfig.workflow.seekbrain.deep_research, true);
+  assert.deepEqual(reusedConfig.workflow.seekbrain.deep_research, { max_rounds: 5 });
   assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
 } finally {
   await rm(literatureWork, { recursive: true, force: true });
@@ -373,7 +375,7 @@ const managerRuntime = {
     managerAuth.set(providerId, { type, key });
   },
   async logout(providerId) { managerAuth.delete(providerId); },
-  async reloadConfig() {},
+  async refresh() {},
 };
 try {
   const manager = await createSetupManager({
@@ -405,7 +407,7 @@ try {
   assert.equal(fullConfig.agents.seekbrain.thinking, "medium");
   assert.equal(fullConfig.agents.seekbrain_interpret.thinking, "high");
   assert.equal(fullConfig.workflow.seekbrain.research_survey, false);
-  assert.equal(fullConfig.workflow.seekbrain.deep_research, false);
+  assert.deepEqual(fullConfig.workflow.seekbrain.deep_research, { max_rounds: 3 });
   assert.equal(fullConfig.workflow.seekbrain.targeted_skill_generate, false);
   assert.equal(fullConfig.workflow.seekbrain.targeted_skill_match, true);
   assert.equal(fullConfig.workflow.seekbrain.research_planning, true);
@@ -441,13 +443,13 @@ try {
   fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
   assert.equal(fullConfig.literature.paper_source, "none");
   assert.equal(fullConfig.workflow.seekbrain.research_survey, false);
-  assert.equal(fullConfig.workflow.seekbrain.deep_research, false);
+  assert.deepEqual(fullConfig.workflow.seekbrain.deep_research, { max_rounds: 3 });
   assert.equal(fullConfig.workflow.seekbrain.targeted_skill_generate, false);
   assert.equal(fullConfig.workflow.seekbrain.targeted_skill_match, true);
   assert.equal(fullConfig.workflow.seekbrain.research_planning, true);
 
   const deepResearchDocument = parseDocument(await readFile(fullConfigPath, "utf8"));
-  deepResearchDocument.setIn(["workflow", "seekbrain", "deep_research"], true);
+  deepResearchDocument.setIn(["workflow", "seekbrain", "deep_research"], { max_rounds: 5 });
   await writeFile(fullConfigPath, deepResearchDocument.toString(), "utf8");
   snapshot = await manager.setResearch({
     source: "semantic_scholar",
@@ -457,7 +459,7 @@ try {
     apiKey: "literature-secret",
   });
   fullConfig = parseYaml(await readFile(fullConfigPath, "utf8"));
-  assert.equal(fullConfig.workflow.seekbrain.deep_research, true, "choosing a source must preserve Deep Research");
+  assert.deepEqual(fullConfig.workflow.seekbrain.deep_research, { max_rounds: 5 }, "choosing a source must preserve the Deep Research round budget");
   assert.doesNotMatch(await readFile(fullConfigPath, "utf8"), /literature-secret/);
 
   snapshot = await manager.connectCustom("openai", "https://relay.example/v1", "relay-key");
@@ -496,7 +498,7 @@ try {
     homeDir: realWork,
     prompter: realPrompter,
     output: { write() {} },
-    userTemplate: "workflow:\n  seekbrain:\n    deep_research: true\nagents: {}\n",
+    userTemplate: "workflow:\n  seekbrain:\n    deep_research: { max_rounds: 5 }\nagents: {}\n",
   });
   const auth = JSON.parse(await readFile(join(realWork, ".pi", "agent", "auth.json"), "utf8"));
   assert.deepEqual(auth.openai, { type: "api_key", key: "isolated-test-key" });

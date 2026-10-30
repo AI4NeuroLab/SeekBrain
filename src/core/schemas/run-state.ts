@@ -1,5 +1,7 @@
 import { Type, type Static } from "typebox";
 import { ArtifactSchema } from "./artifact.ts";
+import { ExecutionContractSchema } from "./execution-contract.ts";
+import { TaskBriefSchema } from "./task-brief.ts";
 
 export const RunStatusSchema = Type.Union([
   Type.Literal("created"),
@@ -30,6 +32,15 @@ export const RunStateSchema = Type.Object({
   run_id: Type.String({ minLength: 1 }),
   run_dir: Type.String({ minLength: 1 }),
   question: Type.Optional(Type.String()),
+  original_question: Type.Optional(Type.String()),
+  original_question_history: Type.Optional(Type.Array(Type.Object({
+    at: Type.String(),
+    text: Type.String(),
+  }, { additionalProperties: false }))),
+  task_brief: Type.Optional(TaskBriefSchema),
+  task_brief_path: Type.Optional(Type.String()),
+  execution_contract: Type.Optional(ExecutionContractSchema),
+  execution_contract_path: Type.Optional(Type.String()),
   created_at: Type.Optional(Type.String()),
   updated_at: Type.Optional(Type.String()),
   status: Type.Optional(RunStatusSchema),

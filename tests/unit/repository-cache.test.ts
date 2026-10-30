@@ -8,8 +8,18 @@ import {
   normalizeRepositoryIdentity,
   registerValidatedRepositoryScripts,
 } from "../../src/targeted-skill/repository-cache.ts";
+import { nonInteractiveGitEnv } from "../../src/core/non-interactive-git.ts";
 
 describe("repository-backed Recipe cache", () => {
+  it("disables terminal and AskPass authentication for Git subprocesses", () => {
+    expect(nonInteractiveGitEnv({ GIT_ASKPASS: "vscode-askpass", SSH_ASKPASS: "gui-askpass" })).toMatchObject({
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_ASKPASS: "/bin/false",
+      SSH_ASKPASS: "/bin/false",
+      GCM_INTERACTIVE: "Never",
+    });
+  });
+
   it("uses one durable identity for HTTPS and SSH spellings", () => {
     const expected = "github.com/example/repo";
     expect(normalizeRepositoryIdentity("https://github.com/Example/Repo.git/")).toBe(expected);
@@ -64,5 +74,49 @@ describe("repository-backed Recipe cache", () => {
       materializeRepository("git@github.com:example/repo.git", "analysis", "paper", { cacheRoot: root, runGit }),
     ]);
     expect(clones).toBe(1);
+  });
+
+  it("temporarily caches failed materialization instead of cloning the same repository again", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-repo-negative-cache-"));
+    let clones = 0;
+    const runGit = async (args: string[]) => {
+      if (args[0] === "clone") {
+        clones += 1;
+        throw new Error("repository not found");
+      }
+      throw new Error(`unexpected git call ${args.join(" ")}`);
+    };
+    const options = { cacheRoot: root, runGit, failureCacheTtlMs: 60_000 };
+    const first = await materializeRepository("https://github.com/example/missing", "analysis", "paper", options);
+    const second = await materializeRepository("https://github.com/example/missing", "analysis", "paper", options);
+    expect(first).toMatchObject({ ok: false, reused: false });
+    expect(second).toMatchObject({ ok: false, reused: true });
+    expect(second.error).toContain("repository not found");
+    expect(clones).toBe(1);
+  });
+
+  it("extracts executable R chunks and notebook code cells before inspection", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seekbrain-repo-literate-code-"));
+    const notebook = JSON.stringify({ cells: [
+      { cell_type: "markdown", source: ["# explanation"] },
+      { cell_type: "code", source: ["predicted = classifier.predict(expression)\n"] },
+    ] });
+    const runGit = async (args: string[]) => {
+      if (args[0] === "clone") { await mkdir(args.at(-1)!, { recursive: true }); return ""; }
+      if (args[0] === "rev-parse") return "def456";
+      if (args[0] === "ls-tree") return "analysis/workflow.Rmd\nanalysis/notebook.ipynb\nREADME.md\n";
+      if (args[0] === "show" && args[1].endsWith("workflow.Rmd")) return "Long prose that is not executable.\n\n```{r}\nclusters <- FindClusters(object)\n```\n";
+      if (args[0] === "show" && args[1].endsWith("notebook.ipynb")) return notebook;
+      if (args[0] === "show") return "# repository";
+      return "";
+    };
+    const result = await materializeRepository("https://github.com/example/literate", "subtype clustering classification", "Literate analysis", { cacheRoot: root, runGit });
+    const rmd = result.candidate_files.find((file) => file.path.endsWith(".Rmd"))!;
+    const ipynb = result.candidate_files.find((file) => file.path.endsWith(".ipynb"))!;
+    expect(await readFile(rmd.local_path, "utf8")).toContain("Source lines");
+    expect(await readFile(rmd.local_path, "utf8")).toContain("FindClusters");
+    expect(await readFile(rmd.local_path, "utf8")).not.toContain("Long prose");
+    expect(await readFile(ipynb.local_path, "utf8")).toContain("Notebook cell 2");
+    expect(await readFile(ipynb.local_path, "utf8")).toContain("classifier.predict");
   });
 });

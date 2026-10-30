@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-c_elegans-ca_behavior-correlation-timeseries_trace",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Analyzes how individual neurons encode velocity across diverse temporal scales using exponentially weighted moving averages and correlation optimization.",
+  "aliases": [
+    "neuroscience",
+    "velocity-encoding",
+    "electrophysiology",
+    "time-series-analysis",
+    "signal-processing"
+  ],
+  "does": [
+    "association",
+    "temporal_dynamics"
+  ],
+  "evidence_for": [
+    "behavioral_encoding",
+    "temporal_dynamics"
+  ],
+  "accepts": {
+    "species": [
+      "c_elegans"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial",
+      "timepoint"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "time_series_plot"
+  ],
+  "use_when": [
+    "calculate neuronal velocity integration timescales",
+    "determine preferred temporal decay constant for firing rate",
+    "analyze velocity encoding across different EWMA filters",
+    "correlate neuronal spikes with smoothed velocity traces",
+    "compute half-decay times for neural velocity tuning"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

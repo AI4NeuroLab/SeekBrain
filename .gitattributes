@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.exe binary
+*.node binary
+*.zip binary
+*.tgz binary
+packages/*/licenses/** -text whitespace=cr-at-eol

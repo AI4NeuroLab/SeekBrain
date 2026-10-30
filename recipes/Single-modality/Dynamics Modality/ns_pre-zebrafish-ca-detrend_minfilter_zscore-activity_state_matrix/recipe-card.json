@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_pre-zebrafish-ca-detrend_minfilter_zscore-activity_state_matrix",
+  "version": "1.0",
+  "status": "active",
+  "kind": "preprocess",
+  "summary": "Build the cross-fish bilateral brain state matrix from zebrafish calcium imaging — load each larva''s 140-region left+right regional time series, apply a three-part symmetric exclusion rule (retina, zero-signal quality failures, bilateral pairing), detrend with a min-filter ΔF/F baseline, z-score each region over time, and concatenate all larvae along the time axis into a single (120, 19624) matrix.",
+  "aliases": [
+    "zebrafish",
+    "ca",
+    "detrend",
+    "minfilter",
+    "zscore"
+  ],
+  "does": [
+    "preprocess"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium"
+    ],
+    "observation_units": [
+      "neuron"
+    ],
+    "requires": [
+      "calcium_activity_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "calcium"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "result_matrix"
+  ],
+  "use_when": [
+    "Analyze bilateral cross-fish brain state matrix",
+    "Generate bilateral cross-fish brain state matrix outputs",
+    "Apply the ns_pre-zebrafish-ca-detrend_minfilter_zscore-activity_state_matrix recipe"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

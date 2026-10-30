@@ -9,13 +9,30 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
   paths: {},
   modules: {
     targeted_skill: {
-      relevance_threshold: 0.5,
-      top_k: 1,
+      resolution_mode: "recipe_scout_v2",
+      relevance_threshold: 0.6,
+      top_k: 3,
       compatibility: {
         candidate_pool_size: 10,
+        recipe_candidate_pool_size: 8,
         skill_top_k: 2,
         prefer_repository: true,
         paper_only_fallback: true,
+        scout: {
+          rag_rounds: 2,
+          initial_rag_top_k: 8,
+          retry_rag_top_k: 4,
+          local_top_k: 8,
+          repository_inspections: 4,
+          initial_inspection_limit: 3,
+          inspection_concurrency: 2,
+          selected_methods: 2,
+        },
+      },
+      revision: {
+        enabled: true,
+        budget: 1,
+        generated_only: true,
       },
     },
   },
@@ -23,6 +40,7 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
   workflow: {
     debug_disk_writes: false,
     seekbrain: {
+      web_search: true,
       research_planning: true,
       research_planning_strategy: "standard",
       research_survey: true,
@@ -38,7 +56,7 @@ export const DEFAULT_SEEKBRAIN_CONFIG: SeekBrainConfig = {
           timeout_seconds: 120,
         },
       },
-      deep_research: false,
+      deep_research: { max_rounds: 3 },
       targeted_skill_match: true,
       targeted_skill_generate: true,
       rag_recipe_crystallization: false,
@@ -121,6 +139,13 @@ function deepFreeze<T>(value: T): T {
   return Object.freeze(value);
 }
 
+function withoutRetiredBackground(layer: ConfigObject): ConfigObject {
+  const cleaned = structuredClone(layer) as Record<string, any>;
+  if (typeof cleaned.workflow?.seekbrain?.deep_research === "boolean") delete cleaned.workflow.seekbrain.deep_research;
+  if (cleaned.agents) delete cleaned.agents.seekbrain_deep_research;
+  return cleaned;
+}
+
 export class ConfigLoader {
   readonly options: ConfigLoaderOptions;
 
@@ -140,7 +165,7 @@ export class ConfigLoader {
       environmentConfig(this.options.env ?? process.env),
       this.options.overrides ?? {},
       runtimeOverrides,
-    ].reduce((result, layer) => mergeConfig(result, layer), {});
+    ].reduce((result, layer) => mergeConfig(result, withoutRetiredBackground(layer)), {});
     const issues = validationIssues(merged);
     if (issues.length) throw new ConfigValidationError(issues);
     return deepFreeze(merged) as Readonly<SeekBrainConfig>;

@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.next-release/cache/
+.next-release/**/*.map
+**/*.test.mjs
+.env*
+*.tsbuildinfo

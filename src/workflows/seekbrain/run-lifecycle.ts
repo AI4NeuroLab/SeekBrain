@@ -42,7 +42,7 @@ export interface StartResearchInput {
   projectPath: string;
   question: string;
   deliverables?: WorkflowArtifact[];
-  metadata?: { data_info?: string; extra_path_info?: string; metadata_json_path?: string; user_background?: string };
+  metadata?: { data_info?: string; extra_path_info?: string; metadata_json_path?: string; user_background?: string; reference_paths?: string[]; request_cwd?: string };
   deferInitialRound?: boolean;
 }
 
@@ -119,6 +119,9 @@ function compactMetadataReference(metadata: WorkflowJson): WorkflowJson {
     ...(metadataPath ? { metadata_json_path: metadataPath } : { data_info: String(metadata.data_info || "") }),
     extra_path_info: String(metadata.extra_path_info || ""),
     user_background: String(metadata.user_background || ""),
+    ...(Array.isArray(metadata.reference_paths) && metadata.reference_paths.length
+      ? { reference_paths: metadata.reference_paths } : {}),
+    ...(metadata.request_cwd ? { request_cwd: metadata.request_cwd } : {}),
   };
 }
 
@@ -240,6 +243,8 @@ export class RunLifecycleWorkflow {
       extra_path_info: String(input.metadata?.extra_path_info || ""),
       metadata_json_path: String(input.metadata?.metadata_json_path || ""),
       user_background: String(input.metadata?.user_background || ""),
+      reference_paths: input.metadata?.reference_paths?.map((path) => resolve(input.cwd, path)),
+      request_cwd: input.metadata?.request_cwd || resolve(input.cwd),
     });
     await this.updateState(run, {
       project_id: projectId, project_dir: projectDir, round_number: roundNumber,
@@ -286,6 +291,7 @@ export class RunLifecycleWorkflow {
     const roundName = "round1";
     const run = await this.startRun(cwd, join(projectDir, roundName), planningRun.state.deliverables, String(planningRun.state.question || ""));
     const metadata = compactMetadataReference(manifest.metadata || this.researchMetadata(planningRun.state));
+    const routeAssessment = planningRun.state.research_planning?.assessment || {};
     await this.updateState(run, {
       project_id: manifest.project_id,
       project_dir: projectDir,
@@ -295,6 +301,7 @@ export class RunLifecycleWorkflow {
       ...metadata,
       planning_source_run_id: planningRun.runId,
       planning_source_run_dir: planningRun.runDir,
+      ...(routeAssessment.inferred_background ? { scientific_background: routeAssessment.inferred_background } : {}),
       ...(Array.isArray(planningRun.state.literature_queries) ? { literature_queries: planningRun.state.literature_queries } : {}),
     });
     manifest.rounds.push({
@@ -447,6 +454,8 @@ export class RunLifecycleWorkflow {
       extra_path_info: String(state.extra_path_info || ""),
       metadata_json_path: String(state.metadata_json_path || ""),
       user_background: String(state.user_background || ""),
+      reference_paths: state.reference_paths,
+      request_cwd: state.request_cwd,
     });
   }
 }

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_vis-zebrafish-gene-zscore-expression_matrix_heatmap",
+  "version": "1.0",
+  "status": "active",
+  "kind": "visualization",
+  "summary": "Render a grayscale heatmap of 290 genes across 65 zebrafish brain regions after within-region z-scoring.",
+  "aliases": [
+    "zebrafish",
+    "gene",
+    "zscore",
+    "expression",
+    "matrix"
+  ],
+  "does": [
+    "visualization"
+  ],
+  "evidence_for": [],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "omics"
+    ],
+    "observation_units": [
+      "gene"
+    ],
+    "requires": [
+      "gene_expression_matrix"
+    ]
+  },
+  "primary_modalities": [
+    "omics"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "heatmap_figure",
+    "result_matrix"
+  ],
+  "use_when": [
+    "Analyze z-scored gene × region expression heatmap",
+    "Generate z-scored gene × region expression heatmap outputs",
+    "Apply the ns_vis-zebrafish-gene-zscore-expression_matrix_heatmap recipe"
+  ],
+  "avoid_when": [
+    "The required input data contract is not satisfied"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/data_contract.md",
+      "references/method_details.md",
+      "scripts/reference_implementation.py",
+      "scripts/refine_implementation.py",
+      "scripts/zebrafish_Ca_stats_patch_xps.py",
+      "scripts/zebrafish_Ca_utils.py",
+      "scripts/zebrafish_Ca_utils_patch_xps.py",
+      "scripts/zebrafish_Ca_utils_predictors_xps.py",
+      "scripts/zebrafish_Ca_visualization_patch_xps.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}

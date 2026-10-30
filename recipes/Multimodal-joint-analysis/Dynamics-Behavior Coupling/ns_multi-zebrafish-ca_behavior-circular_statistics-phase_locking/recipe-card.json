@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recipe_id": "ns_multi-zebrafish-ca_behavior-circular_statistics-phase_locking",
+  "version": "1.0",
+  "status": "active",
+  "kind": "analysis",
+  "summary": "Quantifies disruption of scene–bump phase alignment across learning epochs using circular offsets and within-subject out-of-phase fractions.",
+  "aliases": [
+    "zebrafish",
+    "neuroscience",
+    "circular-statistics",
+    "phase-locking",
+    "cognitive-map"
+  ],
+  "does": [
+    "association"
+  ],
+  "evidence_for": [
+    "behavioral_encoding"
+  ],
+  "accepts": {
+    "species": [
+      "zebrafish"
+    ],
+    "modalities": [
+      "calcium",
+      "behavior"
+    ],
+    "observation_units": [
+      "neuron",
+      "trial"
+    ],
+    "requires": [
+      "calcium_activity_matrix",
+      "aligned_behavior_measurements"
+    ]
+  },
+  "primary_modalities": [
+    "calcium",
+    "behavior"
+  ],
+  "context_modalities": [],
+  "transferable_roles": [],
+  "produces": [
+    "analysis_results"
+  ],
+  "use_when": [
+    "quantify scene–bump alignment disruption across learning epochs",
+    "calculate the fraction of time a neural bump is out of phase",
+    "compare circular phase offsets within subjects",
+    "visualize pre-learning, learning, and post-learning alignment",
+    "analyze cognitive-map stability from angular time series"
+  ],
+  "avoid_when": [
+    "Neural and behavioral measurements cannot be aligned on a common time base",
+    "The intended conclusion requires causal inference from an observational association alone"
+  ],
+  "source": {
+    "type": "builtin",
+    "evidence_refs": [
+      "SKILL.md",
+      "references/implementation_notes.md",
+      "references/scientific_context.md",
+      "scripts/run_analysis.py",
+      "scripts/utils.py"
+    ]
+  },
+  "quality": {
+    "passed_runs": 0,
+    "recipe_attributed_failures": 0
+  }
+}
