@@ -40,7 +40,7 @@ function isKnownExample(path, rule, value) {
   }
   if (rule === "AWS access key" && fixture) return value === "AKIA" + "IOSFODNN7EXAMPLE";
   if (rule === "personal home path") {
-    return /^\/(?:home|Users)\/(?:me|u|a|alex|Alex|username|example|dev|fmriprep)\/$/.test(value);
+    return /^\/(?:home|Users)\/(?:me|u|a|alex|Alex|username|example|dev)\/$/.test(value);
   }
   if (rule === "hard-coded IP service URL") {
     if (/^http:\/\/127\.0\.0\.1(?::\d+)?$/.test(value)) return true;

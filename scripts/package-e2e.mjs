@@ -67,7 +67,7 @@ try {
   await access(join(installedPackage, "assets", "readme", "zebrafish-sc-atlas-original.png"));
   await access(join(installedPackage, "assets", "readme", "zebrafish-sc-atlas-seekbrain.png"));
   assert.match(await readFile(join(installedRecipes, "INDEX.md"), "utf8"), /Analysis Recipe Index/);
-  assert.equal(await countSkillDocuments(installedRecipes), 76);
+  assert.equal(await countSkillDocuments(installedRecipes), 68);
   const reportSkills = join(installedPackage, "skills", "report");
   assert.equal(await countSkillDocuments(reportSkills), 14);
   for (const name of await readdir(reportSkills)) assert.deepEqual(await readdir(join(reportSkills, name)), ["SKILL.md"]);

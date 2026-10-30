@@ -6,13 +6,15 @@ import { parse as parseYaml } from "yaml";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const builtinRoot = join(projectRoot, "recipes");
-const defaultFmriRoot = "/mnt/shared-storage-gpfs2/ai4neuro-share/zhuyuqing/fmri-neuroimaging-recipes";
-const auditRoot = join(projectRoot, "docs", "recipe_cards");
+const defaultAuditRoot = join(projectRoot, "docs", "recipe_cards");
 const args = new Map(process.argv.slice(2).map((item) => {
   const [key, ...rest] = item.split("=");
   return [key, rest.join("=") || "true"];
 }));
-const fmriRoot = resolve(args.get("--fmri-root") || defaultFmriRoot);
+for (const key of args.keys()) {
+  if (!["--final", "--dry-run", "--audit-root"].includes(key)) throw new Error(`Unknown option: ${key}`);
+}
+const auditRoot = resolve(args.get("--audit-root") || defaultAuditRoot);
 const outputName = args.get("--final") === "true" ? "recipe-card.json" : "recipe-card.draft.json";
 const writeCards = args.get("--dry-run") !== "true";
 
@@ -45,11 +47,6 @@ function frontmatter(text) {
   const end = text.indexOf("\n---", 3);
   if (end < 0) return {};
   return parseYaml(text.slice(3, end)) || {};
-}
-
-async function readJson(path) {
-  try { return JSON.parse(await readFile(path, "utf8")); }
-  catch { return {}; }
 }
 
 async function recipeDirectories(root) {
@@ -255,100 +252,9 @@ async function builtinCard(directory) {
   };
 }
 
-const FMRI_OVERRIDES = {
-  "fmriprep": {
-    kind: "preprocess", does: ["preprocess", "registration", "segmentation"], evidence_for: [],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["subject", "session", "run"], requires: ["bids_dataset"] },
-    primary_modalities: ["fmri"], context_modalities: ["atlas"],
-    produces: ["preprocessed_bold", "confounds_table", "spatial_transforms", "quality_report"],
-    avoid_when: ["The dataset is not sufficiently BIDS-compliant", "The task requires statistical modeling rather than preprocessing", "The user expects fMRIPrep itself to perform denoising or statistical inference"],
-  },
-  "fmri-preprocessing-pipeline-guide": {
-    kind: "preprocess", does: ["preprocess", "registration"], evidence_for: [],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["subject", "session", "run"], requires: ["raw_fmri_data", "acquisition_metadata"] },
-    primary_modalities: ["fmri"], context_modalities: ["atlas"],
-    produces: ["preprocessing_plan", "quality_control_plan", "analysis_ready_fmri"],
-    avoid_when: ["Acquisition metadata needed to select distortion and timing corrections are unavailable", "A software-specific command reference is required instead of a methodological preprocessing plan", "The requested operation is downstream statistical modeling rather than preprocessing"],
-  },
-  "fmri-glm-analysis-guide": {
-    kind: "analysis", does: ["regression", "group_comparison"], evidence_for: ["stimulus_encoding", "behavioral_encoding"],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["voxel", "region", "subject", "run"], requires: ["preprocessed_bold", "design_matrix", "contrast_definition"] },
-    primary_modalities: ["fmri"], context_modalities: ["behavior"],
-    produces: ["parameter_estimates", "contrast_map", "statistical_map", "group_inference"],
-    avoid_when: ["The design matrix is rank-deficient or incompatible with the acquisition timing", "Temporal autocorrelation and nuisance structure cannot be modeled adequately", "The question requires multivariate decoding rather than a general linear model"],
-  },
-  "fmri-task-design-guide": {
-    kind: "analysis", does: ["experimental_design"], evidence_for: ["stimulus_encoding", "behavioral_encoding"],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["trial", "run", "subject"], requires: ["scientific_hypothesis", "experimental_constraints"] },
-    primary_modalities: ["fmri"], context_modalities: ["behavior"],
-    produces: ["task_timing_plan", "condition_order", "contrast_plan", "design_efficiency_assessment"],
-    avoid_when: ["The task timing cannot be reconciled with scanner timing and behavioral constraints", "The scientific contrast and expected response are not defined", "The dataset has already been acquired and only retrospective statistical analysis is requested"],
-  },
-  "brain-connectivity-modeler": {
-    kind: "analysis", does: ["connectivity", "association", "regression"], evidence_for: ["connectivity", "structure_function_coupling"],
-    accepts: { species: [], modalities: ["fmri", "connectome"], observation_units: ["subject", "region", "edge", "timepoint"], requires: ["preprocessed_neural_data", "region_definition"] },
-    primary_modalities: ["fmri", "connectome"], context_modalities: ["atlas"],
-    produces: ["connectivity_matrix", "connectivity_model", "network_metrics", "model_comparison"],
-    avoid_when: ["Temporal resolution or preprocessing cannot support the requested connectivity interpretation", "Directed or causal claims are requested from an unsuitable observational method", "Region definitions or connectivity matrices are not aligned across subjects"],
-  },
-  "neural-decoding-analysis": {
-    kind: "analysis", does: ["decoding", "feature_extraction", "spatial_mapping"], evidence_for: ["stimulus_encoding", "behavioral_encoding", "regional_localization"],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["trial", "voxel", "region", "subject"], requires: ["feature_matrix", "target_labels", "cross_validation_groups"] },
-    primary_modalities: ["fmri"], context_modalities: ["behavior", "atlas"],
-    produces: ["decoding_scores", "permutation_inference", "searchlight_map", "representational_similarity_matrix"],
-    avoid_when: ["Cross-validation splits would leak subjects, runs, trials, or preprocessing information", "The sample size or label balance cannot support the proposed model", "Above-chance prediction would be interpreted as a unique neural mechanism without appropriate controls"],
-  },
-  "netneurotools-guide": {
-    kind: "analysis", does: ["connectivity", "association", "clustering", "structure_function_coupling"], evidence_for: ["connectivity", "structure_function_coupling", "regional_localization"],
-    accepts: { species: [], modalities: ["connectome"], observation_units: ["subject", "region", "edge"], requires: ["connectivity_matrix_or_brain_map"] },
-    primary_modalities: ["connectome"], context_modalities: ["atlas"],
-    produces: ["network_metrics", "null_networks", "community_assignments", "spatial_statistics", "surface_plot"],
-    avoid_when: ["Parcellations or node ordering are inconsistent across matrices", "Spatial autocorrelation is ignored in brain-map inference", "A dataset-specific preprocessing pipeline is required rather than network-neuroscience utilities"],
-  },
-  "pycortex-guide": {
-    kind: "visualization", does: ["visualization", "spatial_mapping", "registration"], evidence_for: ["regional_localization"],
-    accepts: { species: [], modalities: ["fmri"], observation_units: ["voxel", "vertex", "region", "subject"], requires: ["brain_map", "cortical_surface", "volume_to_surface_transform"] },
-    primary_modalities: ["fmri"], context_modalities: ["atlas"],
-    produces: ["cortical_flatmap", "surface_visualization", "webgl_viewer", "roi_overlay"],
-    avoid_when: ["The subject surface or volume-to-surface transform is unavailable", "The result should remain in native volume space without cortical projection", "Quantitative inference is requested but only a visualization operation has been specified"],
-  },
-};
-
-async function fmriCard(directory) {
-  const id = basename(directory);
-  const text = await readFile(join(directory, "SKILL.md"), "utf8");
-  const yaml = frontmatter(text);
-  const metadata = await readJson(join(directory, "metadata.json"));
-  const semantic = metadata.yaml_metadata || {};
-  const override = FMRI_OVERRIDES[id];
-  if (!override) throw new Error(`missing curated fMRI override: ${id}`);
-  return {
-    schema_version: 1,
-    recipe_id: id,
-    version: "1.0",
-    status: "provisional",
-    kind: override.kind,
-    summary: summarySentence(yaml.description || semantic.description),
-    aliases: unique([...(semantic.tags || []), id]),
-    does: override.does,
-    evidence_for: override.evidence_for,
-    accepts: override.accepts,
-    primary_modalities: override.primary_modalities,
-    context_modalities: override.context_modalities,
-    transferable_roles: [],
-    produces: override.produces,
-    use_when: unique(semantic.triggers || []).slice(0, 6),
-    avoid_when: override.avoid_when,
-    source: { type: "expert", evidence_refs: await resourceFiles(directory) },
-    quality: { passed_runs: 0, recipe_attributed_failures: 0 },
-  };
-}
-
 const builtinDirectories = await recipeDirectories(builtinRoot);
-const fmriDirectories = await recipeDirectories(fmriRoot);
 const records = [];
 for (const directory of builtinDirectories) records.push({ directory, collection: "builtin", card: await builtinCard(directory) });
-for (const directory of fmriDirectories) records.push({ directory, collection: "fmri-local", card: await fmriCard(directory) });
 
 const ids = new Set();
 for (const record of records) {
@@ -384,7 +290,6 @@ const report = [
   `- Output: \`${outputName}\``,
   `- Total: ${records.length}`,
   `- Built-in: ${builtinDirectories.length}`,
-  `- Local fMRI: ${fmriDirectories.length}`,
   `- Schema errors: 0`,
   `- Validation warnings: 0`,
   `- Duplicate IDs: 0`,
@@ -400,9 +305,8 @@ const report = [
   "",
   "## Review policy",
   "",
-  "- Modality fields are derived only from recipe identity/category or curated fMRI overrides, never from unrestricted body keyword matches.",
+  "- Modality fields are derived only from recipe identity/category, never from unrestricted body keyword matches.",
   "- Quality counters remain zero until observed runs can be attributed to a Recipe.",
-  "- Local fMRI cards remain provisional pending empirical runs, even after retrieval regression passes.",
 ];
 await writeFile(join(auditRoot, "recipe_card_audit.md"), `${report.join("\n")}\n`, "utf8");
-console.log(JSON.stringify({ output: outputName, write_cards: writeCards, total: records.length, builtin: builtinDirectories.length, fmri_local: fmriDirectories.length, audit_root: auditRoot }, null, 2));
+console.log(JSON.stringify({ output: outputName, write_cards: writeCards, total: records.length, builtin: builtinDirectories.length, audit_root: auditRoot }, null, 2));

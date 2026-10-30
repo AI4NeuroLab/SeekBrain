@@ -98,7 +98,7 @@ for (const path of paths) {
 }
 
 const skillDocuments = paths.filter((path) => path.startsWith("recipes/") && path.endsWith("/SKILL.md"));
-assert.equal(skillDocuments.length, 76, `pack must contain exactly 76 Recipe SKILL.md files, found ${skillDocuments.length}`);
+assert.equal(skillDocuments.length, 68, `pack must contain exactly 68 Recipe SKILL.md files, found ${skillDocuments.length}`);
 const reportSkills = paths.filter((path) => path.startsWith("skills/report/") && path.endsWith("/SKILL.md"));
 assert.equal(reportSkills.length, 14, "pack must contain 14 textbook report skills");
 assert(paths.filter(path => path.startsWith("skills/report/")).every(path => path.endsWith(".md")), "textbook report skills must contain only text documentation");
