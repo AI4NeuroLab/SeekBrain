@@ -258,7 +258,7 @@ try {
   assert.equal(literatureConfig.workflow.seekbrain.targeted_skill_generate, true);
   assert.doesNotMatch(await readFile(join(literatureWork, ".config", "seekbrain", "config.yaml"), "utf8"), /semantic-key/);
   assert.equal(credentials.credentials.semantic_scholar_default.api_key, "semantic-key");
-  assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
+  if (process.platform !== "win32") assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
 
   const configPath = join(literatureWork, ".config", "seekbrain", "config.yaml");
   const manuallyEnabled = parseDocument(await readFile(configPath, "utf8"));
@@ -293,7 +293,7 @@ try {
   ]);
   const reusedConfig = parseYaml(await readFile(configPath, "utf8"));
   assert.deepEqual(reusedConfig.workflow.seekbrain.deep_research, { max_rounds: 5 });
-  assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
+  if (process.platform !== "win32") assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
 } finally {
   await rm(literatureWork, { recursive: true, force: true });
 }

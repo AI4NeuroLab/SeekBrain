@@ -28,8 +28,8 @@ jobs:
     outputs:
       platforms: ${{ steps.select.outputs.platforms }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.22.1'
       - id: select
@@ -47,8 +47,8 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version || '0.1.4-preview.1' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.22.1'
           cache: npm
@@ -67,7 +67,7 @@ jobs:
         env:
           SEEKBRAIN_TEST_RELEASE_DIR: ${{ github.workspace }}/releases/ci
         run: node --test --test-concurrency=1 tests/release-installer.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: seekbrain-${{ matrix.target }}
           path: releases/ci/*
@@ -78,11 +78,11 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.22.1'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: seekbrain-*
           path: releases/collected
@@ -91,7 +91,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target || (contains(github.event.head_commit.message, '[windows]') && 'win32-x64') || 'all' }}
         run: node scripts/collect-release-ci.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: seekbrain-installation-bundles
           path: releases/collected/*

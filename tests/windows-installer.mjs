@@ -6,12 +6,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { npmInvocation } from "../src/platform/npm.mjs";
+import { windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
 
 const installer = fileURLToPath(new URL("../scripts/install-package.ps1", import.meta.url));
 const windows = process.platform === "win32";
 function run(args, timeout = 30_000) {
   return spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", installer, ...args], {
-    encoding: "utf8", windowsHide: true, timeout,
+    encoding: "utf8", windowsHide: true, timeout, env: windowsPowerShellEnvironment(),
   });
 }
 

@@ -9,13 +9,14 @@ import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { stopProcessTree } from "../src/platform/process-tree.mjs";
+import { windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
 
 const windows = process.platform === "win32";
 const source = fileURLToPath(new URL("..", import.meta.url));
 const shell = windows ? "powershell.exe" : "bash";
 function run(command, args, env, timeout = 300000) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const child = spawn(command, args, { env: windows && command.toLowerCase().endsWith("powershell.exe") ? windowsPowerShellEnvironment(env) : env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     let stdout = "", stderr = "";
     child.stdout.on("data", data => { stdout += data; }); child.stderr.on("data", data => { stderr += data; });
     const timer = setTimeout(() => { child.kill(); reject(new Error(`Timed out: ${command}\n${stdout}\n${stderr}`)); }, timeout);

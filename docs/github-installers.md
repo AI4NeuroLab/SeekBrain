@@ -100,3 +100,34 @@ SEEKBRAIN_TEST_ROOT can place large temporary installs on a filesystem with room
 
 Native Windows/macOS/ARM builds, interactive terminal behavior and an authenticated
 analysis remain necessary before claiming full support on those platforms.
+
+## Prepare a Release and website entry
+
+After all five native jobs pass, download the combined
+`seekbrain-installation-bundles` Actions artifact. Keep its archives, version.txt,
+release-manifest.json, SHA256SUMS and bootstrap scripts together. Check that
+release-manifest.json says complete=true and features.web=true for every target.
+The source commit must match the intended release commit.
+
+Create a GitHub **draft** Release for that exact version and attach the generated
+files. A preview tag such as v0.1.4-preview.1 is for explicit-version testing;
+the installer's default latest endpoint is for stable Releases. Publish only
+after the downloads and clean-install behavior have been reviewed.
+
+The source repository's main README remains unchanged by this installer branch.
+Website integration belongs in AI4NeuroLab/SeekBrain-page. Copy the generated
+install.sh and install.ps1 to its published root; these scripts download the
+platform archive from AI4NeuroLab/SeekBrain Releases. Once the stable Release and
+website files are live, the user-facing commands are:
+
+```sh
+curl -fsSL https://ai4neurolab.github.io/SeekBrain-page/install.sh | bash
+```
+
+```powershell
+irm https://ai4neurolab.github.io/SeekBrain-page/install.ps1 | iex
+```
+
+These website URLs are the planned handoff, not a claim that the files have
+already been deployed. Re-running the command installs the current stable
+version while retaining model configuration and the private Python environment.

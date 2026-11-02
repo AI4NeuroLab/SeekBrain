@@ -4,6 +4,7 @@ import { access, mkdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
 export const RELEASE_CONFIG = JSON.parse(await readFile(new URL("../release/targets.json", import.meta.url), "utf8"));
@@ -26,7 +27,11 @@ export async function sha256(path) {
 }
 export function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: "inherit", windowsHide: true, ...options });
+    const settings = { stdio: "inherit", windowsHide: true, ...options };
+    if (process.platform === "win32" && /(?:^|[\\/])powershell(?:\.exe)?$/i.test(command)) {
+      settings.env = windowsPowerShellEnvironment(settings.env || process.env);
+    }
+    const child = spawn(command, args, settings);
     child.once("error", reject);
     child.once("exit", code => code === 0 ? resolve() : reject(new Error(`${command} failed (${code})`)));
   });

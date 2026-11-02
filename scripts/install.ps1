@@ -28,7 +28,10 @@ Source/npm package testing is available separately in install-package.ps1.
 }
 
 $previousErrorAction = $ErrorActionPreference
+$previousProgress = $ProgressPreference
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell's per-chunk download progress can dominate large downloads.
+$ProgressPreference = 'SilentlyContinue'
 $lock = $null
 $stage = $null
 $createdEnvironment = $null
@@ -54,6 +57,7 @@ function Write-AtomicAscii([string]$Destination, [string]$Content) {
 
 function Get-Download([string]$Url, [string]$Destination) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Write-Host "Downloading $(Split-Path -Leaf $Url)..."
     Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Destination -TimeoutSec 600
 }
 
@@ -122,14 +126,17 @@ try {
     # Windows' libarchive preserves hidden entries and handles long npm paths.
     $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
     if (-not (Test-Path -LiteralPath $tar)) { throw 'This installer requires Windows 10/11 or Windows Server with tar.exe.' }
+    Write-Host 'Extracting SeekBrain bundle...'
     & $tar -xf $Bundle -C $stage
     if ($LASTEXITCODE -ne 0) { throw 'Bundle extraction failed.' }
+    Write-Host 'Checking private Node, Python and terminal runtime...'
     $node = Join-Path $stage 'runtime\node\node.exe'
     Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version)
     $manifest = [IO.File]::ReadAllText((Join-Path $stage 'bundle.json')) | ConvertFrom-Json
     if (-not $manifest.git -or $manifest.git.url -notlike 'https://github.com/git-for-windows/git/releases/download/*') { throw 'Missing official Git Bash metadata.' }
     $gitArchive = Get-VerifiedArchive $manifest.git.url $manifest.git.file $manifest.git.sha256
     $gitDirectory = Join-Path $stage 'runtime\git'
+    Write-Host 'Preparing private Git Bash...'
     Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'install-helpers.mjs'), 'extract-git', $gitArchive, $gitDirectory)
     Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version, '--require-git')
     $pythonVersion = [string]$manifest.python.version
@@ -137,6 +144,7 @@ try {
     $environment = Join-Path (Join-Path $Prefix 'environments') "python-$pythonVersion"
     $python = Join-Path $stage 'runtime\python\python.exe'
     if (-not (Test-Path -LiteralPath $environment)) {
+        Write-Host 'Preparing private Python environment...'
         $createdEnvironment = $environment
         & $python -I -m venv $environment
         if ($LASTEXITCODE -ne 0) { throw 'Could not prepare private Python environment.' }
@@ -179,6 +187,7 @@ try {
         }
     } finally {
         if ($lock) { $lock.Dispose(); Remove-Item -LiteralPath $lockPath -Force }
+        $ProgressPreference = $previousProgress
         $ErrorActionPreference = $previousErrorAction
     }
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { activePythonEnvironment, pythonProcessEnvironment, resolvePythonCommand } from "../src/platform/python.mjs";
-import { mergeEnvironment, prependPath } from "../src/platform/environment.mjs";
+import { mergeEnvironment, prependPath, windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
 
 test("Windows venv and Conda resolve different executable layouts", () => {
   assert.deepEqual(activePythonEnvironment({ VIRTUAL_ENV: "C:\\研究 项目\\.venv" }, "win32"), {
@@ -45,4 +45,11 @@ test("Windows PATH updates preserve tools, collapse aliases and remain idempoten
 test("Windows Python pipes default to UTF-8 and preserve explicit encoding settings", () => {
   assert.deepEqual(pythonProcessEnvironment({ KEEP: "yes" }, "win32"), { PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8", KEEP: "yes" });
   assert.equal(pythonProcessEnvironment({ PYTHONUTF8: "0" }, "win32").PYTHONUTF8, "0");
+});
+
+test("Windows PowerShell restores its own modules when launched through Node", () => {
+  const original = { PSModulePath: "C:/PowerShell/7/Modules", psMODULEpath: "another inherited alias", Path: "C:/Windows/System32", HOME: "C:/Users/researcher" };
+  const child = windowsPowerShellEnvironment(original);
+  assert.deepEqual(child, { Path: original.Path, HOME: original.HOME });
+  assert.equal(original.PSModulePath, "C:/PowerShell/7/Modules");
 });

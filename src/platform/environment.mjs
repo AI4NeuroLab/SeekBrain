@@ -25,3 +25,9 @@ export function prependPath(env, directory, platform = process.platform) {
   env[key] = paths.join(separator);
   return env;
 }
+
+// PowerShell 7's module search path is incompatible with Windows PowerShell 5.1
+// when the latter is launched indirectly through Node. Let it restore defaults.
+export function windowsPowerShellEnvironment(env = process.env) {
+  return Object.fromEntries(Object.entries(env).filter(([key]) => key.toLowerCase() !== "psmodulepath"));
+}
