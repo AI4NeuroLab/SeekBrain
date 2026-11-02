@@ -7,6 +7,7 @@ const [manifest] = JSON.parse(input);
 const paths = manifest.files.map((entry) => entry.path);
 const required = [
   "bin/seekbrain.mjs",
+  "bin/check-runtime.mjs",
   "assets/readme/zebrafish-sc-modules-original.png",
   "assets/readme/zebrafish-sc-modules-seekbrain.png",
   "assets/readme/zebrafish-sc-atlas-original.png",

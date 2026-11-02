@@ -29,27 +29,8 @@ probe(python, ["-I", "-m", "pip", "--version"]);
 probe(windows ? "fd.exe" : "fd", ["--version"]);
 probe(windows ? "rg.exe" : "rg", ["--version"]);
 // Load the actual SDK; --version alone does not check runtime dependencies.
-probe(process.execPath, ["--input-type=module", "-e", `
-  console.log('Loading SDK');
-  await import('@earendil-works/pi-coding-agent');
-  console.log('SDK loaded');
-  const { default: pty } = await import('node-pty');
-  console.log('PTY module loaded; creating terminal');
-  const terminal = pty.spawn(process.execPath, ['-e', "process.stdout.write('seekbrain-pty-ready')"], {
-    cols: 80, rows: 24, cwd: process.cwd(), env: process.env,
-  });
-  console.log('PTY spawn returned');
-  let output = '';
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => { terminal.kill(); reject(new Error('PTY startup timed out')); }, 15000);
-    terminal.onData(data => { output += data; console.log('PTY data', JSON.stringify(data)); });
-    terminal.onExit(({ exitCode }) => {
-      console.log('PTY exit', exitCode);
-      clearTimeout(timeout);
-      exitCode === 0 && output.includes('seekbrain-pty-ready') ? resolve() : reject(new Error('PTY failed: ' + output));
-    });
-  });
-`], { cwd: app });
+// A file entry avoids --input-type leaking into node-pty's Windows Worker.
+probe(process.execPath, [join(app, "bin", "check-runtime.mjs")], { cwd: app });
 if (windows && process.argv.includes("--require-git")) {
   probe(join(root, "runtime", "git", "cmd", "git.exe"), ["--version"]);
   probe(join(root, "runtime", "git", "bin", "bash.exe"), ["--noprofile", "--norc", "-c", "printf 'Git Bash ready'"]);
