@@ -7,9 +7,10 @@ macOS and WSL remain available. Windows ARM64 native support is not included.
 ## Requirements
 
 - 64-bit Windows, initially targeting Windows 11.
-- Git for Windows, including Git Bash. PowerShell can launch SeekBrain; analysis
-  commands inside the agent use Git Bash.
-- Python 3 with the libraries required by the selected analysis.
+- The Release installer prepares private Git Bash automatically. Source checkouts
+  require Git for Windows; analysis commands inside the agent use Git Bash.
+- The Release installer prepares private Python automatically. Source checkouts
+  require Python 3. Analysis-specific libraries are installed as needed.
 - Node.js >=22.19, preferably Node 24, for source development. The PowerShell
   installer prepares its own pinned Node 24 runtime.
 - Windows Terminal for interactive CLI validation.
@@ -55,7 +56,15 @@ Main sessions and SeekBrain subagents share the effective shell path and command
 prefix. In generated bash commands, `"$SEEKBRAIN_PYTHON"` selects the configured
 interpreter safely when its path contains spaces.
 
-## Install a local release
+## Install a GitHub Release bundle
+
+The Release bootstrap is `scripts/install.ps1`. It verifies a platform ZIP,
+prepares private Node/Python and official PortableGit, and creates an analysis
+venv that persists across upgrades. See [GitHub installation bundles](github-installers.md)
+for build and local validation commands. Public install links remain pending
+native platform verification and Release publication.
+
+## Maintainer source/package installation
 
 The main package and all platform packages remain unpublished. Build the tool
 tarballs on the maintainer machine first:
@@ -68,7 +77,7 @@ On Windows, use the main source directory or tarball plus the matching tool
 tarball:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 `
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install-package.ps1 `
   -Package . `
   -ToolsPackage 'D:\release\seekbrain-tools-win32-x64-0.1.0.tgz'
 ```

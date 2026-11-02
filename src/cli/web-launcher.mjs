@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, statSync, readFileSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
@@ -25,6 +25,10 @@ export async function launchWeb(args, runtime = {}) {
   if (!existsSync(cwd) || !statSync(cwd).isDirectory()) throw new Error(`Project directory does not exist: ${cwd}`);
   if (!["127.0.0.1", "localhost", "::1"].includes(hostname) && !process.env.PI_WEB_PASSWORD) throw new Error("Set PI_WEB_PASSWORD before enabling LAN access");
   const root = runtime.packageRoot || resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  if (process.env.SEEKBRAIN_BUNDLE_ROOT) {
+    const bundle = JSON.parse(readFileSync(join(process.env.SEEKBRAIN_BUNDLE_ROOT, "bundle.json"), "utf8"));
+    if (!bundle.features.web) throw new Error("This installation includes the CLI. Use a bundle with the Web UI to run seekbrain web.");
+  }
   const web = join(root, "web");
   let next;
   try { next = createRequire(join(web, "package.json")).resolve("next/dist/bin/next"); }

@@ -1,59 +1,44 @@
 [CmdletBinding()]
 param(
-    [string]$Package = 'seekbrain',
-    [string]$ToolsPackage,
+    [string]$Version,
     [string]$Prefix,
     [string]$Cache,
-    [switch]$Offline,
+    [string]$Bundle,
+    [string]$Checksums,
     [switch]$NoModifyPath,
     [switch]$Help
 )
 
-$ErrorActionPreference = 'Stop'
 if ($Help) {
     Write-Output @'
-SeekBrain native Windows x64 installer (PowerShell 5.1 or newer)
-  -Package <spec>       npm package/version, source directory, or local .tgz
-  -ToolsPackage <tgz>   Local seekbrain-tools-win32-x64 package
+SeekBrain GitHub Release installer for Windows x64 (PowerShell 5.1+)
+Installs private Node 24, Python, Git Bash and SeekBrain without administrator rights.
+  -Version <version>   Pin a release (default: latest stable)
   -Prefix <directory>  Default: %LOCALAPPDATA%\SeekBrain
-  -Cache <directory>   Default: <prefix>\cache
-  -Offline             Require cached Node archive and npm dependencies
-  -NoModifyPath        Do not update your user PATH
-  -Help                Show this help without installing anything
+  -Cache <directory>   Archive cache
+  -Bundle <zip>        Local bundle; requires -Version and -Checksums
+  -Checksums <file>    SHA256SUMS for the local bundle
+  -NoModifyPath        Do not change your user PATH
+  -Help                Show help without installing anything
 
-Installs a private Node 24 runtime and SeekBrain under your user account.
-Install Git for Windows and Python separately; configure with seekbrain setup.
-During development, pass local main/tool .tgz files; these packages are unpublished.
-SEEKBRAIN_NODE_MIRROR and SEEKBRAIN_NPM_REGISTRY can select download mirrors.
+SEEKBRAIN_RELEASE_BASE_URL can select a GitHub Release mirror.
+Source/npm package testing is available separately in install-package.ps1.
 '@
     return
 }
 
-if ($env:OS -ne 'Windows_NT') { throw 'This installer requires native Windows. Use scripts/install.sh on Linux/macOS/WSL.' }
-if ($Package.StartsWith('-')) { throw 'Invalid package spec.' }
-if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64' -or $env:PROCESSOR_ARCHITEW6432) {
-    throw 'The first native Windows release requires x64 Windows and a 64-bit PowerShell process.'
-}
-if (-not $Prefix) { $Prefix = $env:SEEKBRAIN_INSTALL_PREFIX }
-if (-not $Prefix) { $Prefix = Join-Path $env:LOCALAPPDATA 'SeekBrain' }
-$Prefix = [IO.Path]::GetFullPath($Prefix)
-if (-not $Cache) { $Cache = $env:SEEKBRAIN_INSTALL_CACHE }
-if (-not $Cache) { $Cache = Join-Path $Prefix 'cache' }
-$Cache = [IO.Path]::GetFullPath($Cache)
-$bin = Join-Path $Prefix 'bin'
-$nodeVersion = '24.22.1'
-$nodeAsset = "node-v$nodeVersion-win-x64.zip"
-$nodeSha = 'd2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5'
-$marker = 'SeekBrain managed launcher'
-$releaseId = 'install-' + [Guid]::NewGuid().ToString('N')
-$stage = Join-Path (Join-Path $Prefix 'releases') $releaseId
+$previousErrorAction = $ErrorActionPreference
+$ErrorActionPreference = 'Stop'
 $lock = $null
+$stage = $null
+$createdEnvironment = $null
+$createdLaunchers = @()
 $committed = $false
 $originalPath = $env:Path
 
-function Invoke-Node([string[]]$NodeArguments) {
-    & $script:node @NodeArguments
-    if ($LASTEXITCODE -ne 0) { throw "Node command failed with exit code $LASTEXITCODE" }
+function Invoke-PrivateNode([string[]]$NodeArguments) {
+    & $node @NodeArguments
+    if ($LASTEXITCODE -ne 0) { throw "Bundle validation failed ($LASTEXITCODE)." }
 }
 
 function Write-AtomicAscii([string]$Destination, [string]$Content) {
@@ -67,111 +52,133 @@ function Write-AtomicAscii([string]$Destination, [string]$Content) {
     }
 }
 
+function Get-Download([string]$Url, [string]$Destination) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Destination -TimeoutSec 600
+}
+
+function Get-VerifiedArchive([string]$Url, [string]$Filename, [string]$Sha256) {
+    if ($Filename -match '[/\\]' -or $Sha256 -cnotmatch '\A[a-f0-9]{64}\z') { throw 'Invalid archive metadata.' }
+    $destination = Join-Path $Cache $Filename
+    if (Test-Path -LiteralPath $destination) {
+        if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Sha256) { throw "SHA-256 mismatch in cache: $Filename" }
+        return $destination
+    }
+    $partial = $destination + '.' + [Guid]::NewGuid().ToString('N') + '.download'
+    try {
+        Get-Download $Url $partial
+        if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Sha256) { throw "SHA-256 mismatch: $Filename" }
+        Move-Item -LiteralPath $partial -Destination $destination
+    } finally {
+        if (Test-Path -LiteralPath $partial) { Remove-Item -LiteralPath $partial -Force }
+    }
+    return $destination
+}
+
 try {
+    if ($env:OS -ne 'Windows_NT') { throw 'Use install.sh on Linux/macOS/WSL.' }
+    if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64' -or $env:PROCESSOR_ARCHITEW6432) { throw 'Use 64-bit PowerShell on x64 Windows.' }
+    if (-not $Prefix) { $Prefix = $env:SEEKBRAIN_INSTALL_PREFIX }
+    if (-not $Prefix) { $Prefix = Join-Path $env:LOCALAPPDATA 'SeekBrain' }
+    $Prefix = [IO.Path]::GetFullPath($Prefix)
+    if (-not $Cache) { $Cache = $env:SEEKBRAIN_INSTALL_CACHE }
+    if (-not $Cache) { $Cache = Join-Path $Prefix 'cache' }
+    $Cache = [IO.Path]::GetFullPath($Cache)
+    $base = 'https://github.com/AI4NeuroLab/SeekBrain/releases'
+    if ($env:SEEKBRAIN_RELEASE_BASE_URL) { $base = $env:SEEKBRAIN_RELEASE_BASE_URL.TrimEnd('/') }
+    if ($Bundle -and (-not $Version -or -not $Checksums)) { throw '-Bundle requires -Version and -Checksums.' }
+    if ($Version -and $Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') { throw 'Invalid release version.' }
+    $bin = Join-Path $Prefix 'bin'
     New-Item -ItemType Directory -Force -Path $Prefix, $Cache, $bin | Out-Null
     $lockPath = Join-Path $Prefix '.install.lock'
     $lock = [IO.File]::Open($lockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    $marker = 'SeekBrain managed launcher'
     foreach ($command in @('seekbrain', 'seekbrain-014', 'seekbrain-pdf')) {
         $launcher = Join-Path $bin "$command.cmd"
-        if ((Test-Path -LiteralPath $launcher) -and -not ([IO.File]::ReadAllText($launcher).Contains($marker))) {
-            throw "Command already exists: $launcher"
-        }
+        if ((Test-Path -LiteralPath $launcher) -and -not ([IO.File]::ReadAllText($launcher).Contains($marker))) { throw "Command already exists: $launcher" }
     }
     $pointer = Join-Path $Prefix 'current.cmd'
-    if ((Test-Path -LiteralPath $pointer) -and -not ([IO.File]::ReadAllText($pointer).Contains($marker))) {
-        throw "Installation pointer already exists: $pointer"
-    }
-    $archive = Join-Path $Cache $nodeAsset
-    if (Test-Path -LiteralPath $archive) {
-        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeSha) {
-            throw "SHA-256 mismatch for cached Node archive: $archive"
-        }
-    } else {
-        if ($Offline) { throw "Offline cache is missing: $archive" }
-        $mirror = 'https://nodejs.org/dist'
-        if ($env:SEEKBRAIN_NODE_MIRROR) { $mirror = $env:SEEKBRAIN_NODE_MIRROR.TrimEnd('/') }
-        $download = $archive + '.' + [Guid]::NewGuid().ToString('N') + '.download'
-        try {
-            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -UseBasicParsing -Uri "$mirror/v$nodeVersion/$nodeAsset" -OutFile $download
-            if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeSha) {
-                throw 'SHA-256 mismatch for downloaded Node archive.'
-            }
-            Move-Item -LiteralPath $download -Destination $archive
-        } finally {
-            if (Test-Path -LiteralPath $download) { Remove-Item -LiteralPath $download -Force }
-        }
-    }
+    if ((Test-Path -LiteralPath $pointer) -and -not ([IO.File]::ReadAllText($pointer).Contains($marker))) { throw 'Existing current.cmd is not managed by SeekBrain.' }
+    $stage = Join-Path (Join-Path $Prefix 'releases') ('install-' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path $stage | Out-Null
-    Expand-Archive -LiteralPath $archive -DestinationPath $stage
-    Move-Item -LiteralPath (Join-Path $stage "node-v$nodeVersion-win-x64") -Destination (Join-Path $stage 'runtime')
-    $node = Join-Path $stage 'runtime\node.exe'
-    $npm = Join-Path $stage 'runtime\node_modules\npm\bin\npm-cli.js'
-    $env:Path = (Split-Path -Parent $node) + ';' + $originalPath
-    Invoke-Node -NodeArguments @('--version')
-    $npmPrefix = Join-Path $stage 'npm'
-    $npmArguments = @($npm, 'install', '--global', '--prefix', $npmPrefix, '--no-audit', '--no-fund', '--omit=dev', '--include=optional', '--cache', (Join-Path $Cache 'npm'))
-    if ($Offline) { $npmArguments += '--offline' }
-    if ($env:SEEKBRAIN_NPM_REGISTRY) { $npmArguments += @('--registry', $env:SEEKBRAIN_NPM_REGISTRY) }
-    if ($ToolsPackage) { $npmArguments += (Resolve-Path -LiteralPath $ToolsPackage).Path }
-    if (Test-Path -LiteralPath $Package -PathType Container) {
-        $packArguments = @($npm, 'pack', (Resolve-Path -LiteralPath $Package).Path, '--ignore-scripts', '--pack-destination', $stage, '--cache', (Join-Path $Cache 'npm'), '--json')
-        if ($Offline) { $packArguments += '--offline' }
-        $packed = & $node @packArguments
-        if ($LASTEXITCODE -ne 0) { throw 'Could not pack the source directory.' }
-        $packInfo = @($packed -join "`n" | ConvertFrom-Json)[0]
-        $Package = Join-Path $stage $packInfo.filename
-    } elseif (Test-Path -LiteralPath $Package -PathType Leaf) {
-        $Package = (Resolve-Path -LiteralPath $Package).Path
+    if (-not $Version) {
+        $versionFile = Join-Path $stage 'version.txt'
+        Get-Download "$base/latest/download/version.txt" $versionFile
+        $Version = [IO.File]::ReadAllText($versionFile).Trim()
+        if ($Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') { throw 'Invalid release version metadata.' }
     }
-    $npmArguments += $Package
-    Invoke-Node -NodeArguments $npmArguments
-    $installed = Join-Path $npmPrefix 'node_modules\seekbrain'
-    Invoke-Node -NodeArguments @((Join-Path $installed 'bin\seekbrain.mjs'), '--version')
-    $verifyTools = @'
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { spawnSync } from 'node:child_process';
-const root = process.argv[1];
-const { configureBundledTools } = await import(pathToFileURL(join(root, 'src/cli/bundled-tools.mjs')));
-configureBundledTools(process.env, root);
-for (const tool of ['fd.exe', 'rg.exe']) {
-  const result = spawnSync(tool, ['--version'], { encoding: 'utf8' });
-  if (result.error || result.status !== 0) throw result.error || new Error(result.stderr);
-}
-'@
-    Invoke-Node -NodeArguments @('--input-type=module', '-e', $verifyTools, $installed)
+    $asset = "seekbrain-$Version-windows-x64.zip"
+    if (-not $Checksums) {
+        $Checksums = Join-Path $stage 'SHA256SUMS'
+        Get-Download "$base/download/v$Version/SHA256SUMS" $Checksums
+    }
+    $pattern = '\A([a-f0-9]{64})  ' + [regex]::Escape($asset) + '\z'
+    $matching = @([IO.File]::ReadAllLines((Resolve-Path -LiteralPath $Checksums).Path) | Where-Object { $_ -cmatch $pattern })
+    if ($matching.Count -ne 1) { throw "Missing or ambiguous SHA-256 for $asset" }
+    $sha256 = [regex]::Match($matching[0], $pattern).Groups[1].Value
+    if (-not $Bundle) { $Bundle = Get-VerifiedArchive "$base/download/v$Version/$asset" $asset $sha256 }
+    $Bundle = (Resolve-Path -LiteralPath $Bundle).Path
+    if ((Get-FileHash -LiteralPath $Bundle -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) { throw 'SHA-256 mismatch; previous installation preserved.' }
+    # Windows' libarchive preserves hidden entries and handles long npm paths.
+    $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not (Test-Path -LiteralPath $tar)) { throw 'This installer requires Windows 10/11 or Windows Server with tar.exe.' }
+    & $tar -xf $Bundle -C $stage
+    if ($LASTEXITCODE -ne 0) { throw 'Bundle extraction failed.' }
+    $node = Join-Path $stage 'runtime\node\node.exe'
+    Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version)
+    $manifest = [IO.File]::ReadAllText((Join-Path $stage 'bundle.json')) | ConvertFrom-Json
+    if (-not $manifest.git -or $manifest.git.url -notlike 'https://github.com/git-for-windows/git/releases/download/*') { throw 'Missing official Git Bash metadata.' }
+    $gitArchive = Get-VerifiedArchive $manifest.git.url $manifest.git.file $manifest.git.sha256
+    $gitDirectory = Join-Path $stage 'runtime\git'
+    Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'install-helpers.mjs'), 'extract-git', $gitArchive, $gitDirectory)
+    Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version, '--require-git')
+    $pythonVersion = [string]$manifest.python.version
+    if ($pythonVersion -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+\z') { throw 'Invalid Python version.' }
+    $environment = Join-Path (Join-Path $Prefix 'environments') "python-$pythonVersion"
+    $python = Join-Path $stage 'runtime\python\python.exe'
+    if (-not (Test-Path -LiteralPath $environment)) {
+        $createdEnvironment = $environment
+        & $python -I -m venv $environment
+        if ($LASTEXITCODE -ne 0) { throw 'Could not prepare private Python environment.' }
+    }
+    & (Join-Path $environment 'Scripts\python.exe') -I -m pip --version
+    if ($LASTEXITCODE -ne 0) { throw 'Private Python environment validation failed.' }
     foreach ($command in @('seekbrain', 'seekbrain-014', 'seekbrain-pdf')) {
+        $pdf = ''
+        if ($command -eq 'seekbrain-pdf') { $pdf = '--pdf-command ' }
         $entry = 'seekbrain.mjs'
         if ($command -eq 'seekbrain-pdf') { $entry = 'seekbrain-pdf.mjs' }
-        $lines = @('@echo off', "rem $marker", 'setlocal DisableDelayedExpansion', 'if not exist "%~dp0..\current.cmd" exit /b 1', 'call "%~dp0..\current.cmd"', ('"%SEEKBRAIN_INSTALL_NODE%" "%SEEKBRAIN_INSTALL_PACKAGE%\bin\' + $entry + '" %*'), 'exit /b %errorlevel%')
-        Write-AtomicAscii (Join-Path $bin "$command.cmd") (($lines -join "`r`n") + "`r`n")
+        $lines = @('@echo off', "rem $marker", 'setlocal DisableDelayedExpansion', 'set "SEEKBRAIN_INSTALL_RELEASE="',
+            'set "SEEKBRAIN_INSTALL_PREFIX=%~dp0.."', 'call "%~dp0..\current.cmd"', 'if defined SEEKBRAIN_INSTALL_RELEASE goto bundle',
+            ('"%SEEKBRAIN_INSTALL_NODE%" "%SEEKBRAIN_INSTALL_PACKAGE%\bin\' + $entry + '" %*'), 'exit /b %errorlevel%', ':bundle',
+            ('"%SEEKBRAIN_INSTALL_RELEASE%\runtime\node\node.exe" "%SEEKBRAIN_INSTALL_RELEASE%\launch.mjs" ' + $pdf + '%*'), 'exit /b %errorlevel%')
+        $destination = Join-Path $bin "$command.cmd"
+        if (-not (Test-Path -LiteralPath $destination)) { $createdLaunchers += $destination }
+        Write-AtomicAscii $destination (($lines -join "`r`n") + "`r`n")
     }
-    $pointerLines = @(
-        "@rem $marker"
-        ('@set "SEEKBRAIN_INSTALL_NODE=%~dp0releases\' + $releaseId + '\runtime\node.exe"')
-        ('@set "SEEKBRAIN_INSTALL_PACKAGE=%~dp0releases\' + $releaseId + '\npm\node_modules\seekbrain"')
-    )
-    Write-AtomicAscii $pointer (($pointerLines -join "`r`n") + "`r`n")
+    $releaseId = Split-Path -Leaf $stage
+    $pointerText = "@rem $marker`r`n" + ('@set "SEEKBRAIN_INSTALL_RELEASE=%~dp0releases\' + $releaseId + '"') + "`r`n"
+    Write-AtomicAscii $pointer $pointerText
     $committed = $true
     if (-not $NoModifyPath) {
         try {
             $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
             $entries = @($userPath -split ';' | Where-Object { $_ })
             if ($entries -notcontains $bin) { [Environment]::SetEnvironmentVariable('Path', ((@($bin) + $entries) -join ';'), 'User') }
-        } catch { Write-Warning "Installed successfully; add $bin to your user PATH manually. $_" }
+        } catch { Write-Warning "Installed; add $bin to your user PATH manually." }
     }
-    Write-Host "SeekBrain installed in $Prefix. Open a new terminal, then run: seekbrain setup"
-    Write-Host "For this terminal: `$env:Path = '$($bin.Replace("'", "''"));' + `$env:Path"
-    Write-Host 'Git for Windows and Python are required for analysis. Check them with: seekbrain doctor'
+    Write-Host "SeekBrain $Version installed. Open a new terminal, then run: seekbrain setup"
+    Write-Host "Or run now: & `"$bin\seekbrain.cmd`" setup"
 } finally {
     $env:Path = $originalPath
     try {
-        if (-not $committed -and (Test-Path -LiteralPath $stage)) { Remove-Item -LiteralPath $stage -Recurse -Force }
-    } finally {
-        if ($lock) {
-            $lock.Dispose()
-            Remove-Item -LiteralPath $lockPath -Force
+        if (-not $committed) {
+            if ($stage -and (Test-Path -LiteralPath $stage)) { Remove-Item -LiteralPath $stage -Recurse -Force }
+            if ($createdEnvironment -and (Test-Path -LiteralPath $createdEnvironment)) { Remove-Item -LiteralPath $createdEnvironment -Recurse -Force }
+            foreach ($launcher in $createdLaunchers) { if (Test-Path -LiteralPath $launcher) { Remove-Item -LiteralPath $launcher -Force } }
         }
+    } finally {
+        if ($lock) { $lock.Dispose(); Remove-Item -LiteralPath $lockPath -Force }
+        $ErrorActionPreference = $previousErrorAction
     }
 }

@@ -8,6 +8,7 @@ on:
 jobs:
   windows-cli:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +25,6 @@ jobs:
       - name: CLI and Windows runtime contracts
         env:
           SEEKBRAIN_TEST_WINDOWS_INSTALLER_E2E: '1'
-        run: node --test tests/platform-runtime.mjs tests/bundled-tools.mjs tests/tool-package-selection.mjs tests/phase0-package-cli.mjs tests/setup-cli.mjs tests/windows-runtime.mjs tests/windows-installer.mjs
+        run: node --test --test-concurrency=1 tests/platform-runtime.mjs tests/bundled-tools.mjs tests/tool-package-selection.mjs tests/phase0-package-cli.mjs tests/setup-cli.mjs tests/windows-runtime.mjs tests/windows-installer.mjs
       - name: Python, subagent and PDF regressions
         run: npx --no-install vitest run tests/unit/dependency-install.test.ts tests/unit/existing-pi-agent-adapter.test.ts tests/unit/report-pdf-exporter.test.ts

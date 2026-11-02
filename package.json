@@ -42,7 +42,8 @@
     "web/LICENSE",
     "web/upstream.json",
     "web/bin/prepare-terminal.js",
-    "docs/windows.md"
+    "docs/windows.md",
+    "docs/github-installers.md"
   ],
   "pi": {
     "extensions": [
@@ -71,7 +72,10 @@
     "tools:pack": "node scripts/pack-tool-packages.mjs",
     "web:install": "npm --prefix web ci",
     "web:dev": "node bin/seekbrain.mjs web --dev",
-    "web:build": "node scripts/build-web.mjs"
+    "web:build": "node scripts/build-web.mjs",
+    "release:build": "node scripts/build-release.mjs",
+    "release:collect": "node scripts/collect-release.mjs",
+    "test:installers": "node --test --test-concurrency=1 tests/release-metadata.mjs tests/release-installer.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.2.0",
@@ -111,5 +115,10 @@
     "seekbrain-tools-darwin-x64": "0.1.0",
     "seekbrain-tools-darwin-arm64": "0.1.0",
     "seekbrain-tools-win32-x64": "0.1.0"
+  },
+  "allowScripts": {
+    "node-pty": true,
+    "protobufjs": true,
+    "@google/genai": false
   }
 }

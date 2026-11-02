@@ -1,0 +1,100 @@
+name: Build installation bundles
+
+on:
+  push:
+    branches: [feat/github-installers]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (e.g. 0.1.4-preview.1)
+        required: true
+        default: 0.1.4-preview.1
+      target:
+        description: Platforms to validate
+        type: choice
+        options: [all, linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64]
+        default: all
+      with_web:
+        description: Include the production Web UI
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-22.04
+    outputs:
+      platforms: ${{ steps.select.outputs.platforms }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - id: select
+        env:
+          TARGET: ${{ inputs.target || 'all' }}
+        run: echo "platforms=$(node scripts/release-matrix.mjs "$TARGET")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.platforms) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    env:
+      RELEASE_VERSION: ${{ inputs.version || '0.1.4-preview.1' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - name: Install build dependencies
+        run: npm ci --include=optional
+      - name: Installer contracts
+        run: node --test --test-concurrency=1 tests/release-metadata.mjs tests/release-installer.mjs
+      - name: Build production Web UI
+        if: github.event_name == 'push' || inputs.with_web
+        run: npm --prefix web ci && npm run web:build
+      - name: Build platform bundle
+        env:
+          WITH_WEB: ${{ github.event_name == 'push' || inputs.with_web }}
+        run: node scripts/build-release-ci.mjs
+      - name: End-to-end installation without system Node or Python
+        env:
+          SEEKBRAIN_TEST_RELEASE_DIR: ${{ github.workspace }}/releases/ci
+        run: node --test --test-concurrency=1 tests/release-installer.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seekbrain-${{ matrix.target }}
+          path: releases/ci/*
+          if-no-files-found: error
+
+  collect:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seekbrain-*
+          path: releases/collected
+          merge-multiple: true
+      - name: Verify artifacts and generate download metadata
+        env:
+          TARGET: ${{ inputs.target || 'all' }}
+        run: node scripts/collect-release-ci.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seekbrain-installation-bundles
+          path: releases/collected/*
+          if-no-files-found: error
+
+# This workflow creates CI artifacts only. It never creates a Release or publishes npm.

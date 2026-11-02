@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 
-const installer = resolve(new URL("../scripts/install.sh", import.meta.url).pathname);
+const installer = resolve(new URL("../scripts/install-package.sh", import.meta.url).pathname);
 function run(args, env = {}, piped = false) {
   const shellArgs = piped
     ? ["-c", 'set -o pipefail; installer=$1; shift; cat "$installer" | bash -s -- "$@"', "seekbrain-install-test", installer, ...args]

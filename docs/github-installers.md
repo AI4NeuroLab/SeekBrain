@@ -1,0 +1,99 @@
+# GitHub installation bundles
+
+The five targets are Linux x64/arm64, macOS Intel/Apple Silicon, and Windows x64.
+Every archive contains the CLI, private Node 24 and Python, production npm
+libraries and only its matching fd/rg platform package. Windows additionally
+downloads pinned official PortableGit during installation. Users do not need npm,
+Git Bash or Python preinstalled. Scientific libraries remain analysis-specific.
+Linux requires glibc; Alpine/musl is not a target. Windows requires x64
+PowerShell 5.1+ on a modern Windows version with system tar.exe.
+
+Public Release assets and website install commands are not live yet. This work
+builds and validates installation bundles without publishing npm or a Release.
+The website can later host the generated install.sh/install.ps1 with stable URLs;
+they resolve version.txt and select the correct GitHub Release artifact.
+
+## Build on each target
+
+Use a native runner with Node 24.22.1 and npm. Do not copy native npm libraries
+between OSes or CPU architectures.
+
+```sh
+npm ci --include=optional
+npm run test:installers
+npm run release:build -- --version 0.1.4-preview.1 --cli-only --output releases/ci
+```
+
+The default build and CI feature-branch builds include CLI + Web UI assets and requires `npm --prefix web ci`
+followed by `npm run web:build` first. The UI font is stored with its license
+in the repository, so this build does not need a Google Fonts request. `--cli-only` explicitly omits that UI.
+Bundles provide CLI/PDF commands in either mode; CLI-only bundles explain the
+missing UI if a user invokes `seekbrain web`.
+
+`release/targets.json` pins official runtime archives and their checksums.
+The build verifies them before extraction, runs production npm ci against the
+lockfile, includes the source tool package without fetching unpublished packages,
+and verifies real SDK loading before producing the archive. npm's project
+allowScripts policy explicitly permits node-pty/protobufjs installation hooks.
+
+Useful options: `--cache`, `--npm-cache`, `--work-dir`, `--offline`, `--keep-work`.
+Offline builds require every runtime archive and npm dependency in those caches.
+A .sha256 sidecar and target metadata JSON accompany each archive.
+
+The Build installation bundles workflow supports the five native targets.
+A feature-branch push validates all five targets with the production Web UI;
+manual dispatch can select a single target or all five. Actions artifacts are validation downloads, not public Releases.
+
+## Collect the release files
+
+Copy the five archives and target JSON files into the same directory, then run:
+
+```sh
+npm run release:collect -- releases/collected
+```
+
+The collector rejects missing platforms, modified archives, dirty source builds,
+and differences in source commit, version or Web UI mode. It creates SHA256SUMS,
+release-manifest.json, version.txt and both bootstrap scripts. Development-only
+partial builds require `--allow-partial`; dirty builds require `--allow-dirty`.
+Do not publish a partial validation set as a five-platform release.
+
+## Validate installation locally
+
+First collect the built artifact with `--allow-partial --allow-dirty` if using a
+local development checkout. Then, from the directory containing the archives:
+
+```sh
+bash /path/to/SeekBrain/scripts/install.sh --version 0.1.4-preview.1 \
+  --bundle ./seekbrain-0.1.4-preview.1-linux-x64.tar.gz \
+  --checksums ./SHA256SUMS --prefix "$HOME/.local/share/seekbrain-preview" \
+  --bin-dir "$HOME/.local/bin"
+```
+
+On Windows:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 `
+  -Version 0.1.4-preview.1 -Bundle .\seekbrain-0.1.4-preview.1-windows-x64.zip `
+  -Checksums .\SHA256SUMS -Prefix "$env:LOCALAPPDATA\SeekBrainPreview"
+```
+
+Windows still needs network access or a verified cached PortableGit archive.
+The installer validates the new directory before switching the current pointer.
+Download or preparation failures preserve the existing release. Existing model
+configuration remains in place. A versioned private Python venv persists across
+app upgrades, so installed analysis libraries survive. Explicit SEEKBRAIN_PYTHON
+and activated venv/Conda environments take precedence over the fallback Python.
+Previous releases are retained because the venv may reference an earlier runtime;
+do not manually delete them without recreating the environment.
+
+## Automated acceptance
+
+Set SEEKBRAIN_TEST_RELEASE_DIR to the directory containing a real artifact and
+its target JSON, then run `npm run test:installers`. The test serves the archive
+through a local HTTP endpoint and checks fresh install, CLI startup, upgrade,
+configuration/environment preservation and rollback after a checksum failure.
+SEEKBRAIN_TEST_ROOT can place large temporary installs on a filesystem with room.
+
+Native Windows/macOS/ARM builds, interactive terminal behavior and an authenticated
+analysis remain necessary before claiming full support on those platforms.

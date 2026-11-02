@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "repository": "AI4NeuroLab/SeekBrain",
+  "nodeVersion": "24.22.1",
+  "pythonVersion": "3.12.16",
+  "pythonBuild": "20261026",
+  "targets": {
+    "linux-x64": {
+      "runner": "ubuntu-22.04",
+      "extension": "tar.gz",
+      "node": {
+        "file": "node-v24.22.1-linux-x64.tar.gz",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.gz",
+        "sha256": "eb6728e77c576a35162c122c45ccadf224d89ff00abc8dae46cc2897c6002d7c"
+      },
+      "python": {
+        "file": "cpython-3.12.16+20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "sha256": "ce4f6d0a6cfdb3bed6e44c2f9affd85943c76a42e25ad3a259002f31d6fb8a20"
+      },
+      "pythonExecutable": "bin/python3"
+    },
+    "linux-arm64": {
+      "runner": "ubuntu-24.04-arm",
+      "extension": "tar.gz",
+      "node": {
+        "file": "node-v24.22.1-linux-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-arm64.tar.gz",
+        "sha256": "33c37be234ba8bee041961047b19160f4d7d0f164e8e246f78bdd10feff148b3"
+      },
+      "python": {
+        "file": "cpython-3.12.16+20261026-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "sha256": "bb4b6392670c5d3f93876996fcaa19858a4a413a0c7720144c18b0d6f1f0db2d"
+      },
+      "pythonExecutable": "bin/python3"
+    },
+    "darwin-x64": {
+      "runner": "macos-15-intel",
+      "extension": "tar.gz",
+      "node": {
+        "file": "node-v24.22.1-darwin-x64.tar.gz",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz",
+        "sha256": "d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035"
+      },
+      "python": {
+        "file": "cpython-3.12.16+20261026-x86_64-apple-darwin-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-apple-darwin-install_only_stripped.tar.gz",
+        "sha256": "37c38fda76fec1fbf310adcbafb7f0d96af13b5511bf8ea954c3aa8eec185734"
+      },
+      "pythonExecutable": "bin/python3"
+    },
+    "darwin-arm64": {
+      "runner": "macos-15",
+      "extension": "tar.gz",
+      "node": {
+        "file": "node-v24.22.1-darwin-arm64.tar.gz",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+        "sha256": "89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7"
+      },
+      "python": {
+        "file": "cpython-3.12.16+20261026-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "sha256": "353d5f1b4fd2715e7053f12f068435d5bbad16b91e057006b5d01e0925709a7e"
+      },
+      "pythonExecutable": "bin/python3"
+    },
+    "win32-x64": {
+      "runner": "windows-2022",
+      "extension": "zip",
+      "node": {
+        "file": "node-v24.22.1-win-x64.zip",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+        "sha256": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5"
+      },
+      "python": {
+        "file": "cpython-3.12.16+20261026-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "sha256": "1f2ab53880fc67ea323398c6388e05af28addc99a8e389209f08a51fdff4b149"
+      },
+      "pythonExecutable": "python.exe",
+      "git": {
+        "version": "v2.56.0.windows.4",
+        "file": "PortableGit-2.56.0.4-64-bit.7z.exe",
+        "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/PortableGit-2.56.0.4-64-bit.7z.exe",
+        "sha256": "b1f3e52216e2ed6882d1bebfd4d3fdf319bec40d2edbbf9fd26ec4fd3fce7ed1"
+      }
+    }
+  }
+}

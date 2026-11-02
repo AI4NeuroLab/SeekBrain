@@ -1,0 +1,19 @@
+{
+  "repository": "google/fonts",
+  "commit": "097bc1b8c04c3224087c2ae95f7a923859b778cf",
+  "license": "OFL-1.1",
+  "files": [
+    {
+      "file": "app/fonts/NotoSansMono.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/097bc1b8c04c3224087c2ae95f7a923859b778cf/ofl/notosansmono/NotoSansMono%5Bwdth,wght%5D.ttf",
+      "sha256": "2cb2adb378a8f574213e23df697050b83c54c27df465a2015552740b2769a081",
+      "bytes": 1708408
+    },
+    {
+      "file": "public/fonts/OFL-NotoSansMono.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/097bc1b8c04c3224087c2ae95f7a923859b778cf/ofl/notosansmono/OFL.txt",
+      "sha256": "cee9892f9f0cc8fe882c9e9537ee6a89621d86ee7ceaf70b02e2b2b1c25c061a",
+      "bytes": 4396
+    }
+  ]
+}

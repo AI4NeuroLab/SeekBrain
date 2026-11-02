@@ -61,7 +61,7 @@ and `licenses/rg/`. Its `manifest.json` records upstream archive URLs, archive
 SHA-256 values, and checksums of bundled files. Keep these
 notices with redistributed copies. The standalone installer's full Node
 distribution also retains Node's license and third-party notices in
-`runtime/LICENSE`.
+`runtime/node/LICENSE`.
 
 ## Bundled zebrafish example data
 
@@ -105,3 +105,25 @@ The six Plan skills and fourteen Report skills contain authored reading and
 reasoning guidance. Bibliographic references do not redistribute textbook
 chapters. Textbook excerpts and scanned pages from local research materials are
 not included in this source version or its distribution files.
+
+## GitHub installation runtimes
+
+Release bundles retain the full official Node.js distribution under `runtime/node`
+and the pinned python-build-standalone install distribution under `runtime/python`.
+CPython's license is retained in `runtime/python/lib/python3.12/LICENSE.txt` on Unix
+(and the upstream distribution's license location on Windows); do not strip its
+other bundled dependency notices. The pinned archive URLs and SHA-256 digests are
+recorded in `release/targets.json` and each bundle's `bundle.json`.
+
+On Windows the installer downloads the unmodified official PortableGit archive
+directly from git-for-windows, checks its pinned digest, and extracts it privately.
+The Git distribution retains its own licenses and source-offer information.
+PortableGit is not repackaged inside SeekBrain's platform ZIP.
+
+## WebUI Noto Sans Mono
+
+The WebUI uses an unmodified Noto Sans Mono variable font from the official
+google/fonts repository under SIL Open Font License 1.1. Its complete license is
+retained at `web/public/fonts/OFL-NotoSansMono.txt`, with pinned upstream commit
+and file SHA-256 values in `web/public/fonts/NotoSansMono-upstream.json`.
+The font is compiled locally so Release builds do not fetch Google Fonts.

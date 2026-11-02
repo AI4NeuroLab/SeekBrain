@@ -4,3 +4,4 @@
 *.zip binary
 *.tgz binary
 packages/*/licenses/** -text whitespace=cr-at-eol
+web/public/fonts/OFL-NotoSansMono.txt -text whitespace=-blank-at-eol

@@ -17,7 +17,13 @@ try {
   const child = spawn(process.execPath, [join(web, "node_modules/next/dist/bin/next"), "build", "--webpack"], {
     cwd: stage, stdio: "inherit", env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", SEEKBRAIN_WEB_BUILD_DIR: ".next-release" },
   });
-  const code = await new Promise((done, reject) => { child.once("error", reject); child.once("exit", done); });
+  const stop = signal => child.kill(signal);
+  const onInt = () => stop("SIGINT"), onTerm = () => stop("SIGTERM");
+  process.on("SIGINT", onInt); process.on("SIGTERM", onTerm);
+  let code;
+  try {
+    code = await new Promise((done, reject) => { child.once("error", reject); child.once("exit", done); });
+  } finally { process.off("SIGINT", onInt); process.off("SIGTERM", onTerm); }
   if (code !== 0) throw new Error(`Web release build failed (${code})`);
   await readFile(join(stage, ".next-release/BUILD_ID"));
   await rm(join(stage, ".next-release/cache"), { recursive: true, force: true });
