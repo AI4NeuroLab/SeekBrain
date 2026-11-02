@@ -127,8 +127,29 @@ try {
     $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
     if (-not (Test-Path -LiteralPath $tar)) { throw 'This installer requires Windows 10/11 or Windows Server with tar.exe.' }
     Write-Host 'Extracting SeekBrain bundle...'
-    & $tar -xf $Bundle -C $stage
-    if ($LASTEXITCODE -ne 0) { throw 'Bundle extraction failed.' }
+    # Some Windows tar builds decode argv through the active ANSI code page.
+    # Stream the archive on stdin and set the Unicode working directory via .NET.
+    $extractInfo = New-Object Diagnostics.ProcessStartInfo
+    $extractInfo.FileName = $tar
+    $extractInfo.Arguments = '-xf -'
+    $extractInfo.WorkingDirectory = $stage
+    $extractInfo.UseShellExecute = $false
+    $extractInfo.RedirectStandardInput = $true
+    $extractInfo.CreateNoWindow = $true
+    $extractor = New-Object Diagnostics.Process
+    $extractor.StartInfo = $extractInfo
+    $archiveStream = $null
+    try {
+        [void]$extractor.Start()
+        $archiveStream = [IO.File]::OpenRead($Bundle)
+        $archiveStream.CopyTo($extractor.StandardInput.BaseStream)
+        $extractor.StandardInput.Close()
+        $extractor.WaitForExit()
+        if ($extractor.ExitCode -ne 0) { throw 'Bundle extraction failed.' }
+    } finally {
+        if ($archiveStream) { $archiveStream.Dispose() }
+        $extractor.Dispose()
+    }
     Write-Host 'Checking private Node, Python and terminal runtime...'
     $node = Join-Path $stage 'runtime\node\node.exe'
     Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version)

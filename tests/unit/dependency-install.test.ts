@@ -50,7 +50,7 @@ describe("missing dependency installation", () => {
       CONDA_PREFIX: "/opt/conda/envs/InternAgent",
       CONDA_DEFAULT_ENV: "InternAgent",
       PATH: process.env.PATH,
-    })).toMatchObject({
+    }, "linux")).toMatchObject({
       kind: "conda",
       name: "InternAgent",
       python: "/opt/conda/envs/InternAgent/bin/python",
