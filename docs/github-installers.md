@@ -42,7 +42,8 @@ A .sha256 sidecar and target metadata JSON accompany each archive.
 
 The Build installation bundles workflow supports the five native targets.
 A feature-branch push validates all five targets with the production Web UI;
-manual dispatch can select a single target or all five. Actions artifacts are validation downloads, not public Releases.
+manual dispatch can select a single target or all five. A feature-branch
+commit containing `[windows]` runs only Windows while diagnosing that platform. Actions artifacts are validation downloads, not public Releases.
 
 ## Collect the release files
 

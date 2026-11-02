@@ -34,7 +34,7 @@ jobs:
           node-version: '24.22.1'
       - id: select
         env:
-          TARGET: ${{ inputs.target || 'all' }}
+          TARGET: ${{ inputs.target || (contains(github.event.head_commit.message, '[windows]') && 'win32-x64') || 'all' }}
         run: echo "platforms=$(node scripts/release-matrix.mjs "$TARGET")" >> "$GITHUB_OUTPUT"
 
   build:
@@ -89,7 +89,7 @@ jobs:
           merge-multiple: true
       - name: Verify artifacts and generate download metadata
         env:
-          TARGET: ${{ inputs.target || 'all' }}
+          TARGET: ${{ inputs.target || (contains(github.event.head_commit.message, '[windows]') && 'win32-x64') || 'all' }}
         run: node scripts/collect-release-ci.mjs
       - uses: actions/upload-artifact@v4
         with:

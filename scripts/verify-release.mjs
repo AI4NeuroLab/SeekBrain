@@ -16,7 +16,7 @@ const app = join(root, "app"), windows = process.platform === "win32";
 const python = join(root, "runtime", "python", ...(windows ? ["python.exe"] : ["bin", "python3"]));
 function probe(command, args, options = {}) {
   const result = spawnSync(command, args, { encoding: "utf8", timeout: 60000, windowsHide: true, ...options });
-  assert.ifError(result.error);
+  if (result.error) throw new Error(`Runtime probe failed: ${command}\n${result.stdout || ""}\n${result.stderr || ""}`, { cause: result.error });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
 }
@@ -30,16 +30,21 @@ probe(windows ? "fd.exe" : "fd", ["--version"]);
 probe(windows ? "rg.exe" : "rg", ["--version"]);
 // Load the actual SDK; --version alone does not check runtime dependencies.
 probe(process.execPath, ["--input-type=module", "-e", `
+  console.log('Loading SDK');
   await import('@earendil-works/pi-coding-agent');
+  console.log('SDK loaded');
   const { default: pty } = await import('node-pty');
+  console.log('PTY module loaded; creating terminal');
   const terminal = pty.spawn(process.execPath, ['-e', "process.stdout.write('seekbrain-pty-ready')"], {
     cols: 80, rows: 24, cwd: process.cwd(), env: process.env,
   });
+  console.log('PTY spawn returned');
   let output = '';
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => { terminal.kill(); reject(new Error('PTY startup timed out')); }, 15000);
-    terminal.onData(data => { output += data; });
+    terminal.onData(data => { output += data; console.log('PTY data', JSON.stringify(data)); });
     terminal.onExit(({ exitCode }) => {
+      console.log('PTY exit', exitCode);
       clearTimeout(timeout);
       exitCode === 0 && output.includes('seekbrain-pty-ready') ? resolve() : reject(new Error('PTY failed: ' + output));
     });
