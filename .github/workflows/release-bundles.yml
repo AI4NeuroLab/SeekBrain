@@ -60,6 +60,7 @@ jobs:
         if: github.event_name == 'push' || inputs.with_web
         run: npm --prefix web ci && npm run web:build
       - name: Build platform bundle
+        id: bundle
         env:
           WITH_WEB: ${{ github.event_name == 'push' || inputs.with_web }}
         run: node scripts/build-release-ci.mjs
@@ -68,6 +69,7 @@ jobs:
           SEEKBRAIN_TEST_RELEASE_DIR: ${{ github.workspace }}/releases/ci
         run: node --test --test-concurrency=1 tests/release-installer.mjs
       - uses: actions/upload-artifact@v6
+        if: always() && steps.bundle.outcome == 'success'
         with:
           name: seekbrain-${{ matrix.target }}
           path: releases/ci/*

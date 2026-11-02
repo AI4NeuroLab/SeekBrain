@@ -150,6 +150,11 @@ try {
         if ($archiveStream) { $archiveStream.Dispose() }
         $extractor.Dispose()
     }
+    $verifier = Join-Path $stage 'verify-release.mjs'
+    if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
+        $entries = @([IO.Directory]::GetFileSystemEntries($stage) | ForEach-Object { [IO.Path]::GetFileName($_) }) -join ', '
+        throw "Bundle extraction is missing verify-release.mjs. Extracted entries: $entries"
+    }
     Write-Host 'Checking private Node, Python and terminal runtime...'
     $node = Join-Path $stage 'runtime\node\node.exe'
     Invoke-PrivateNode -NodeArguments @((Join-Path $stage 'verify-release.mjs'), '--target', 'win32-x64', '--version', $Version)
