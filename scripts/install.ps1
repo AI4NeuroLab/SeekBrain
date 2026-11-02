@@ -170,10 +170,10 @@ try {
     if (-not (Test-Path -LiteralPath $environment)) {
         Write-Host 'Preparing private Python environment...'
         $createdEnvironment = $environment
-        & $python -I -m venv $environment
+        & $python -X utf8 -I -m venv $environment
         if ($LASTEXITCODE -ne 0) { throw 'Could not prepare private Python environment.' }
     }
-    & (Join-Path $environment 'Scripts\python.exe') -I -m pip --version
+    & (Join-Path $environment 'Scripts\python.exe') -X utf8 -I -m pip --version
     if ($LASTEXITCODE -ne 0) { throw 'Private Python environment validation failed.' }
     foreach ($command in @('seekbrain', 'seekbrain-014', 'seekbrain-pdf')) {
         $pdf = ''

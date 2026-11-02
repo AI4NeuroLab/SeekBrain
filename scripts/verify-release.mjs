@@ -24,8 +24,8 @@ const { configureBundledTools } = await import(pathToFileURL(join(app, "src/cli/
 configureBundledTools(process.env, app);
 assert.equal(probe(process.execPath, [join(app, "bin", "seekbrain.mjs"), "--version"]), manifest.appVersion);
 assert.match(probe(process.execPath, [join(app, "bin", "seekbrain.mjs"), "--help"]), /^SeekBrain /);
-assert.equal(probe(python, ["-I", "-c", "import sys,ssl,sqlite3,venv,ensurepip;print('.'.join(map(str,sys.version_info[:3])))"]), manifest.python.version);
-probe(python, ["-I", "-m", "pip", "--version"]);
+assert.equal(probe(python, ["-X", "utf8", "-I", "-c", "import sys,ssl,sqlite3,venv,ensurepip;print('.'.join(map(str,sys.version_info[:3])))"]), manifest.python.version);
+probe(python, ["-X", "utf8", "-I", "-m", "pip", "--version"]);
 probe(windows ? "fd.exe" : "fd", ["--version"]);
 probe(windows ? "rg.exe" : "rg", ["--version"]);
 // Load the actual SDK; --version alone does not check runtime dependencies.

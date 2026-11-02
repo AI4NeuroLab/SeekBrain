@@ -46,8 +46,8 @@ try {
   const pythonArchive = await downloadVerified(spec.python, cache, { offline });
   await extract(pythonArchive, runtime);
   const python = pythonExecutable(payload);
-  await run(python, ["-I", "-c", "import sys, ssl, sqlite3, venv, ensurepip; print(sys.version)"]);
-  await run(python, ["-I", "-m", "pip", "--version"]);
+  await run(python, ["-X", "utf8", "-I", "-c", "import sys, ssl, sqlite3, venv, ensurepip; print(sys.version)"]);
+  await run(python, ["-X", "utf8", "-I", "-m", "pip", "--version"]);
 
   if (web) await readFile(join(ROOT, "web", ".next-release", "BUILD_ID"));
   // npm pack applies the reviewed package allowlist; no developer tree/cache is copied.
