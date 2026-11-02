@@ -18,4 +18,7 @@ await new Promise((resolve, reject) => {
     exitCode === 0 && output.includes("seekbrain-pty-ready") ? resolve() : reject(new Error(`PTY failed (${exitCode}): ${output}`));
   });
 });
-console.log("SDK and terminal runtime ready");
+// Windows node-pty retains its output worker until the terminal is disposed.
+try { terminal.kill(); } catch { /* shell already exited */ }
+console.log("SDK and terminal runtime ready; terminal released");
+setTimeout(() => console.log("Remaining runtime resources:", process.getActiveResourcesInfo()), 2000).unref();

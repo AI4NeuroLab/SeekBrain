@@ -128,6 +128,9 @@ test("real release installs, upgrades and preserves Python/configuration after a
     const environments = await readdir(join(prefix, "environments")); assert.equal(environments.length, 1);
     const marker = join(prefix, "environments", environments[0], "preserved-marker.txt"); await writeFile(marker, "installed analysis environment");
     const rc = !windows && await readFile(join(home, ".bashrc"), "utf8");
+    // A mutable release can replace an asset without changing its filename.
+    // Old cached bytes must be refreshed using the current SHA256SUMS.
+    await writeFile(join(root, "cache", metadata.file), "stale cached artifact");
     result = await run(shell, installerArgs(options, !windows), env);
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const upgraded = await readPointer(); assert.notEqual(upgraded, initial);

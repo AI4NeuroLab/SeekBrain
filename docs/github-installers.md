@@ -81,7 +81,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 `
 
 Windows still needs network access or a verified cached PortableGit archive.
 The installer validates the new directory before switching the current pointer.
-Download or preparation failures preserve the existing release. Existing model
+Download or preparation failures preserve the existing release. If a Release
+asset has been replaced under the same version, the installer refreshes an
+outdated cached archive against the current SHA256SUMS before preparing it. Existing model
 configuration remains in place. A versioned private Python venv persists across
 app upgrades, so installed analysis libraries survive. Explicit SEEKBRAIN_PYTHON
 and activated venv/Conda environments take precedence over the fallback Python.

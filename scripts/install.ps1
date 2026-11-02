@@ -60,15 +60,15 @@ function Get-Download([string]$Url, [string]$Destination) {
 function Get-VerifiedArchive([string]$Url, [string]$Filename, [string]$Sha256) {
     if ($Filename -match '[/\\]' -or $Sha256 -cnotmatch '\A[a-f0-9]{64}\z') { throw 'Invalid archive metadata.' }
     $destination = Join-Path $Cache $Filename
-    if (Test-Path -LiteralPath $destination) {
-        if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Sha256) { throw "SHA-256 mismatch in cache: $Filename" }
+    if ((Test-Path -LiteralPath $destination) -and
+        (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Sha256) {
         return $destination
     }
     $partial = $destination + '.' + [Guid]::NewGuid().ToString('N') + '.download'
     try {
         Get-Download $Url $partial
         if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Sha256) { throw "SHA-256 mismatch: $Filename" }
-        Move-Item -LiteralPath $partial -Destination $destination
+        Move-Item -LiteralPath $partial -Destination $destination -Force
     } finally {
         if (Test-Path -LiteralPath $partial) { Remove-Item -LiteralPath $partial -Force }
     }

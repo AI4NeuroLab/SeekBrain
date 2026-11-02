@@ -105,7 +105,7 @@ EOF
   [ "${#expected}" -eq 64 ] || die "Missing or ambiguous SHA-256 for $asset"
   if [ -z "$bundle" ]; then
     bundle=$cache/$asset
-    if [ ! -f "$bundle" ]; then
+    if [ ! -f "$bundle" ] || [ "$(checksum "$bundle")" != "$expected" ]; then
       say "Downloading $asset"
       fetch "${base%/}/download/v$version/$asset" "$transaction/$asset"
       [ "$(checksum "$transaction/$asset")" = "$expected" ] || die 'SHA-256 mismatch; the current installation was preserved.'

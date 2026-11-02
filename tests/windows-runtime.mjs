@@ -27,6 +27,7 @@ test("Windows native TUI and PTY modules load without compiling", { skip: !windo
     pty.onData(data => { output += data; });
     pty.onExit(({ exitCode }) => exitCode === 0 ? done() : reject(new Error(`PTY exit ${exitCode}: ${output}`)));
   });
+  pty.kill();
   assert.match(output, /seekbrain-pty/);
 });
 
