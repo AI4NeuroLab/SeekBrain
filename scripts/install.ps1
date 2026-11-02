@@ -127,28 +127,26 @@ try {
     $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
     if (-not (Test-Path -LiteralPath $tar)) { throw 'This installer requires Windows 10/11 or Windows Server with tar.exe.' }
     Write-Host 'Extracting SeekBrain bundle...'
-    # Some Windows tar builds decode argv through the active ANSI code page.
-    # Stream the archive on stdin and set the Unicode working directory via .NET.
+    # Keep tar argv ASCII while allowing a Unicode working directory. A regular
+    # file is required: Windows libarchive's streaming ZIP reader can omit files.
+    $localArchiveName = 'seekbrain-extract-' + [Guid]::NewGuid().ToString('N') + '.zip'
+    $localArchive = Join-Path $stage $localArchiveName
     $extractInfo = New-Object Diagnostics.ProcessStartInfo
     $extractInfo.FileName = $tar
-    $extractInfo.Arguments = '-xf -'
+    $extractInfo.Arguments = '-xf ' + $localArchiveName
     $extractInfo.WorkingDirectory = $stage
     $extractInfo.UseShellExecute = $false
-    $extractInfo.RedirectStandardInput = $true
     $extractInfo.CreateNoWindow = $true
     $extractor = New-Object Diagnostics.Process
     $extractor.StartInfo = $extractInfo
-    $archiveStream = $null
     try {
+        [IO.File]::Copy($Bundle, $localArchive)
         [void]$extractor.Start()
-        $archiveStream = [IO.File]::OpenRead($Bundle)
-        $archiveStream.CopyTo($extractor.StandardInput.BaseStream)
-        $extractor.StandardInput.Close()
         $extractor.WaitForExit()
         if ($extractor.ExitCode -ne 0) { throw 'Bundle extraction failed.' }
     } finally {
-        if ($archiveStream) { $archiveStream.Dispose() }
         $extractor.Dispose()
+        if (Test-Path -LiteralPath $localArchive) { Remove-Item -LiteralPath $localArchive -Force }
     }
     $verifier = Join-Path $stage 'verify-release.mjs'
     if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
