@@ -35,7 +35,7 @@ jobs:
       BUILD_RUN_ID: ${{ inputs.build_run_id }}
       RELEASE_VERSION: ${{ inputs.version }}
       SOURCE_COMMIT: ${{ inputs.source_commit }}
-      RELEASE_DIRECTORY: ${{ runner.temp }}/seekbrain-release
+      RELEASE_DIRECTORY: ${{ github.workspace }}/releases/publication
     steps:
       - uses: actions/checkout@v5
         with:
