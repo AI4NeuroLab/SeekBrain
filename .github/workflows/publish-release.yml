@@ -1,6 +1,9 @@
 name: Publish validated installation bundles
 
 on:
+  push:
+    branches: [feat/github-installers]
+    paths: [.github/workflows/publish-release.yml]
   workflow_dispatch:
     inputs:
       build_run_id:
@@ -19,11 +22,12 @@ permissions:
   actions: read
 
 concurrency:
-  group: publish-seekbrain-${{ inputs.version }}
+  group: publish-seekbrain-${{ inputs.version || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
