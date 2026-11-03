@@ -1,0 +1,127 @@
+name: Publish validated installation bundles
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful five-platform Build installation bundles run
+        required: true
+      version:
+        description: Stable release version
+        required: true
+        default: 0.1.4
+      source_commit:
+        description: Exact source commit validated by the build
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-seekbrain-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      RELEASE_DIRECTORY: ${{ runner.temp }}/seekbrain-release
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.22.1'
+      - name: Check successful build provenance
+        run: |
+          node --input-type=module -e 'if (!/^[0-9]+$/.test(process.env.BUILD_RUN_ID) || !/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT) || !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(process.env.RELEASE_VERSION)) throw new Error("Invalid publication inputs")'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > "$RUNNER_TEMP/build-run.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const run = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/build-run.json'));
+          assert.equal(run.status, 'completed');
+          assert.equal(run.conclusion, 'success');
+          assert.equal(run.head_sha, process.env.SOURCE_COMMIT);
+          assert.equal(run.path.split('@')[0], '.github/workflows/release-bundles.yml');
+          JS
+      - uses: actions/download-artifact@v7
+        with:
+          name: seekbrain-installation-bundles
+          path: ${{ env.RELEASE_DIRECTORY }}
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify all five archives and release metadata
+        run: |
+          node scripts/collect-release.mjs "$RELEASE_DIRECTORY"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync(process.env.RELEASE_DIRECTORY + '/release-manifest.json'));
+          assert.equal(manifest.complete, true);
+          assert.equal(manifest.version, process.env.RELEASE_VERSION);
+          assert.equal(manifest.appVersion, process.env.RELEASE_VERSION);
+          assert.equal(manifest.sourceCommit, process.env.SOURCE_COMMIT);
+          assert.equal(manifest.artifacts.length, 5);
+          for (const artifact of manifest.artifacts) {
+            assert.equal(artifact.features.web, true);
+            assert.equal(artifact.sourceDirty, false);
+          }
+          JS
+      - name: Prepare release notes
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          One-command installation for Windows x64, macOS Intel/Apple Silicon, and Linux x64/arm64 (glibc).
+
+          Includes the CLI, production WebUI, private Node 24 and Python 3.12 runtimes, matching fd/rg tools, and 68 recipes. Windows automatically installs pinned official PortableGit. Users do not need Node, Python, npm or Git Bash preinstalled.
+
+          Windows PowerShell:
+          ```powershell
+          irm https://github.com/AI4NeuroLab/SeekBrain/releases/latest/download/install.ps1 | iex
+          ```
+
+          macOS / Linux:
+          ```sh
+          curl -fsSL https://github.com/AI4NeuroLab/SeekBrain/releases/latest/download/install.sh | bash
+          ```
+
+          Open a new terminal after installation and run `seekbrain setup`. Use `seekbrain web` for the WebUI. Re-run the installation command to update; model configuration and the private Python environment are retained. Scientific libraries are installed as needed for analyses.
+
+          Every platform passed native installation, CLI/PDF/WebUI, upgrade, configuration/environment preservation, stale-cache replacement and failed-download rollback tests. SHA256SUMS and release-manifest.json record artifact integrity and source provenance.
+
+          These installation bundles are distributed through GitHub Releases. No npm publication is required.
+          NOTES
+      - name: Upload and publish the stable Release
+        run: |
+          tag="v$RELEASE_VERSION"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to replace it."
+            exit 1
+          fi
+          gh release create "$tag" "$RELEASE_DIRECTORY"/* --repo "$GITHUB_REPOSITORY" --target "$SOURCE_COMMIT" --title "SeekBrain $tag" --notes-file "$RUNNER_TEMP/release-notes.md" --verify-tag --draft
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets,isDraft,targetCommitish > "$RUNNER_TEMP/uploaded-release.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync, readdirSync, statSync } from 'node:fs';
+          import { join } from 'node:path';
+          const release = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/uploaded-release.json'));
+          assert.equal(release.isDraft, true);
+          assert.equal(release.targetCommitish, process.env.SOURCE_COMMIT);
+          const files = readdirSync(process.env.RELEASE_DIRECTORY);
+          assert.equal(release.assets.length, files.length);
+          for (const name of files) {
+            const asset = release.assets.find(asset => asset.name === name);
+            assert.ok(asset, `Missing uploaded asset: ${name}`);
+            assert.equal(asset.size, statSync(join(process.env.RELEASE_DIRECTORY, name)).size);
+          }
+          JS
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
+          echo "Published https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
