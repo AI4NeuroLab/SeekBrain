@@ -81,7 +81,7 @@ test("real release installs, upgrades and preserves Python/configuration after a
       if (!windows) return run(command(name), args, env, 60000);
       // Invoke through PowerShell's argument array to preserve Unicode and spaces.
       const script = join(root, "launch-test.ps1");
-      await writeFile(script, '$v = Get-Content -Raw -LiteralPath $env:SEEKBRAIN_TEST_ARGS | ConvertFrom-Json\n& $env:SEEKBRAIN_TEST_COMMAND @v\nexit $LASTEXITCODE\n');
+      await writeFile(script, '$v = Get-Content -Raw -Encoding UTF8 -LiteralPath $env:SEEKBRAIN_TEST_ARGS | ConvertFrom-Json\n& $env:SEEKBRAIN_TEST_COMMAND @v\nexit $LASTEXITCODE\n');
       const params = join(root, "arguments.json"); await writeFile(params, JSON.stringify(args));
       return run(shell, ["-NoProfile", "-NonInteractive", "-File", script], { ...env, SEEKBRAIN_TEST_ARGS: params, SEEKBRAIN_TEST_COMMAND: command(name) }, 60000);
     }
