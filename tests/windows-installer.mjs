@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile, access, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,17 +7,31 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { npmInvocation } from "../src/platform/npm.mjs";
 import { windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
+import { stopProcessTree } from "../src/platform/process-tree.mjs";
 
 const installer = fileURLToPath(new URL("../scripts/install-package.ps1", import.meta.url));
 const windows = process.platform === "win32";
 function run(args, timeout = 30_000) {
-  return spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", installer, ...args], {
-    encoding: "utf8", windowsHide: true, timeout, env: windowsPowerShellEnvironment(),
+  return new Promise((resolve, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", installer, ...args], {
+      windowsHide: true, env: windowsPowerShellEnvironment(), stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "", stderr = "", timedOut = false;
+    child.stdout.on("data", data => { stdout += data; });
+    child.stderr.on("data", data => { stderr += data; });
+    // Stop npm/Node descendants before cleaning up their executable files.
+    const timer = setTimeout(() => { timedOut = true; stopProcessTree(child); }, timeout);
+    child.once("error", error => { clearTimeout(timer); reject(error); });
+    child.once("close", status => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error(`Windows package installer timed out after ${timeout}ms\n${stdout}\n${stderr}`));
+      resolve({ status, stdout, stderr });
+    });
   });
 }
 
-test("PowerShell installer parses and displays help without installing", { skip: !windows }, () => {
-  const result = run(["-Help"]);
+test("PowerShell installer parses and displays help without installing", { skip: !windows }, async () => {
+  const result = await run(["-Help"]);
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /private Node 24/);
@@ -50,14 +64,14 @@ test("Windows installer installs, upgrades offline and preserves a release after
     const tools = pack(join(source, "packages", "seekbrain-tools-win32-x64"));
     const prefix = join(dir, "private app");
     const options = ["-NoModifyPath", "-Prefix", prefix, "-Cache", join(dir, "cache"), "-Package", main, "-ToolsPackage", tools];
-    const installed = run(options, 180_000);
+    const installed = await run(options, 180_000);
     assert.ifError(installed.error);
-    assert.equal(installed.status, 0, installed.stderr);
+    assert.equal(installed.status, 0, installed.stdout + installed.stderr);
     const pointer = join(prefix, "current.cmd");
     const first = await readFile(pointer, "utf8");
-    const upgraded = run([...options, "-Offline"], 60_000);
+    const upgraded = await run([...options, "-Offline"], 60_000);
     assert.ifError(upgraded.error);
-    assert.equal(upgraded.status, 0, upgraded.stderr);
+    assert.equal(upgraded.status, 0, upgraded.stdout + upgraded.stderr);
     const current = await readFile(pointer, "utf8");
     assert.notEqual(current, first);
     for (const name of ["seekbrain", "seekbrain-014"]) {
@@ -69,11 +83,11 @@ test("Windows installer installs, upgrades offline and preserves a release after
       assert.equal(result.status, 0, result.stderr);
       assert.deepEqual(JSON.parse(result.stdout.trim()), ["argument with spaces", "中文"]);
     }
-    const broken = run(["-NoModifyPath", "-Offline", "-Prefix", prefix, "-Cache", join(dir, "cache"), "-Package", "seekbrain-missing-offline-fixture@0.0.0"], 60_000);
+    const broken = await run(["-NoModifyPath", "-Offline", "-Prefix", prefix, "-Cache", join(dir, "cache"), "-Package", "seekbrain-missing-offline-fixture@0.0.0"], 60_000);
     assert.notEqual(broken.status, 0);
     assert.equal(await readFile(pointer, "utf8"), current);
     await assert.rejects(access(join(prefix, ".install.lock")));
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); }
 });
 
 test("offline Windows installation preserves the previous release and releases its lock", { skip: !windows }, async () => {
@@ -85,11 +99,11 @@ test("offline Windows installation preserves the previous release and releases i
     const sentinel = "@rem SeekBrain managed launcher\r\n@rem previous release\r\n";
     await writeFile(pointer, sentinel);
     for (let attempt = 0; attempt < 2; attempt++) {
-      const result = run(["-Offline", "-NoModifyPath", "-Prefix", prefix, "-Cache", join(dir, "empty-cache")]);
+      const result = await run(["-Offline", "-NoModifyPath", "-Prefix", prefix, "-Cache", join(dir, "empty-cache")]);
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /Offline cache is missing/);
       assert.equal(await readFile(pointer, "utf8"), sentinel);
       await assert.rejects(access(join(prefix, ".install.lock")));
     }
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); }
 });

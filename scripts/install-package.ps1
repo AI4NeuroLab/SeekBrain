@@ -67,7 +67,9 @@ function Write-AtomicAscii([string]$Destination, [string]$Content) {
     }
 }
 
+$originalProgress = $ProgressPreference
 try {
+    $ProgressPreference = 'SilentlyContinue'
     New-Item -ItemType Directory -Force -Path $Prefix, $Cache, $bin | Out-Null
     $lockPath = Join-Path $Prefix '.install.lock'
     $lock = [IO.File]::Open($lockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
@@ -93,7 +95,8 @@ try {
         $download = $archive + '.' + [Guid]::NewGuid().ToString('N') + '.download'
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -UseBasicParsing -Uri "$mirror/v$nodeVersion/$nodeAsset" -OutFile $download
+            Write-Host "Downloading private Node $nodeVersion..."
+            Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -Uri "$mirror/v$nodeVersion/$nodeAsset" -OutFile $download
             if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeSha) {
                 throw 'SHA-256 mismatch for downloaded Node archive.'
             }
@@ -125,6 +128,7 @@ try {
         $Package = (Resolve-Path -LiteralPath $Package).Path
     }
     $npmArguments += $Package
+    Write-Host 'Installing package into the new release...'
     Invoke-Node -NodeArguments $npmArguments
     $installed = Join-Path $npmPrefix 'node_modules\seekbrain'
     Invoke-Node -NodeArguments @((Join-Path $installed 'bin\seekbrain.mjs'), '--version')
@@ -166,6 +170,7 @@ for (const tool of ['fd.exe', 'rg.exe']) {
     Write-Host 'Git for Windows and Python are required for analysis. Check them with: seekbrain doctor'
 } finally {
     $env:Path = $originalPath
+    $ProgressPreference = $originalProgress
     try {
         if (-not $committed -and (Test-Path -LiteralPath $stage)) { Remove-Item -LiteralPath $stage -Recurse -Force }
     } finally {
