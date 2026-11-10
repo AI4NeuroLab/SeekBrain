@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
+import { windowsPowerShellEnvironment } from "../src/platform/environment.mjs";
 
 const windows = process.platform === "win32";
 
@@ -64,9 +65,9 @@ Write-Output ('VERIFIED: ' + $result)
       }
       const base = `http://127.0.0.1:${server.address().port}/${scenario}`;
       const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script], {
-        env: { ...process.env, SEEKBRAIN_TEST_INSTALLER: fileURLToPath(new URL("../scripts/install.ps1", import.meta.url)),
+        env: windowsPowerShellEnvironment({ ...process.env, SEEKBRAIN_TEST_INSTALLER: fileURLToPath(new URL("../scripts/install.ps1", import.meta.url)),
           SEEKBRAIN_TEST_CACHE: cache, SEEKBRAIN_TEST_BASE: base + "/official", SEEKBRAIN_TEST_HASH: sha256,
-          SEEKBRAIN_TEST_MIRROR: scenario.startsWith("mirror-") ? base + "/mirror" : "" },
+          SEEKBRAIN_TEST_MIRROR: scenario.startsWith("mirror-") ? base + "/mirror" : "" }),
         stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
       });
       let output = "";
