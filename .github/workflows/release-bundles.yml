@@ -55,7 +55,12 @@ jobs:
       - name: Install build dependencies
         run: npm ci --include=optional
       - name: Installer contracts
-        run: node --test --test-concurrency=1 tests/release-metadata.mjs tests/release-installer.mjs
+        run: node --test --test-concurrency=1 tests/release-metadata.mjs tests/release-installer.mjs tests/windows-download.mjs
+      - name: Check types and terminal presentation
+        run: |
+          npm run typecheck
+          npx --no-install vitest run tests/unit/terminal-style.test.ts tests/unit/setup-wizard.test.ts
+          node tests/seekbrain-entry.mjs
       - name: Build production Web UI
         if: github.event_name == 'push' || inputs.with_web
         run: npm --prefix web ci && npm run web:build

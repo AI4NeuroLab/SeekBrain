@@ -5,6 +5,7 @@ param(
     [string]$Cache,
     [string]$Bundle,
     [string]$Checksums,
+    [string]$Mirror,
     [switch]$NoModifyPath,
     [switch]$Help
 )
@@ -18,10 +19,15 @@ Installs private Node 24, Python, Git Bash and SeekBrain without administrator r
   -Cache <directory>   Archive cache
   -Bundle <zip>        Local bundle; requires -Version and -Checksums
   -Checksums <file>    SHA256SUMS for the local bundle
+  -Mirror <URL>        Optional HTTPS mirror root; falls back to GitHub
   -NoModifyPath        Do not change your user PATH
   -Help                Show help without installing anything
 
 SEEKBRAIN_RELEASE_BASE_URL can select a GitHub Release mirror.
+SEEKBRAIN_DOWNLOAD_MIRROR also sets -Mirror. Mirror layout:
+  download/v<VERSION>/<release assets>, latest/download/version.txt,
+  upstream/<PortableGit archive filename>.
+Downloads show percentage/bytes, speed and ETA, retry and resume after interruption.
 Source/npm package testing is available separately in install-package.ps1.
 '@
     return
@@ -55,10 +61,53 @@ function Write-AtomicAscii([string]$Destination, [string]$Content) {
     }
 }
 
-function Get-Download([string]$Url, [string]$Destination) {
+function Get-Download([string]$Url, [string]$Destination, [switch]$Resume, [string]$Sha256) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    Write-Host "Downloading $(Split-Path -Leaf $Url)..."
-    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Destination -TimeoutSec 600
+    $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+    if (-not (Test-Path -LiteralPath $curl)) { throw 'This installer requires Windows 10/11 with system curl.exe for progress and resumable downloads.' }
+    $sources = @()
+    if ($Mirror) {
+        if ($Url.StartsWith($base + '/', [StringComparison]::OrdinalIgnoreCase)) {
+            $sources += $Mirror + $Url.Substring($base.Length)
+        } elseif ($Url.StartsWith('https://github.com/git-for-windows/git/releases/download/', [StringComparison]::OrdinalIgnoreCase)) {
+            $sources += $Mirror + '/upstream/' + ($Url.Split('/')[-1])
+        }
+    }
+    $sources += $Url
+    $lastFailure = ''
+    foreach ($sourceUrl in ($sources | Select-Object -Unique)) {
+        Write-Host "Downloading $($sourceUrl.Split('/')[-1]) from $(([Uri]$sourceUrl).Host)..."
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $curlArguments = @('--disable', '--fail', '--location', '--show-error', '--connect-timeout', '15',
+                '--max-time', '1800', '--speed-limit', '1024', '--speed-time', '30',
+                '--output', $Destination, '--write-out', '%{http_code}')
+            if ($Resume) { $curlArguments += @('--continue-at', '-') }
+            # Use curl's native meter, avoiding Windows PowerShell's costly per-chunk progress records.
+            $httpStatus = & $curl @curlArguments $sourceUrl
+            $downloadExit = $LASTEXITCODE
+            if ($downloadExit -eq 0) {
+                if (-not $Sha256 -or (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Sha256) { return }
+                $lastFailure = 'SHA-256 mismatch'
+                Remove-Item -LiteralPath $Destination -Force
+                if ($attempt -lt 3) {
+                    Write-Warning 'SHA-256 mismatch; retrying with a fresh download.'
+                    continue
+                }
+                break
+            }
+            $lastFailure = "curl exit $downloadExit, HTTP $httpStatus"
+            # A server without Range support, or an invalid/full partial file, needs a fresh transfer.
+            if ($Resume -and ($downloadExit -eq 33 -or $httpStatus -eq '416')) {
+                if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Force }
+            }
+            if ($attempt -lt 3) {
+                Write-Host "Download interrupted; retry $attempt/2 (resuming cached bytes when available)..."
+                Start-Sleep -Seconds $attempt
+            }
+        }
+        if ($sourceUrl -ne $Url) { Write-Warning "Mirror unavailable or invalid ($lastFailure); trying the official source." }
+    }
+    throw "Download failed ($lastFailure). Run the installer again to resume verified-archive downloads."
 }
 
 function Get-VerifiedArchive([string]$Url, [string]$Filename, [string]$Sha256) {
@@ -68,14 +117,14 @@ function Get-VerifiedArchive([string]$Url, [string]$Filename, [string]$Sha256) {
         (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Sha256) {
         return $destination
     }
-    $partial = $destination + '.' + [Guid]::NewGuid().ToString('N') + '.download'
-    try {
-        Get-Download $Url $partial
+    # The checksum scopes partial files to an exact immutable artifact, even if a release is replaced.
+    $partial = $destination + '.' + $Sha256 + '.download'
+    if (-not ((Test-Path -LiteralPath $partial) -and
+        (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -eq $Sha256)) {
+        Get-Download $Url $partial -Resume -Sha256 $Sha256
         if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Sha256) { throw "SHA-256 mismatch: $Filename" }
-        Move-Item -LiteralPath $partial -Destination $destination -Force
-    } finally {
-        if (Test-Path -LiteralPath $partial) { Remove-Item -LiteralPath $partial -Force }
     }
+    Move-Item -LiteralPath $partial -Destination $destination -Force
     return $destination
 }
 
@@ -90,6 +139,15 @@ try {
     $Cache = [IO.Path]::GetFullPath($Cache)
     $base = 'https://github.com/AI4NeuroLab/SeekBrain/releases'
     if ($env:SEEKBRAIN_RELEASE_BASE_URL) { $base = $env:SEEKBRAIN_RELEASE_BASE_URL.TrimEnd('/') }
+    if (-not $Mirror) { $Mirror = $env:SEEKBRAIN_DOWNLOAD_MIRROR }
+    if ($Mirror) {
+        $Mirror = $Mirror.TrimEnd('/')
+        $mirrorUri = $null
+        if (-not [Uri]::TryCreate($Mirror, [UriKind]::Absolute, [ref]$mirrorUri) -or
+            $mirrorUri.Scheme -ne 'https' -or $mirrorUri.UserInfo -or $mirrorUri.Query -or $mirrorUri.Fragment) {
+            throw '-Mirror must be an HTTPS URL without credentials, query parameters or fragments.'
+        }
+    }
     if ($Bundle -and (-not $Version -or -not $Checksums)) { throw '-Bundle requires -Version and -Checksums.' }
     if ($Version -and $Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') { throw 'Invalid release version.' }
     $bin = Join-Path $Prefix 'bin'

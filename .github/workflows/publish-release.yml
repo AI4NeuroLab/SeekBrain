@@ -12,7 +12,7 @@ on:
       version:
         description: Stable release version
         required: true
-        default: 0.1.4
+        default: 0.1.5
       source_commit:
         description: Exact source commit validated by the build
         required: true
@@ -84,6 +84,13 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
           One-command installation for Windows x64, macOS Intel/Apple Silicon, and Linux x64/arm64 (glibc).
+
+          Windows fixes in 0.1.5:
+          - Traditional console sessions use a compact header, ASCII borders and more readable help text. Set `SEEKBRAIN_TUI_STYLE=unicode` to opt into the original decoration, or `ascii` to force compatibility mode.
+          - Downloads show a native progress meter with percentage, bytes, speed and ETA. Interrupted archive downloads retry and resume across installer runs, with SHA-256 verification before installation.
+          - Optional domestic mirror support: set `SEEKBRAIN_DOWNLOAD_MIRROR` to your organization's HTTPS mirror root. Release files and PortableGit use the mirror first, with fallback to their official sources. No public domestic mirror is bundled yet.
+
+          Automated tests cover interrupted transfers, resume, servers without Range support, corrupted partial files, failed mirrors and checksum verification. Native desktop font/IME behavior still needs interactive Windows validation.
 
           Includes the CLI, production WebUI, private Node 24 and Python 3.12 runtimes, matching fd/rg tools, and 68 recipes. Windows automatically installs pinned official PortableGit. Users do not need Node, Python, npm or Git Bash preinstalled.
 

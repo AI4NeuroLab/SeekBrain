@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { terminalText, terminalTheme } from "./terminal-style.ts";
 import {
 	Box,
 	CancellableLoader,
@@ -80,14 +81,15 @@ function renderPanel(
 	renderBody: (bodyWidth: number) => string[],
 	options: { paddingY?: number } = {},
 ): string[] {
-	if (width <= 2) return renderBody(Math.max(1, width));
+	theme = terminalTheme(theme);
+	if (width <= 2) return renderBody(Math.max(1, width)).map(terminalText);
 	const paddingX = width < 48 ? 1 : 2;
 	const box = new Box(paddingX, options.paddingY ?? 1);
 	box.addChild({
 		render: (bodyWidth: number) => renderBody(bodyWidth),
 		invalidate() {},
 	});
-	return framed(theme, box.render(width - 2), width);
+	return framed(theme, box.render(width - 2), width).map(terminalText);
 }
 
 function wrap(text: string, width: number): string[] {
@@ -183,6 +185,7 @@ export class SeekBrainSetupCard {
 		private readonly onActivate: (row: SetupRow) => Promise<void>,
 		private readonly onClose: () => void,
 	) {
+		this.theme = terminalTheme(theme);
 		this.snapshot = initialSnapshot;
 		this.guided = Boolean(initialSnapshot.firstTime || !initialSnapshot.primary || !initialSnapshot.research.selected);
 		this.selectedId = this.initialSelection();

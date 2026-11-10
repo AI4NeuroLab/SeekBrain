@@ -3,6 +3,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { terminalText, terminalTheme, useAsciiTui } from "./terminal-style.ts";
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const VERSION = JSON.parse(readFileSync(join(PACKAGE_ROOT, "package.json"), "utf8")).version;
@@ -165,6 +166,7 @@ function renderCompactHeader(theme: any, width: number, expanded: boolean): stri
 
 function renderHeader(theme: any, width: number, expanded: boolean): string[] {
   const safeWidth = Math.max(1, width);
+  if (useAsciiTui()) return renderCompactHeader(terminalTheme(theme), safeWidth, expanded).map(terminalText);
   if (safeWidth >= WIDE_HEADER_MIN_WIDTH) return renderWideHeader(theme, safeWidth, expanded);
   return renderCompactHeader(theme, safeWidth, expanded);
 }
@@ -181,7 +183,7 @@ function seekBrainHeader(theme: any) {
     },
     invalidate() { cacheKey = ""; },
     render(width: number): string[] {
-      const nextKey = `${width}:${expanded}`;
+      const nextKey = `${width}:${expanded}:${useAsciiTui()}`;
       if (nextKey !== cacheKey) {
         cachedLines = renderHeader(theme, width, expanded);
         cacheKey = nextKey;

@@ -15,6 +15,25 @@ macOS and WSL remain available. Windows ARM64 native support is not included.
   installer prepares its own pinned Node 24 runtime.
 - Windows Terminal for interactive CLI validation.
 
+### Terminal appearance (0.1.5)
+
+Use Windows Terminal with a monospace font such as Cascadia Mono or Consolas.
+Traditional Console Host fonts can render box and block characters with
+inconsistent cell widths. SeekBrain uses a compact header, ASCII decoration and
+brighter help text in its header/setup panels when no recognized modern Windows
+terminal is detected. Questions, paths and Chinese content retain their encoding.
+
+To override the decoration for the current PowerShell session:
+
+```powershell
+$env:SEEKBRAIN_TUI_STYLE = 'ascii'
+seekbrain
+# Or set 'unicode' to use the original decoration.
+```
+
+The fallback covers SeekBrain's header/setup panels. Pi's editor, footer, Chinese
+IME and resize behavior still need interactive desktop validation.
+
 Installing Git Bash does not install a Linux scientific toolchain. Recipes that
 depend on Linux binaries or container images still need their documented WSL or
 container environment. Do not mix Windows Node/Python with WSL Bash and paths.

@@ -4,6 +4,10 @@ import { createJiti } from "jiti";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { mock } from "node:test";
 
+// This contract verifies the original decorative header on every CI host.
+// Windows compatibility decoration is covered separately by terminal-style.test.ts.
+process.env.SEEKBRAIN_TUI_STYLE = "unicode";
+
 const jiti = createJiti(import.meta.url);
 const { default: registerSeekBrain } = await jiti.import("../src/extension/index.ts");
 const entrySource = await readFile(new URL("../src/extension/index.ts", import.meta.url), "utf8");
@@ -66,7 +70,7 @@ await sessionStart({}, ctx);
 assert.equal(typeof headerFactory, "function");
 const header = headerFactory({}, testTheme);
 const compactHeader = header.render(160).join("\n");
-assert.match(compactHeader, /╭─ SeekBrain v0\.1\.4/);
+assert.match(compactHeader, /╭─ SeekBrain v0\.1\.5/);
 assert.match(compactHeader, /█▀▀ █▀▀ █▀▀ █▄▀/);
 assert.match(compactHeader, /READY/);
 assert.match(compactHeader, /SCIENTIFIC RESEARCH AGENT/);

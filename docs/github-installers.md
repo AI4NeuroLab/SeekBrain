@@ -92,6 +92,47 @@ do not manually delete them without recreating the environment.
 
 ## Automated acceptance
 
+### Windows download progress and mirrors (0.1.5)
+
+The Windows installer uses the system `curl.exe` progress meter, showing bytes,
+percentage, speed and estimated time. Failed transfers retry up to three times
+per source. Archive partial files remain in the cache and resume when the same
+installer is rerun. Their filenames include the expected SHA-256, and every
+completed archive is verified before it can replace an installed release.
+Servers without HTTP Range support trigger a fresh transfer.
+
+An optional organization-controlled HTTPS mirror is configured with `-Mirror`
+or `SEEKBRAIN_DOWNLOAD_MIRROR`. It is tried before GitHub/the official Git Bash
+source, and failures fall back automatically. No third-party mirror is enabled
+by default. Example (replace the example hostname with your actual mirror):
+
+```powershell
+$env:SEEKBRAIN_DOWNLOAD_MIRROR = 'https://downloads.example.org/seekbrain'
+irm "$env:SEEKBRAIN_DOWNLOAD_MIRROR/download/v0.1.5/install.ps1" | iex
+```
+
+Upload the entire verified release asset set, plus the pinned PortableGit archive,
+with this layout relative to the mirror root:
+
+```text
+download/v0.1.5/install.ps1
+download/v0.1.5/SHA256SUMS
+download/v0.1.5/seekbrain-0.1.5-windows-x64.zip
+download/v0.1.5/...                    # Remaining release assets
+latest/download/version.txt          # Contains 0.1.5
+upstream/PortableGit-2.56.0.4-64-bit.7z.exe
+```
+
+Upload versioned files first, check their hashes and anonymous HTTPS downloads,
+then update `latest/download/version.txt` last. Use standard storage with public
+read access to the release files and private write access. A COS storage endpoint
+can host this prefix directly; a CDN can be introduced later. The installer and
+its checksum metadata must come from a trusted distribution source.
+
+`node --test tests/windows-download.mjs` exercises the production PowerShell
+download functions against local HTTP fixtures on Windows, including interrupted
+streams, persisted partial files, ignored Range headers and mirror failures.
+
 Set SEEKBRAIN_TEST_RELEASE_DIR to the directory containing a real artifact and
 its target JSON, then run `npm run test:installers`. The test serves the archive
 through a local HTTP endpoint and checks fresh install, CLI startup, upgrade,
