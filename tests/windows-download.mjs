@@ -53,7 +53,7 @@ foreach ($function in $functions) { Invoke-Expression $function.Extent.Text }
 $Cache = $env:SEEKBRAIN_TEST_CACHE
 $base = $env:SEEKBRAIN_TEST_BASE
 $Mirror = $env:SEEKBRAIN_TEST_MIRROR
-$result = Get-VerifiedArchive ($base + '/download/v0.1.5/fixture.zip') 'fixture.zip' $env:SEEKBRAIN_TEST_HASH
+$result = Get-VerifiedArchive ($base + '/download/v0.1.4/fixture.zip') 'fixture.zip' $env:SEEKBRAIN_TEST_HASH
 Write-Output ('VERIFIED: ' + $result)
 `);
     for (const scenario of ["resume", "interrupted", "range-ignored", "corrupt-partial", "mirror-outage", "mirror-corrupt"]) {

@@ -70,7 +70,7 @@ await sessionStart({}, ctx);
 assert.equal(typeof headerFactory, "function");
 const header = headerFactory({}, testTheme);
 const compactHeader = header.render(160).join("\n");
-assert.match(compactHeader, /╭─ SeekBrain v0\.1\.5/);
+assert.match(compactHeader, /╭─ SeekBrain v0\.1\.4/);
 assert.match(compactHeader, /█▀▀ █▀▀ █▀▀ █▄▀/);
 assert.match(compactHeader, /READY/);
 assert.match(compactHeader, /SCIENTIFIC RESEARCH AGENT/);

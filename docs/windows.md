@@ -15,7 +15,7 @@ macOS and WSL remain available. Windows ARM64 native support is not included.
   installer prepares its own pinned Node 24 runtime.
 - Windows Terminal for interactive CLI validation.
 
-### Terminal appearance (0.1.5)
+### Terminal appearance (0.1.4)
 
 Use Windows Terminal with a monospace font such as Cascadia Mono or Consolas.
 Traditional Console Host fonts can render box and block characters with

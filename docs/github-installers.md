@@ -92,7 +92,7 @@ do not manually delete them without recreating the environment.
 
 ## Automated acceptance
 
-### Windows download progress and mirrors (0.1.5)
+### Windows download progress and mirrors (0.1.4)
 
 The Windows installer uses the system `curl.exe` progress meter, showing bytes,
 percentage, speed and estimated time. Failed transfers retry up to three times
@@ -108,18 +108,18 @@ by default. Example (replace the example hostname with your actual mirror):
 
 ```powershell
 $env:SEEKBRAIN_DOWNLOAD_MIRROR = 'https://downloads.example.org/seekbrain'
-irm "$env:SEEKBRAIN_DOWNLOAD_MIRROR/download/v0.1.5/install.ps1" | iex
+irm "$env:SEEKBRAIN_DOWNLOAD_MIRROR/download/v0.1.4/install.ps1" | iex
 ```
 
 Upload the entire verified release asset set, plus the pinned PortableGit archive,
 with this layout relative to the mirror root:
 
 ```text
-download/v0.1.5/install.ps1
-download/v0.1.5/SHA256SUMS
-download/v0.1.5/seekbrain-0.1.5-windows-x64.zip
-download/v0.1.5/...                    # Remaining release assets
-latest/download/version.txt          # Contains 0.1.5
+download/v0.1.4/install.ps1
+download/v0.1.4/SHA256SUMS
+download/v0.1.4/seekbrain-0.1.4-windows-x64.zip
+download/v0.1.4/...                    # Remaining release assets
+latest/download/version.txt          # Contains 0.1.4
 upstream/PortableGit-2.56.0.4-64-bit.7z.exe
 ```
 
