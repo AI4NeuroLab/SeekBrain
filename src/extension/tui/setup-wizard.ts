@@ -1,10 +1,10 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { terminalText, terminalTheme } from "./terminal-style.ts";
+import { SetupInput } from "./setup-input.ts";
 import {
 	Box,
 	CancellableLoader,
 	Container,
-	Input,
 	Key,
 	matchesKey,
 	SelectList,
@@ -416,10 +416,16 @@ async function promptInput(
 	options: { title: string; description?: string; initialValue?: string; placeholder?: string; secret?: boolean },
 ): Promise<string | undefined> {
 	return await ctx.ui.custom((tui: any, theme: any, _keybindings: any, done: (value?: string) => void) => {
-		const input = new Input();
+		let error = "";
+		const input = new SetupInput({
+			secret: options.secret,
+			placeholder: options.placeholder,
+			placeholderStyle: (text) => theme.fg("muted", text),
+			requestRender: () => tui.requestRender(),
+			onPasteError: () => { error = "Clipboard unavailable or empty. Try terminal paste or type the value."; },
+		});
 		input.focused = true;
 		if (options.initialValue) input.setValue(options.initialValue);
-		let error = "";
 		input.onSubmit = (raw) => {
 			const value = raw.trim();
 			if (!value) {
@@ -431,14 +437,11 @@ async function promptInput(
 		};
 		input.onEscape = () => done(undefined);
 		return {
+			get focused() { return input.focused; },
+			set focused(value: boolean) { input.focused = value; },
 			render(width: number) {
 				return renderPanel(theme, width, (bodyWidth) => {
-					const value = input.getValue();
-					const inputLines = options.secret
-						? [theme.bg("selectedBg", fit(value
-							? `  ${"•".repeat(Math.min(value.length, Math.max(1, bodyWidth - 4)))}`
-							: `  ${theme.fg("dim", options.placeholder || "Enter credential")}`, bodyWidth))]
-						: input.render(bodyWidth);
+					const inputLines = input.render(bodyWidth);
 					return [
 						theme.fg("accent", theme.bold(options.title)),
 						...(options.description ? wrap(theme.fg("muted", options.description), bodyWidth) : []),
@@ -446,15 +449,17 @@ async function promptInput(
 						...inputLines,
 						...(error ? [theme.fg("error", error)] : []),
 						"",
-						theme.fg("dim", "Enter Save     Esc Back"),
+						theme.fg("dim", "Ctrl+V Paste     Enter Save     Esc Back"),
 					];
 				});
 			},
 			handleInput(data: string) {
+				error = "";
 				input.handleInput(data);
 				tui.requestRender();
 			},
 			invalidate() { input.invalidate(); },
+			dispose() { input.dispose(); },
 		};
 	}, DIALOG_OVERLAY);
 }
@@ -495,7 +500,9 @@ async function runLoading<T>(
 
 class AuthDialog {
 	private readonly loader: CancellableLoader;
-	private input?: Input;
+	private input?: SetupInput;
+	private focusedState = false;
+	private inputError = "";
 	private selection?: SelectList;
 	private promptInfo?: any;
 	private promptResolve?: (value: string) => void;
@@ -529,10 +536,18 @@ class AuthDialog {
 		};
 	}
 
+	get focused() { return this.focusedState; }
+	set focused(value: boolean) {
+		this.focusedState = value;
+		if (this.input) this.input.focused = value;
+	}
+
 	private clearPrompt() {
+		this.input?.dispose();
 		this.promptCleanup?.();
 		this.promptCleanup = undefined;
 		this.promptInfo = undefined;
+		this.inputError = "";
 		this.input = undefined;
 		this.selection = undefined;
 		this.promptResolve = undefined;
@@ -554,6 +569,8 @@ class AuthDialog {
 
 	private showPrompt(prompt: any): Promise<string> {
 		if (this.loader.signal.aborted) return Promise.reject(new Error("Login cancelled"));
+		this.input?.dispose();
+		this.inputError = "";
 		this.promptInfo = prompt;
 		this.input = undefined;
 		this.selection = undefined;
@@ -570,8 +587,14 @@ class AuthDialog {
 				this.selection.onSelect = (item) => this.resolvePrompt(item.value);
 				this.selection.onCancel = () => this.loader.handleInput("\u001b");
 			} else {
-				this.input = new Input();
-				this.input.focused = true;
+				this.input = new SetupInput({
+					secret: prompt.type === "secret",
+					placeholder: prompt.placeholder || (prompt.type === "secret" ? "Enter credential" : ""),
+					placeholderStyle: (text) => this.theme.fg("muted", text),
+					requestRender: () => this.tui.requestRender(),
+					onPasteError: () => { this.inputError = "Clipboard unavailable or empty. Try terminal paste or type the value."; },
+				});
+				this.input.focused = this.focusedState;
 				this.input.onSubmit = (value) => this.resolvePrompt(value);
 				this.input.onEscape = () => this.loader.handleInput("\u001b");
 			}
@@ -618,23 +641,19 @@ class AuthDialog {
 				lines.push(...wrap(this.promptInfo.message, bodyWidth), "");
 				if (this.selection) lines.push(...this.selection.render(bodyWidth));
 				else if (this.input) {
-					if (this.promptInfo.type === "secret") {
-						const value = this.input.getValue();
-						const masked = value ? "•".repeat(Math.min(value.length, Math.max(1, bodyWidth - 4))) : this.theme.fg("dim", this.promptInfo.placeholder || "Enter credential");
-						lines.push(this.theme.bg("selectedBg", fit(`  ${masked}`, bodyWidth)));
-					} else {
-						lines.push(...this.input.render(bodyWidth));
-					}
+					lines.push(...this.input.render(bodyWidth));
 				}
+				if (this.inputError) lines.push(...wrap(this.theme.fg("error", this.inputError), bodyWidth));
 			} else {
 				lines.push(...this.loader.render(bodyWidth));
 			}
-			lines.push("", this.theme.fg("dim", this.promptInfo ? "Enter Continue     Esc Cancel" : "Esc Cancel"));
+			lines.push("", this.theme.fg("dim", this.promptInfo ? "Ctrl+V Paste     Enter Continue     Esc Cancel" : "Esc Cancel"));
 			return lines;
 		});
 	}
 
 	handleInput(data: string) {
+		this.inputError = "";
 		if (matchesKey(data, Key.escape)) {
 			this.loader.handleInput(data);
 			return;
@@ -650,7 +669,7 @@ class AuthDialog {
 		this.input?.invalidate();
 	}
 
-	dispose() { this.loader.dispose(); }
+	dispose() { this.input?.dispose(); this.loader.dispose(); }
 }
 
 async function connectOfficial(ctx: any, manager: SetupManager, provider: any, authType: string): Promise<OperationResult<SetupSnapshot>> {

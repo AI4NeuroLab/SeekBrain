@@ -59,7 +59,7 @@ jobs:
       - name: Check types and terminal presentation
         run: |
           npm run typecheck
-          npx --no-install vitest run tests/unit/terminal-style.test.ts tests/unit/setup-wizard.test.ts
+          npx --no-install vitest run tests/unit/terminal-style.test.ts tests/unit/setup-wizard.test.ts tests/unit/setup-input.test.ts tests/unit/setup-clipboard.test.ts
           node tests/seekbrain-entry.mjs
       - name: Build production Web UI
         if: github.event_name == 'push' || inputs.with_web

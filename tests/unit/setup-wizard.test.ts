@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { CURSOR_MARKER, visibleWidth } from "@earendil-works/pi-tui";
+import * as clipboard from "../../src/platform/clipboard.mjs";
 import { activateSetupPrimaryModel, runPiSetupWizard, SeekBrainSetupCard } from "../../src/extension/tui/setup-wizard.ts";
 
 const ansi = (code: number, value: string) => `\u001b[${code}m${value}\u001b[0m`;
@@ -93,6 +94,55 @@ async function changeModel(options: { role?: "primary" | "fast"; closeOnly?: boo
 }
 
 describe("SeekBrain Setup card", () => {
+	it.each(["typing", "ctrl-v", "terminal-paste"])("connects Custom OpenAI after URL entry and masked credential %s", async method => {
+		const credential = "sk-test-custom-provider-only";
+		const clipboardRead = vi.spyOn(clipboard, "readSetupClipboardText").mockResolvedValue(credential);
+		const initial = snapshot();
+		const connected = snapshot({
+			providers: [{ ...initial.providers[0], mode: "custom", connected: true }],
+			connectedProviders: [{ ...initial.providers[0], mode: "custom", connected: true }],
+		});
+		const manager = { snapshot: async () => initial, connectCustom: vi.fn(async () => connected) };
+		const notices = vi.fn();
+		let sawCredentialPrompt = false;
+		const ctx: any = { hasUI: true, mode: "tui", ui: {
+			notify: notices,
+			custom(factory: any) {
+				return new Promise((resolve, reject) => {
+					let component: any;
+					component = factory({ requestRender() {} }, theme, {}, (value: any) => {
+						component?.dispose?.(); resolve(value);
+					});
+					component.focused = true;
+					const shown = component.render(90).join("\n");
+					if (component instanceof SeekBrainSetupCard) {
+						void (component as any).onActivate({ id: "provider:add", section: "providers" })
+							.then(() => component.handleInput("\u001b"), reject);
+					} else if (shown.includes("OpenAI custom endpoint")) {
+						component.handleInput("https://relay.example/v1");
+						component.handleInput("\r");
+					} else if (shown.includes("OpenAI credential")) {
+						sawCredentialPrompt = true;
+						expect(shown).toContain(CURSOR_MARKER);
+						component.handleInput(method === "ctrl-v" ? "\u0016" : method === "terminal-paste" ? `\u001b[200~${credential}\u001b[201~` : credential);
+						expect(component.render(90).join("\n")).not.toContain(credential);
+						component.handleInput("\r");
+					} else if (shown.includes("Choose one connection")) {
+						component.handleInput("\u001b[B"); component.handleInput("\r");
+					} else if (shown.includes("Add Provider")) component.handleInput("\r");
+				});
+			},
+		} };
+		try {
+			await runPiSetupWizard(ctx, { manager });
+			expect(sawCredentialPrompt).toBe(true);
+			expect(manager.connectCustom).toHaveBeenCalledWith("openai", "https://relay.example/v1", credential, expect.any(AbortSignal));
+			expect(notices).not.toHaveBeenCalled();
+			if (method === "ctrl-v") expect(clipboardRead).toHaveBeenCalledTimes(1);
+			else expect(clipboardRead).not.toHaveBeenCalled();
+		} finally { clipboardRead.mockRestore(); }
+	});
+
 	it("renders the three simple setting groups responsively", () => {
 		const requestRender = vi.fn();
 		const card = new SeekBrainSetupCard(
@@ -174,7 +224,7 @@ describe("SeekBrain Setup card", () => {
 		expect(source).toMatch(/enableSearch:\s*false/);
 		expect(source).toMatch(/new SelectList/);
 		expect(source).toMatch(/CancellableLoader/);
-		expect(source).toContain('"•".repeat');
+		expect(source).toMatch(/new SetupInput/);
 	});
 	it("activates the saved Primary in the current Pi session after refreshing the relay model registry", async () => {
 		const result = await changeModel();
