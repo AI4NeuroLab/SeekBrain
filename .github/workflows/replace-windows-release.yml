@@ -1,0 +1,115 @@
+name: Replace validated Windows release assets
+
+on:
+  push:
+    branches: [fix/windows-release-v0.1.4]
+    paths: [.github/workflows/replace-windows-release.yml]
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Windows-only Build installation bundles run
+        required: true
+      source_commit:
+        description: Exact commit validated by that build
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: replace-seekbrain-v0.1.4-windows
+  cancel-in-progress: false
+
+jobs:
+  replace:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.22.1'
+      - name: Validate successful build provenance
+        run: |
+          node --test tests/windows-release-update.mjs
+          node --input-type=module -e 'if (!/^[0-9]+$/.test(process.env.BUILD_RUN_ID) || !/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT)) throw new Error("Invalid build inputs")'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > "$RUNNER_TEMP/build-run.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const run = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/build-run.json'));
+          assert.equal(run.status, 'completed');
+          assert.equal(run.conclusion, 'success');
+          assert.equal(run.head_sha, process.env.SOURCE_COMMIT);
+          assert.equal(run.path.split('@')[0], '.github/workflows/release-bundles.yml');
+          JS
+      - uses: actions/download-artifact@v7
+        with:
+          name: seekbrain-installation-bundles
+          path: releases/replacement
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+      - name: Back up existing Windows assets and metadata
+        run: |
+          gh release download v0.1.4 --repo "$GITHUB_REPOSITORY" --dir releases/baseline --pattern seekbrain-0.1.4-windows-x64.zip --pattern seekbrain-0.1.4-windows-x64.zip.sha256 --pattern win32-x64.json --pattern install.ps1 --pattern release-manifest.json --pattern SHA256SUMS
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.1.4" > releases/baseline/release-before.json
+      - uses: actions/upload-artifact@v6
+        with:
+          name: seekbrain-v0.1.4-windows-before-${{ github.run_id }}
+          path: releases/baseline/*
+          retention-days: 90
+          if-no-files-found: error
+      - name: Prepare Windows-only replacement
+        run: |
+          node scripts/prepare-windows-release-update.mjs releases/baseline releases/replacement releases/update 0.1.4 "$SOURCE_COMMIT"
+      - name: Replace Windows ZIP, installer and metadata
+        run: |
+          # Avoid publishing against metadata changed since the backup snapshot.
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.1.4" > releases/pre-upload.json
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const before = JSON.parse(readFileSync('releases/baseline/release-before.json'));
+          const current = JSON.parse(readFileSync('releases/pre-upload.json'));
+          assert.deepEqual(current.assets.map(({id, name, digest}) => ({id, name, digest})), before.assets.map(({id, name, digest}) => ({id, name, digest})));
+          JS
+          gh release upload v0.1.4 releases/update/* --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Verify uploaded files and unchanged other-platform assets
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.1.4" > releases/release-after.json
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync, readdirSync, statSync } from 'node:fs';
+          const before = JSON.parse(readFileSync('releases/baseline/release-before.json'));
+          const after = JSON.parse(readFileSync('releases/release-after.json'));
+          assert.equal(after.tag_name, before.tag_name);
+          assert.equal(after.target_commitish, before.target_commitish);
+          const updated = new Set(readdirSync('releases/update'));
+          assert.equal(after.assets.length, before.assets.length);
+          for (const previous of before.assets) {
+            const current = after.assets.find(asset => asset.name === previous.name);
+            assert.ok(current, `Missing asset ${previous.name}`);
+            if (updated.has(previous.name)) {
+              assert.equal(current.size, statSync('releases/update/' + previous.name).size);
+            } else {
+              assert.equal(current.id, previous.id, `Unrelated asset was replaced: ${previous.name}`);
+              assert.equal(current.digest, previous.digest);
+            }
+          }
+          JS
+          gh release download v0.1.4 --repo "$GITHUB_REPOSITORY" --dir releases/verify --pattern seekbrain-0.1.4-windows-x64.zip --pattern win32-x64.json --pattern install.ps1 --pattern release-manifest.json --pattern SHA256SUMS
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readdirSync } from 'node:fs';
+          import { sha256 } from './scripts/release-lib.mjs';
+          for (const name of readdirSync('releases/verify')) assert.equal(await sha256('releases/verify/' + name), await sha256('releases/update/' + name), `Published bytes differ: ${name}`);
+          JS
+          echo "Updated Windows only: https://github.com/$GITHUB_REPOSITORY/releases/tag/v0.1.4" >> "$GITHUB_STEP_SUMMARY"

@@ -133,6 +133,21 @@ its checksum metadata must come from a trusted distribution source.
 download functions against local HTTP fixtures on Windows, including interrupted
 streams, persisted partial files, ignored Range headers and mirror failures.
 
+### Replacing only the Windows v0.1.4 assets
+
+The `Replace validated Windows release assets` workflow accepts a successful
+Windows-only build run and its exact source commit. It backs up the six affected
+assets to an Actions artifact, prepares and verifies a new Windows ZIP, installer
+and checksum/manifest set, then replaces those six files on the existing release.
+The other four platform archives, their metadata and sidecars, `install.sh`, the
+version file and the release tag are preserved. The published bytes are downloaded
+again for verification after upload.
+
+A selective replacement records each platform's source commit in
+`artifacts[*].sourceCommit` and `sourceCommits`. The root `sourceCommit` is null
+when the five artifacts no longer share one revision. A full new-version build
+still requires a common source commit through the normal collector.
+
 Set SEEKBRAIN_TEST_RELEASE_DIR to the directory containing a real artifact and
 its target JSON, then run `npm run test:installers`. The test serves the archive
 through a local HTTP endpoint and checks fresh install, CLI startup, upgrade,
