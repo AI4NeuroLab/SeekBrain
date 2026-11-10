@@ -1,0 +1,44 @@
+name: Validate independent ModelScope Windows installer
+
+on:
+  push:
+    branches: [fix/windows-release-v0.1.4]
+    paths: [.github/workflows/modelscope-windows-smoke.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Download installer anonymously from ModelScope
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $url = 'https://www.modelscope.cn/datasets/SeekBrain/seekbrain-releases/resolve/master/install.ps1'
+          Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile "$env:RUNNER_TEMP\seekbrain-modelscope-install.ps1"
+          $source = [IO.File]::ReadAllText("$env:RUNNER_TEMP\seekbrain-modelscope-install.ps1")
+          if (-not $source.Contains("`$base = 'https://www.modelscope.cn/datasets/SeekBrain/seekbrain-releases/resolve/master'")) { throw 'Installer is not pinned to ModelScope.' }
+          if (-not $source.Contains("Get-VerifiedArchive (`$base + '/upstream/' + `$manifest.git.file)")) { throw 'Git Bash is not pinned to the selected source.' }
+      - name: Install Windows package and Git Bash from ModelScope
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A previous source preference must not silently change this entry point.
+          $env:SEEKBRAIN_RELEASE_BASE_URL = 'https://github.com/AI4NeuroLab/SeekBrain/releases'
+          $env:SEEKBRAIN_DOWNLOAD_MIRROR = 'https://invalid.example.org/unreachable'
+          & "$env:RUNNER_TEMP\seekbrain-modelscope-install.ps1" -Prefix "$env:RUNNER_TEMP\SeekBrainMirror" -NoModifyPath
+      - name: Launch private runtime and validate source and version
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = & "$env:RUNNER_TEMP\SeekBrainMirror\bin\seekbrain.cmd" --version
+          if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne '0.1.4') { throw 'Installed CLI version check failed.' }
+          & "$env:RUNNER_TEMP\SeekBrainMirror\bin\seekbrain.cmd" doctor
+          if ($LASTEXITCODE -ne 0) { throw 'Installed runtime doctor failed.' }
+          Write-Output 'ModelScope installer, Windows ZIP and Git Bash installation verified without download credentials.'
