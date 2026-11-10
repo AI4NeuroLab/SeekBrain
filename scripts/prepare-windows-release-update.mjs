@@ -28,6 +28,7 @@ export async function prepareWindowsReleaseUpdate(baseline, replacement, output,
   for (const artifact of manifest.artifacts) {
     assert.equal(artifact.sha256, sums.get(artifact.file));
   }
+  assert.equal(await sha256(join(baseline, name)), sums.get(name), "Backup Windows ZIP checksum mismatch");
   assert.equal(record.schemaVersion, 1);
   assert.equal(record.target, "win32-x64");
   assert.equal(record.releaseVersion, version);

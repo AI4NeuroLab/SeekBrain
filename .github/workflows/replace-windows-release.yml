@@ -71,6 +71,7 @@ jobs:
         run: |
           node scripts/prepare-windows-release-update.mjs releases/baseline releases/replacement releases/update 0.1.4 "$SOURCE_COMMIT"
       - name: Replace Windows ZIP, installer and metadata
+        id: upload
         run: |
           # Avoid publishing against metadata changed since the backup snapshot.
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.1.4" > releases/pre-upload.json
@@ -81,8 +82,10 @@ jobs:
           const current = JSON.parse(readFileSync('releases/pre-upload.json'));
           assert.deepEqual(current.assets.map(({id, name, digest}) => ({id, name, digest})), before.assets.map(({id, name, digest}) => ({id, name, digest})));
           JS
-          gh release upload v0.1.4 releases/update/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload v0.1.4 releases/update/seekbrain-0.1.4-windows-x64.zip releases/update/seekbrain-0.1.4-windows-x64.zip.sha256 releases/update/win32-x64.json releases/update/install.ps1 releases/update/release-manifest.json --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload v0.1.4 releases/update/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
       - name: Verify uploaded files and unchanged other-platform assets
+        id: verify
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.1.4" > releases/release-after.json
           node --input-type=module <<'JS'
@@ -113,3 +116,8 @@ jobs:
           for (const name of readdirSync('releases/verify')) assert.equal(await sha256('releases/verify/' + name), await sha256('releases/update/' + name), `Published bytes differ: ${name}`);
           JS
           echo "Updated Windows only: https://github.com/$GITHUB_REPOSITORY/releases/tag/v0.1.4" >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore backed-up Windows files if replacement or verification fails
+        if: failure() && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        run: |
+          gh release upload v0.1.4 releases/baseline/seekbrain-0.1.4-windows-x64.zip releases/baseline/seekbrain-0.1.4-windows-x64.zip.sha256 releases/baseline/win32-x64.json releases/baseline/install.ps1 releases/baseline/release-manifest.json --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload v0.1.4 releases/baseline/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
